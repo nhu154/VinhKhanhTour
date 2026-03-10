@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:local="clr-namespace:VinhKhanhTour"
+             x:Class="VinhKhanhTour.WelcomePage"
+             NavigationPage.HasNavigationBar="False"
+             BackgroundColor="#E8F4F8">
+    <ScrollView>
+        <VerticalStackLayout Spacing="0">
+            <VerticalStackLayout BackgroundColor="White" Padding="25,50,25,30" Spacing="15">
+                <Label Text="VINH KHANH" FontSize="28" FontAttributes="Bold" TextColor="#2C3E50"/>
+                <Label Text="TOUR GUIDE" FontSize="24" FontAttributes="Bold" TextColor="#E67E22" Margin="0,-10,0,0"/>
+                <Label Text="Chào mừng bạn đến với Phố Ẩm Thực Vĩnh Khánh" FontSize="15" TextColor="#7F8C8D" Margin="0,10,0,0"/>
+                <Label Text="Khám phá 11 điểm ăn uống đặc sắc nhất Quận 4" FontSize="13" TextColor="#95A5A6"/>
+            </VerticalStackLayout>
+            <VerticalStackLayout Padding="25,20" Spacing="12">
+                <Label Text="Giọng thuyết minh" FontSize="16" FontAttributes="Bold" TextColor="#2C3E50"/>
+                <Grid ColumnDefinitions="*,*,*" ColumnSpacing="10">
+                    <Frame Grid.Column="0" BackgroundColor="#3498DB" CornerRadius="10" Padding="15,10" HasShadow="False">
+                        <Label Text="Tiếng Việt" FontSize="13" TextColor="White" FontAttributes="Bold" HorizontalTextAlignment="Center"/>
+                    </Frame>
+                    <Frame Grid.Column="1" BackgroundColor="#E8F4F8" BorderColor="#BDC3C7" CornerRadius="10" Padding="15,10" HasShadow="False">
+                        <Label Text="English" FontSize="13" TextColor="#7F8C8D" HorizontalTextAlignment="Center"/>
+                    </Frame>
+                    <Frame Grid.Column="2" BackgroundColor="#E8F4F8" BorderColor="#BDC3C7" CornerRadius="10" Padding="15,10" HasShadow="False">
+                        <Label Text="中文" FontSize="13" TextColor="#7F8C8D" HorizontalTextAlignment="Center"/>
+                    </Frame>
+                </Grid>
+            </VerticalStackLayout>
+
+            <!-- MAP PREVIEW THẬT -->
+            <VerticalStackLayout Padding="25,10" Spacing="12">
+                <Label Text="Chọn Tour" FontSize="16" FontAttributes="Bold" TextColor="#2C3E50"/>
+                <Frame BackgroundColor="White" CornerRadius="15" Padding="0" HasShadow="True" HeightRequest="200">
+                    <Frame.GestureRecognizers>
+                        <TapGestureRecognizer Tapped="OnMapClicked"/>
+                    </Frame.GestureRecognizers>
+                    <local:MapPreviewControl/>
+                </Frame>
+                <Label Text="👆 Nhấn để xem bản đồ chi tiết" FontSize="12" TextColor="#7F8C8D" HorizontalTextAlignment="Center"/>
+            </VerticalStackLayout>
+
+            <Button Text="Tour Toàn Cảnh" BackgroundColor="#F39C12" TextColor="White" FontSize="18" FontAttributes="Bold" HeightRequest="60" Margin="25,10,25,20" CornerRadius="12" Clicked="OnMapClicked"/>
+
+            <VerticalStackLayout Padding="25,0,25,30" Spacing="15">
+                <Label Text="Tour theo chủ đề" FontSize="16" FontAttributes="Bold" TextColor="#2C3E50"/>
+
+                <Frame BackgroundColor="White" CornerRadius="12" Padding="12" HasShadow="True">
+                    <Frame.GestureRecognizers>
+                        <TapGestureRecognizer Tapped="OnTour1Clicked"/>
+                    </Frame.GestureRecognizers>
+                    <Grid ColumnDefinitions="100,*" ColumnSpacing="15">
+                        <Frame Grid.Column="0" CornerRadius="10" Padding="0">
+                            <Image Source="tour_oc.jpg" Aspect="AspectFill" WidthRequest="100" HeightRequest="80"/>
+                        </Frame>
+                        <VerticalStackLayout Grid.Column="1" Spacing="5" VerticalOptions="Center">
+                            <Label Text="Tour Ăn Ốc" FontSize="15" FontAttributes="Bold" TextColor="#2C3E50"/>
+                            <Label Text="3 quán ốc ngon" FontSize="12" TextColor="#7F8C8D"/>
+                            <HorizontalStackLayout Spacing="5">
+                                <Label Text="⭐ 4.4" FontSize="12" TextColor="#F39C12"/>
+                                <Label Text="•" FontSize="12" TextColor="#BDC3C7"/>
+                                <Label Text="45 phút" FontSize="12" TextColor="#7F8C8D"/>
+                            </HorizontalStackLayout>
+                        </VerticalStackLayout>
+                    </Grid>
+                </Frame>
+
+                <Frame BackgroundColor="White" CornerRadius="12" Padding="12" HasShadow="True">
+                    <Frame.GestureRecognizers>
+                        <TapGestureRecognizer Tapped="OnTour2Clicked"/>
+                    </Frame.GestureRecognizers>
+                    <Grid ColumnDefinitions="100,*" ColumnSpacing="15">
+                        <Frame Grid.Column="0" CornerRadius="10" Padding="0">
+                            <Image Source="tour_nuong.jpg" Aspect="AspectFill" WidthRequest="100" HeightRequest="80"/>
+                        </Frame>
+                        <VerticalStackLayout Grid.Column="1" Spacing="5" VerticalOptions="Center">
+                            <Label Text="Tour Ăn Nướng" FontSize="15" FontAttributes="Bold" TextColor="#2C3E50"/>
+                            <Label Text="Lẩu nướng, bò lá lốt" FontSize="12" TextColor="#7F8C8D"/>
+                            <HorizontalStackLayout Spacing="5">
+                                <Label Text="⭐ 4.5" FontSize="12" TextColor="#F39C12"/>
+                                <Label Text="•" FontSize="12" TextColor="#BDC3C7"/>
+                                <Label Text="60 phút" FontSize="12" TextColor="#7F8C8D"/>
+                            </HorizontalStackLayout>
+                        </VerticalStackLayout>
+                    </Grid>
+                </Frame>
+
+                <Frame BackgroundColor="White" CornerRadius="12" Padding="12" HasShadow="True">
+                    <Frame.GestureRecognizers>
+                        <TapGestureRecognizer Tapped="OnTour3Clicked"/>
+                    </Frame.GestureRecognizers>
+                    <Grid ColumnDefinitions="100,*" ColumnSpacing="15">
+                        <Frame Grid.Column="0" CornerRadius="10" Padding="0">
+                            <Image Source="tour_vat.jpg" Aspect="AspectFill" WidthRequest="100" HeightRequest="80"/>
+                        </Frame>
+                        <VerticalStackLayout Grid.Column="1" Spacing="5" VerticalOptions="Center">
+                            <Label Text="Tour Ăn Vặt" FontSize="15" FontAttributes="Bold" TextColor="#2C3E50"/>
+                            <Label Text="Cơm cháy, bún nướng" FontSize="12" TextColor="#7F8C8D"/>
+                            <HorizontalStackLayout Spacing="5">
+                                <Label Text="⭐ 4.3" FontSize="12" TextColor="#F39C12"/>
+                                <Label Text="•" FontSize="12" TextColor="#BDC3C7"/>
+                                <Label Text="40 phút" FontSize="12" TextColor="#7F8C8D"/>
+                            </HorizontalStackLayout>
+                        </VerticalStackLayout>
+                    </Grid>
+                </Frame>
+
+                <Frame BackgroundColor="White" CornerRadius="12" Padding="12" HasShadow="True">
+                    <Frame.GestureRecognizers>
+                        <TapGestureRecognizer Tapped="OnTour4Clicked"/>
+                    </Frame.GestureRecognizers>
+                    <Grid ColumnDefinitions="100,*" ColumnSpacing="15">
+                        <Frame Grid.Column="0" CornerRadius="10" Padding="0">
+                            <Image Source="tour_dacssan.jpg" Aspect="AspectFill" WidthRequest="100" HeightRequest="80"/>
+                        </Frame>
+                        <VerticalStackLayout Grid.Column="1" Spacing="5" VerticalOptions="Center">
+                            <Label Text="Tour Đặc Sản" FontSize="15" FontAttributes="Bold" TextColor="#2C3E50"/>
+                            <Label Text="Bún cá Châu Đốc" FontSize="12" TextColor="#7F8C8D"/>
+                            <HorizontalStackLayout Spacing="5">
+                                <Label Text="⭐ 4.6" FontSize="12" TextColor="#F39C12"/>
+                                <Label Text="•" FontSize="12" TextColor="#BDC3C7"/>
+                                <Label Text="50 phút" FontSize="12" TextColor="#7F8C8D"/>
+                            </HorizontalStackLayout>
+                        </VerticalStackLayout>
+                    </Grid>
+                </Frame>
+
+            </VerticalStackLayout>
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>
