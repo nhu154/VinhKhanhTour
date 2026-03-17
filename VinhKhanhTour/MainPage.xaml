@@ -6,8 +6,8 @@
 
     <Grid RowDefinitions="Auto,*,Auto">
 
-        <!-- Header đẹp -->
-        <Border Grid.Row="0" 
+        <!-- Header -->
+        <Border Grid.Row="0"
                 BackgroundColor="#FF6B6B"
                 StrokeThickness="0"
                 Padding="20,30,20,20"
@@ -16,12 +16,12 @@
                 <RoundRectangle CornerRadius="0,0,30,30"/>
             </Border.StrokeShape>
             <VerticalStackLayout Spacing="5">
-                <Label Text="🍜 PHỐ ẨM THỰC VĨNH KHÁNH" 
-                       FontSize="22" 
+                <Label Text="🍜 PHỐ ẨM THỰC VĨNH KHÁNH"
+                       FontSize="22"
                        FontAttributes="Bold"
                        TextColor="White"
                        HorizontalTextAlignment="Center"/>
-                <Label Text="Khám phá 11 điểm ăn uống nổi tiếng" 
+                <Label Text="Khám phá 11 điểm ăn uống nổi tiếng"
                        FontSize="13"
                        TextColor="#FFE5E5"
                        HorizontalTextAlignment="Center"/>
@@ -36,7 +36,7 @@
                             Margin="15,0">
                 <CollectionView.ItemTemplate>
                     <DataTemplate>
-                        <Border Margin="0,8" 
+                        <Border Margin="0,8"
                                 BackgroundColor="White"
                                 StrokeThickness="0"
                                 Padding="0">
@@ -49,7 +49,7 @@
 
                             <Grid RowDefinitions="140,Auto">
 
-                                <!-- Image area với gradient -->
+                                <!-- Image area -->
                                 <Border Grid.Row="0"
                                         BackgroundColor="#FFE5E5"
                                         StrokeThickness="0">
@@ -57,13 +57,11 @@
                                         <RoundRectangle CornerRadius="20,20,0,0"/>
                                     </Border.StrokeShape>
                                     <Grid>
-                                        <Label Text="🍜" 
+                                        <Label Text="🍜"
                                                FontSize="70"
                                                HorizontalOptions="Center"
                                                VerticalOptions="Center"
                                                Opacity="0.3"/>
-
-                                        <!-- Rating badge -->
                                         <Border BackgroundColor="#FF6B6B"
                                                 StrokeThickness="0"
                                                 Padding="10,6"
@@ -75,7 +73,7 @@
                                             </Border.StrokeShape>
                                             <HorizontalStackLayout Spacing="4">
                                                 <Label Text="⭐" FontSize="14"/>
-                                                <Label Text="{Binding Rating}" 
+                                                <Label Text="{Binding Rating}"
                                                        FontSize="14"
                                                        FontAttributes="Bold"
                                                        TextColor="White"/>
@@ -85,23 +83,21 @@
                                 </Border>
 
                                 <!-- Info section -->
-                                <VerticalStackLayout Grid.Row="1" 
+                                <VerticalStackLayout Grid.Row="1"
                                                      Padding="15"
                                                      Spacing="8">
                                     <Label Text="{Binding Name}"
                                            FontSize="18"
                                            FontAttributes="Bold"
                                            TextColor="#2C3E50"/>
-
                                     <Label Text="{Binding Description}"
                                            FontSize="13"
                                            TextColor="#7F8C8D"
                                            LineBreakMode="TailTruncation"
                                            MaxLines="2"/>
-
                                     <HorizontalStackLayout Spacing="5">
                                         <Label Text="🕐" FontSize="13"/>
-                                        <Label Text="{Binding OpenHours}" 
+                                        <Label Text="{Binding OpenHours}"
                                                FontSize="13"
                                                TextColor="#27AE60"
                                                FontAttributes="Bold"/>
@@ -115,42 +111,22 @@
             </CollectionView>
         </ScrollView>
 
-        <!-- Bottom Navigation -->
-        <Grid Grid.Row="2" 
+        <!-- Bottom: chỉ còn nút Bản Đồ -->
+        <Grid Grid.Row="2"
               BackgroundColor="White"
               Padding="15,10"
-              ColumnDefinitions="*,*"
+              ColumnDefinitions="*"
               RowDefinitions="55">
 
-            <Border Grid.Column="0"
-                    BackgroundColor="#4ECDC4"
-                    StrokeThickness="0"
-                    Margin="0,0,7,0">
+            <Border BackgroundColor="#4ECDC4"
+                    StrokeThickness="0">
                 <Border.StrokeShape>
                     <RoundRectangle CornerRadius="15"/>
                 </Border.StrokeShape>
                 <Border.Shadow>
                     <Shadow Brush="#4ECDC4" Opacity="0.3" Radius="8" Offset="0,3"/>
                 </Border.Shadow>
-                <Button Text="📍 GPS"
-                        BackgroundColor="Transparent"
-                        TextColor="White"
-                        FontSize="15"
-                        FontAttributes="Bold"
-                        Clicked="OnGpsClicked"/>
-            </Border>
-
-            <Border Grid.Column="1"
-                    BackgroundColor="#95E1D3"
-                    StrokeThickness="0"
-                    Margin="7,0,0,0">
-                <Border.StrokeShape>
-                    <RoundRectangle CornerRadius="15"/>
-                </Border.StrokeShape>
-                <Border.Shadow>
-                    <Shadow Brush="#95E1D3" Opacity="0.3" Radius="8" Offset="0,3"/>
-                </Border.Shadow>
-                <Button Text="🗺️ Bản Đồ"
+                <Button Text="🗺️ Mở Bản Đồ"
                         BackgroundColor="Transparent"
                         TextColor="White"
                         FontSize="15"

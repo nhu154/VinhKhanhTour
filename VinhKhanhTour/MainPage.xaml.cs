@@ -16,7 +16,6 @@ namespace VinhKhanhTour
             {
                 await Task.Delay(500);
                 var restaurants = await App.Database.GetRestaurantsAsync();
-
                 if (restaurants.Count == 0)
                 {
                     await DisplayAlert("Thông báo", "Chưa có dữ liệu nhà hàng. Đang khởi tạo...", "OK");
@@ -45,16 +44,11 @@ namespace VinhKhanhTour
                     $"📌 Tọa độ: {restaurant.Latitude}, {restaurant.Longitude}",
                     "OK"
                 );
-
                 ((CollectionView)sender).SelectedItem = null;
             }
         }
 
-        private async void OnGpsClicked(object sender, EventArgs e)
-        {
-            await Navigation.PushAsync(new GpsPage());
-        }
-
+        // ✅ Bỏ OnGpsClicked vì tab GPS đã bị xóa
         private async void OnMapClicked(object sender, EventArgs e)
         {
             await Navigation.PushAsync(new MapPage());

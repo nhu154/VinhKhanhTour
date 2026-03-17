@@ -20,12 +20,6 @@
         </x:Arguments>
     </NavigationPage>
 
-    <NavigationPage Title="GPS" IconImageSource="gps.png">
-        <x:Arguments>
-            <local:GpsPage/>
-        </x:Arguments>
-    </NavigationPage>
-
     <NavigationPage Title="Cá nhân" IconImageSource="profile.png">
         <x:Arguments>
             <local:ProfilePage/>

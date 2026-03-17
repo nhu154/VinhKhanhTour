@@ -9,17 +9,26 @@ namespace VinhKhanhTour
             var builder = MauiApp.CreateBuilder();
             builder
                 .UseMauiApp<App>()
-                
                 .ConfigureFonts(fonts =>
                 {
                     fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular");
                     fonts.AddFont("OpenSans-Semibold.ttf", "OpenSansSemibold");
                 });
 
-#if DEBUG
-    		builder.Logging.AddDebug();
+            // ✅ Bật JavaScript + DOM Storage cho WebView Android
+            Microsoft.Maui.Handlers.WebViewHandler.Mapper.AppendToMapping("JavaScriptEnabled", (handler, view) =>
+            {
+#if ANDROID
+                handler.PlatformView.Settings.JavaScriptEnabled = true;
+                handler.PlatformView.Settings.DomStorageEnabled = true;
+                handler.PlatformView.Settings.AllowFileAccess = true;
+                handler.PlatformView.Settings.AllowContentAccess = true;
 #endif
+            });
 
+#if DEBUG
+            builder.Logging.AddDebug();
+#endif
             return builder.Build();
         }
     }

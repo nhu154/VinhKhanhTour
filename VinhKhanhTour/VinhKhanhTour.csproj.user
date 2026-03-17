@@ -8,9 +8,6 @@
     <DefaultDevice>pixel_7_-_api_34</DefaultDevice>
   </PropertyGroup>
   <ItemGroup>
-    <MauiXaml Update="GpsPage.xaml">
-      <SubType>Designer</SubType>
-    </MauiXaml>
     <MauiXaml Update="MainTabbedPage.xaml">
       <SubType>Designer</SubType>
     </MauiXaml>

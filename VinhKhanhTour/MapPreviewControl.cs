@@ -148,7 +148,7 @@ namespace VinhKhanhTour
                     System.Diagnostics.Debug.WriteLine($"MapPreview location error: {ex.Message}");
                 }
 
-                await Task.Delay(5000); // Update every 5 seconds
+                await Task.Delay(5000); 
             }
         }
     }
