@@ -34,6 +34,42 @@
 	</ItemGroup>
 
 	<ItemGroup>
+	  <MauiImage Remove="Resources\Images\bolalotcout.jpg" />
+	  <MauiImage Remove="Resources\Images\buncachaudoc.jpg" />
+	  <MauiImage Remove="Resources\Images\bunthitnuongconga.jpg" />
+	  <MauiImage Remove="Resources\Images\chililaunuong.jpg" />
+	  <MauiImage Remove="Resources\Images\comchaykhoquet.jpg" />
+	  <MauiImage Remove="Resources\Images\langquan.jpeg" />
+	  <MauiImage Remove="Resources\Images\oc_oanh.jpg" />
+	  <MauiImage Remove="Resources\Images\oc_sauno.jpg" />
+	  <MauiImage Remove="Resources\Images\oc_thao.jpg" />
+	  <MauiImage Remove="Resources\Images\otxiemquan.jpg" />
+	  <MauiImage Remove="Resources\Images\thegioibo.jpg" />
+	  <MauiImage Remove="Resources\Images\tour_dacssan.jpg" />
+	  <MauiImage Remove="Resources\Images\tour_nuong.jpg" />
+	  <MauiImage Remove="Resources\Images\tour_oc.jpg" />
+	  <MauiImage Remove="Resources\Images\tour_vat.jpg" />
+	</ItemGroup>
+
+	<ItemGroup>
+	  <MauiAsset Include="Resources\Images\bolalotcout.jpg" />
+	  <MauiAsset Include="Resources\Images\buncachaudoc.jpg" />
+	  <MauiAsset Include="Resources\Images\bunthitnuongconga.jpg" />
+	  <MauiAsset Include="Resources\Images\chililaunuong.jpg" />
+	  <MauiAsset Include="Resources\Images\comchaykhoquet.jpg" />
+	  <MauiAsset Include="Resources\Images\langquan.jpeg" />
+	  <MauiAsset Include="Resources\Images\oc_oanh.jpg" />
+	  <MauiAsset Include="Resources\Images\oc_sauno.jpg" />
+	  <MauiAsset Include="Resources\Images\oc_thao.jpg" />
+	  <MauiAsset Include="Resources\Images\otxiemquan.jpg" />
+	  <MauiAsset Include="Resources\Images\thegioibo.jpg" />
+	  <MauiAsset Include="Resources\Images\tour_dacssan.jpg" />
+	  <MauiAsset Include="Resources\Images\tour_nuong.jpg" />
+	  <MauiAsset Include="Resources\Images\tour_oc.jpg" />
+	  <MauiAsset Include="Resources\Images\tour_vat.jpg" />
+	</ItemGroup>
+
+	<ItemGroup>
 		<PackageReference Include="Microsoft.Maui.Controls" Version="$(MauiVersion)" />
 		<PackageReference Include="Microsoft.Maui.Controls.Compatibility" Version="$(MauiVersion)" />
 		<PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="8.0.1" />

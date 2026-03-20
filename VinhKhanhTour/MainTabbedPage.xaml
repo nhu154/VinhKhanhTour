@@ -3,10 +3,10 @@
             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
             xmlns:local="clr-namespace:VinhKhanhTour"
             x:Class="VinhKhanhTour.MainTabbedPage"
-            BarBackgroundColor="White"
-            BarTextColor="#2C3E50"
-            SelectedTabColor="#FF6B6B"
-            UnselectedTabColor="#95A5A6">
+            BarBackgroundColor="#FFFFFF"
+            BarTextColor="#9E9E9E"
+            SelectedTabColor="#E53935"
+            UnselectedTabColor="#BDBDBD">
 
     <NavigationPage Title="Trang chủ" IconImageSource="home.png">
         <x:Arguments>

@@ -29,5 +29,13 @@ namespace VinhKhanhTour.Services
         {
             return _database.InsertAsync(visit);
         }
+
+        // ✅ Thêm: lấy toàn bộ lịch sử ghé thăm (mới nhất trước)
+        public Task<List<VisitHistory>> GetVisitHistoryAsync()
+        {
+            return _database.Table<VisitHistory>()
+                            .OrderByDescending(v => v.VisitedAt)
+                            .ToListAsync();
+        }
     }
 }

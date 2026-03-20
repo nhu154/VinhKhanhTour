@@ -3,9 +3,11 @@ using System.Text;
 
 namespace VinhKhanhTour
 {
-    public class MapPreviewControl : WebView
+    public class MapPreviewControl : WebView, IDisposable
     {
-        private bool isPageLoaded = false;
+        private bool _isPageLoaded = false;
+        private CancellationTokenSource _cts = new CancellationTokenSource();
+        private bool _disposed = false;
 
         public MapPreviewControl()
         {
@@ -16,15 +18,13 @@ namespace VinhKhanhTour
             Navigated += OnNavigated;
 
             LoadMap();
-            StartLocationTracking();
+            _ = StartLocationTrackingAsync(_cts.Token);
         }
 
-        private void OnNavigated(object sender, WebNavigatedEventArgs e)
+        private void OnNavigated(object? sender, WebNavigatedEventArgs e)
         {
             if (e.Result == WebNavigationResult.Success)
-            {
-                isPageLoaded = true;
-            }
+                _isPageLoaded = true;
         }
 
         private async void LoadMap()
@@ -35,19 +35,14 @@ namespace VinhKhanhTour
             for (int i = 0; i < restaurants.Count; i++)
             {
                 var r = restaurants[i];
-                markersJson.Append($@"
-                {{
-                    ""lat"": {r.Latitude.ToString(System.Globalization.CultureInfo.InvariantCulture)},
-                    ""lng"": {r.Longitude.ToString(System.Globalization.CultureInfo.InvariantCulture)},
-                    ""name"": ""{r.Name}""
-                }}");
-
+                var ic = System.Globalization.CultureInfo.InvariantCulture;
+                var name = r.Name.Replace("\"", "\\\"").Replace("'", "\\'");
+                markersJson.Append($"{{\"lat\":{r.Latitude.ToString(ic)},\"lng\":{r.Longitude.ToString(ic)},\"name\":\"{name}\"}}");
                 if (i < restaurants.Count - 1) markersJson.Append(",");
             }
             markersJson.Append("]");
 
-            var html = $@"
-<!DOCTYPE html>
+            var html = $@"<!DOCTYPE html>
 <html>
 <head>
     <meta charset='utf-8'>
@@ -74,41 +69,31 @@ namespace VinhKhanhTour
 
         L.tileLayer('https://{{s}}.basemaps.cartocdn.com/light_all/{{z}}/{{x}}/{{y}}{{r}}.png', {{
             maxZoom: 19,
-            attribution: '© OpenStreetMap contributors, © CARTO'
+            attribution: '&copy; OpenStreetMap contributors, &copy; CARTO'
         }}).addTo(map);
 
-        var redCircleSvg = 'data:image/svg+xml;base64,' + btoa(`
-            <svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'>
-                <circle cx='12' cy='12' r='10' fill='#FF6B6B' stroke='white' stroke-width='2'/>
-            </svg>
-        `);
-
-        var redIcon = L.icon({{
-            iconUrl: redCircleSvg,
+        var redIcon = L.divIcon({{
+            html: '<svg xmlns=""http://www.w3.org/2000/svg"" width=""24"" height=""24""><circle cx=""12"" cy=""12"" r=""10"" fill=""#FF6B6B"" stroke=""white"" stroke-width=""2""/></svg>',
             iconSize: [24, 24],
-            iconAnchor: [12, 12]
+            iconAnchor: [12, 12],
+            className: ''
         }});
 
-        var blueCircleSvg = 'data:image/svg+xml;base64,' + btoa(`
-            <svg xmlns='http://www.w3.org/2000/svg' width='28' height='28' viewBox='0 0 28 28'>
-                <circle cx='14' cy='14' r='6' fill='#4285F4' stroke='white' stroke-width='2'/>
-                <circle cx='14' cy='14' r='12' fill='none' stroke='#4285F4' stroke-width='1.5' opacity='0.3'/>
-            </svg>
-        `);
-
-        var userIcon = L.icon({{
-            iconUrl: blueCircleSvg,
+        var userIcon = L.divIcon({{
+            html: '<svg xmlns=""http://www.w3.org/2000/svg"" width=""28"" height=""28""><circle cx=""14"" cy=""14"" r=""6"" fill=""#4285F4"" stroke=""white"" stroke-width=""2""/><circle cx=""14"" cy=""14"" r=""12"" fill=""none"" stroke=""#4285F4"" stroke-width=""1.5"" opacity=""0.3""/></svg>',
             iconSize: [28, 28],
-            iconAnchor: [14, 14]
+            iconAnchor: [14, 14],
+            className: ''
         }});
 
         var markers = {markersJson};
         markers.forEach(function(m) {{
-            L.marker([m.lat, m.lng], {{ icon: redIcon }}).addTo(map);
+            L.marker([m.lat, m.lng], {{ icon: redIcon }})
+                .bindTooltip(m.name, {{ permanent: false, direction: 'top' }})
+                .addTo(map);
         }});
 
         var userMarker = null;
-
         function updateUserLocation(lat, lng) {{
             if (userMarker) {{
                 userMarker.setLatLng([lat, lng]);
@@ -123,9 +108,10 @@ namespace VinhKhanhTour
             Source = new HtmlWebViewSource { Html = html };
         }
 
-        private async void StartLocationTracking()
+        // ✅ Dùng CancellationToken — dừng ngay khi control bị dispose
+        private async Task StartLocationTrackingAsync(CancellationToken token)
         {
-            while (true)
+            while (!token.IsCancellationRequested)
             {
                 try
                 {
@@ -133,22 +119,43 @@ namespace VinhKhanhTour
                     {
                         DesiredAccuracy = GeolocationAccuracy.Medium,
                         Timeout = TimeSpan.FromSeconds(10)
-                    });
+                    }, token);
 
-                    if (location != null && isPageLoaded)
+                    if (location != null && _isPageLoaded && !token.IsCancellationRequested)
                     {
-                        var lat = location.Latitude.ToString(System.Globalization.CultureInfo.InvariantCulture);
-                        var lng = location.Longitude.ToString(System.Globalization.CultureInfo.InvariantCulture);
+                        var ic = System.Globalization.CultureInfo.InvariantCulture;
+                        var lat = location.Latitude.ToString(ic);
+                        var lng = location.Longitude.ToString(ic);
 
-                        await this.EvaluateJavaScriptAsync($"updateUserLocation({lat}, {lng});");
+                        await MainThread.InvokeOnMainThreadAsync(async () =>
+                        {
+                            if (!token.IsCancellationRequested)
+                                await EvaluateJavaScriptAsync($"updateUserLocation({lat}, {lng});");
+                        });
                     }
+                }
+                catch (OperationCanceledException)
+                {
+                    break;
                 }
                 catch (Exception ex)
                 {
                     System.Diagnostics.Debug.WriteLine($"MapPreview location error: {ex.Message}");
                 }
 
-                await Task.Delay(5000); 
+                try { await Task.Delay(5000, token); }
+                catch (OperationCanceledException) { break; }
+            }
+        }
+
+        // ✅ Dispose dừng vòng lặp GPS khi WelcomePage unmount
+        public void Dispose()
+        {
+            if (!_disposed)
+            {
+                _disposed = true;
+                _cts.Cancel();
+                _cts.Dispose();
             }
         }
     }

@@ -1,129 +1,417 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
-             xmlns:local="clr-namespace:VinhKhanhTour"
              x:Class="VinhKhanhTour.WelcomePage"
              NavigationPage.HasNavigationBar="False"
-             BackgroundColor="#E8F4F8">
+             BackgroundColor="#F5F5F5">
     <ScrollView>
         <VerticalStackLayout Spacing="0">
-            <VerticalStackLayout BackgroundColor="White" Padding="25,50,25,30" Spacing="15">
-                <Label Text="VINH KHANH" FontSize="28" FontAttributes="Bold" TextColor="#2C3E50"/>
-                <Label Text="TOUR GUIDE" FontSize="24" FontAttributes="Bold" TextColor="#E67E22" Margin="0,-10,0,0"/>
-                <Label Text="Chào mừng bạn đến với Phố Ẩm Thực Vĩnh Khánh" FontSize="15" TextColor="#7F8C8D" Margin="0,10,0,0"/>
-                <Label Text="Khám phá 11 điểm ăn uống đặc sắc nhất Quận 4" FontSize="13" TextColor="#95A5A6"/>
-            </VerticalStackLayout>
-            <VerticalStackLayout Padding="25,20" Spacing="12">
-                <Label Text="Giọng thuyết minh" FontSize="16" FontAttributes="Bold" TextColor="#2C3E50"/>
+
+            <!-- ── HERO HEADER ── -->
+            <Grid HeightRequest="320">
+                <!-- Gradient background -->
+                <BoxView>
+                    <BoxView.Background>
+                        <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                            <GradientStop Color="#E8401C" Offset="0"/>
+                            <GradientStop Color="#C0392B" Offset="0.5"/>
+                            <GradientStop Color="#922B21" Offset="1"/>
+                        </LinearGradientBrush>
+                    </BoxView.Background>
+                </BoxView>
+
+                <!-- Decorative circles -->
+                <Ellipse Fill="#FFFFFF" Opacity="0.08"
+                         WidthRequest="250" HeightRequest="250"
+                         HorizontalOptions="End" VerticalOptions="Start"
+                         Margin="0,-80,-80,0"/>
+                <Ellipse Fill="#FFFFFF" Opacity="0.06"
+                         WidthRequest="180" HeightRequest="180"
+                         HorizontalOptions="Start" VerticalOptions="End"
+                         Margin="-60,0,0,-60"/>
+
+                <!-- Content -->
+                <Grid Padding="25,50,20,25">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- Language switcher -->
+                    <Border Grid.Column="1" Grid.Row="0"
+                            x:Name="LangBtn"
+                            BackgroundColor="#FFFFFF22"
+                            StrokeShape="RoundRectangle 12"
+                            Stroke="#FFFFFF44"
+                            Padding="10,8"
+                            VerticalOptions="Start">
+                        <Border.GestureRecognizers>
+                            <TapGestureRecognizer Tapped="OnLangBtnClicked"/>
+                        </Border.GestureRecognizers>
+                        <HorizontalStackLayout Spacing="6">
+                            <Label x:Name="LangFlag" Text="🇻🇳" FontSize="20"/>
+                            <Label Text="▾" FontSize="12" TextColor="White" VerticalOptions="Center"/>
+                        </HorizontalStackLayout>
+                    </Border>
+
+                    <!-- Dropdown -->
+                    <Border x:Name="LangDropdown"
+                            Grid.Column="1" Grid.Row="1"
+                            IsVisible="False"
+                            BackgroundColor="White"
+                            StrokeShape="RoundRectangle 12"
+                            Stroke="#E0E0E0"
+                            Padding="0"
+                            Margin="0,4,0,0"
+                            ZIndex="999"
+                            VerticalOptions="Start">
+                        <Border.Shadow>
+                            <Shadow Brush="Black" Opacity="0.2" Radius="10" Offset="0,4"/>
+                        </Border.Shadow>
+                        <VerticalStackLayout Spacing="0">
+                            <Border Padding="14,11" BackgroundColor="Transparent">
+                                <Border.GestureRecognizers>
+                                    <TapGestureRecognizer Tapped="OnLangVI"/>
+                                </Border.GestureRecognizers>
+                                <HorizontalStackLayout Spacing="10">
+                                    <Label Text="🇻🇳" FontSize="18"/>
+                                    <Label Text="Tiếng Việt" FontSize="13" TextColor="#2C3E50" VerticalOptions="Center"/>
+                                </HorizontalStackLayout>
+                            </Border>
+                            <BoxView HeightRequest="1" Color="#F0F0F0" Margin="12,0"/>
+                            <Border Padding="14,11" BackgroundColor="Transparent">
+                                <Border.GestureRecognizers>
+                                    <TapGestureRecognizer Tapped="OnLangEN"/>
+                                </Border.GestureRecognizers>
+                                <HorizontalStackLayout Spacing="10">
+                                    <Label Text="🇺🇸" FontSize="18"/>
+                                    <Label Text="English" FontSize="13" TextColor="#2C3E50" VerticalOptions="Center"/>
+                                </HorizontalStackLayout>
+                            </Border>
+                            <BoxView HeightRequest="1" Color="#F0F0F0" Margin="12,0"/>
+                            <Border Padding="14,11" BackgroundColor="Transparent">
+                                <Border.GestureRecognizers>
+                                    <TapGestureRecognizer Tapped="OnLangZH"/>
+                                </Border.GestureRecognizers>
+                                <HorizontalStackLayout Spacing="10">
+                                    <Label Text="🇨🇳" FontSize="18"/>
+                                    <Label Text="中文" FontSize="13" TextColor="#2C3E50" VerticalOptions="Center"/>
+                                </HorizontalStackLayout>
+                            </Border>
+                        </VerticalStackLayout>
+                    </Border>
+
+                    <!-- Title -->
+                    <VerticalStackLayout Grid.Column="0" Grid.Row="0" Grid.RowSpan="2"
+                                        Spacing="2" VerticalOptions="Center">
+                        <Label Text="🍜" FontSize="42" Margin="0,0,0,8"/>
+                        <Label Text="VĨNH KHÁNH" FontSize="30" FontAttributes="Bold"
+                               TextColor="White" CharacterSpacing="2"/>
+                        <Label Text="TOUR GUIDE" FontSize="16" FontAttributes="Bold"
+                               TextColor="#FFE0B2" CharacterSpacing="4"/>
+                        <Label x:Name="LblWelcome"
+                               Text="Khám phá phố ẩm thực Quận 4"
+                               FontSize="14" TextColor="#FFCCAA"
+                               Margin="0,8,0,0"/>
+                        <HorizontalStackLayout Spacing="8" Margin="0,6,0,0">
+                            <Border BackgroundColor="#00000033" StrokeShape="RoundRectangle 20"
+        Stroke="Transparent" Padding="10,5">
+                                <Label Text="📍 Quận 4, TP.HCM" FontSize="12" TextColor="White"/>
+                            </Border>
+                            <Border BackgroundColor="#00000033" StrokeShape="RoundRectangle 20"
+        Stroke="Transparent" Padding="10,5">
+                                <Label Text="🍴 11 quán ăn" FontSize="12" TextColor="White"/>
+                            </Border>
+                        </HorizontalStackLayout>
+                    </VerticalStackLayout>
+
+                    <!-- Start button -->
+                    <Button x:Name="BtnTourAll"
+                            Grid.Column="0" Grid.ColumnSpan="2" Grid.Row="2"
+                            Text="🗺️ Bắt đầu khám phá"
+                            BackgroundColor="White"
+                            TextColor="#FF6B35"
+                            FontSize="16" FontAttributes="Bold"
+                            HeightRequest="52"
+                            CornerRadius="26"
+                            Margin="0,16,0,0"
+                            Clicked="OnMapClicked">
+                        <Button.Shadow>
+                            <Shadow Brush="Black" Opacity="0.2" Radius="8" Offset="0,4"/>
+                        </Button.Shadow>
+                    </Button>
+                </Grid>
+            </Grid>
+
+            <!-- ── GIỌNG THUYẾT MINH ── -->
+            <VerticalStackLayout BackgroundColor="White" Padding="20,18" Spacing="12"
+                                 Margin="0,12,0,0">
+                <HorizontalStackLayout Spacing="8">
+                    <Label Text="🎙️" FontSize="18"/>
+                    <Label x:Name="LblNarration" Text="Giọng thuyết minh"
+                           FontSize="16" FontAttributes="Bold" TextColor="#2C3E50"
+                           VerticalOptions="Center"/>
+                </HorizontalStackLayout>
                 <Grid ColumnDefinitions="*,*,*" ColumnSpacing="10">
-                    <Frame Grid.Column="0" BackgroundColor="#3498DB" CornerRadius="10" Padding="15,10" HasShadow="False">
-                        <Label Text="Tiếng Việt" FontSize="13" TextColor="White" FontAttributes="Bold" HorizontalTextAlignment="Center"/>
+                    <Frame x:Name="BtnVI" Grid.Column="0" BackgroundColor="#FF6B35"
+                           CornerRadius="12" Padding="0,12" HasShadow="False">
+                        <Frame.GestureRecognizers>
+                            <TapGestureRecognizer Tapped="OnLangVI"/>
+                        </Frame.GestureRecognizers>
+                        <VerticalStackLayout Spacing="2" HorizontalOptions="Center">
+                            <Label Text="🇻🇳" FontSize="20" HorizontalOptions="Center"/>
+                            <Label Text="Việt" FontSize="12" TextColor="White"
+                                   FontAttributes="Bold" HorizontalOptions="Center"/>
+                        </VerticalStackLayout>
                     </Frame>
-                    <Frame Grid.Column="1" BackgroundColor="#E8F4F8" BorderColor="#BDC3C7" CornerRadius="10" Padding="15,10" HasShadow="False">
-                        <Label Text="English" FontSize="13" TextColor="#7F8C8D" HorizontalTextAlignment="Center"/>
+                    <Frame x:Name="BtnEN" Grid.Column="1" BackgroundColor="#F5F5F5"
+                           BorderColor="#E0E0E0" CornerRadius="12" Padding="0,12" HasShadow="False">
+                        <Frame.GestureRecognizers>
+                            <TapGestureRecognizer Tapped="OnLangEN"/>
+                        </Frame.GestureRecognizers>
+                        <VerticalStackLayout Spacing="2" HorizontalOptions="Center">
+                            <Label Text="🇺🇸" FontSize="20" HorizontalOptions="Center"/>
+                            <Label Text="English" FontSize="12" TextColor="#888"
+                                   HorizontalOptions="Center"/>
+                        </VerticalStackLayout>
                     </Frame>
-                    <Frame Grid.Column="2" BackgroundColor="#E8F4F8" BorderColor="#BDC3C7" CornerRadius="10" Padding="15,10" HasShadow="False">
-                        <Label Text="中文" FontSize="13" TextColor="#7F8C8D" HorizontalTextAlignment="Center"/>
+                    <Frame x:Name="BtnZH" Grid.Column="2" BackgroundColor="#F5F5F5"
+                           BorderColor="#E0E0E0" CornerRadius="12" Padding="0,12" HasShadow="False">
+                        <Frame.GestureRecognizers>
+                            <TapGestureRecognizer Tapped="OnLangZH"/>
+                        </Frame.GestureRecognizers>
+                        <VerticalStackLayout Spacing="2" HorizontalOptions="Center">
+                            <Label Text="🇨🇳" FontSize="20" HorizontalOptions="Center"/>
+                            <Label Text="中文" FontSize="12" TextColor="#888"
+                                   HorizontalOptions="Center"/>
+                        </VerticalStackLayout>
                     </Frame>
                 </Grid>
             </VerticalStackLayout>
 
-            <!-- MAP PREVIEW THẬT -->
-            <VerticalStackLayout Padding="25,10" Spacing="12">
-                <Label Text="Chọn Tour" FontSize="16" FontAttributes="Bold" TextColor="#2C3E50"/>
-                <Frame BackgroundColor="White" CornerRadius="15" Padding="0" HasShadow="True" HeightRequest="200">
-                    <Frame.GestureRecognizers>
+            <!-- ── MINI MAP ── -->
+            <VerticalStackLayout Padding="20,16" Spacing="10" BackgroundColor="White"
+                                 Margin="0,12,0,0">
+                <HorizontalStackLayout Spacing="8">
+                    <Label Text="🗺️" FontSize="18"/>
+                    <Label x:Name="LblChoTour" Text="Khu vực Vĩnh Khánh"
+                           FontSize="16" FontAttributes="Bold" TextColor="#2C3E50"
+                           VerticalOptions="Center"/>
+                </HorizontalStackLayout>
+
+                <Border StrokeShape="RoundRectangle 16" Stroke="Transparent"
+                        HeightRequest="180" BackgroundColor="#F0F0F0">
+                    <Border.Shadow>
+                        <Shadow Brush="Black" Opacity="0.1" Radius="8" Offset="0,3"/>
+                    </Border.Shadow>
+                    <Border.GestureRecognizers>
                         <TapGestureRecognizer Tapped="OnMapClicked"/>
-                    </Frame.GestureRecognizers>
-                    <local:MapPreviewControl/>
-                </Frame>
-                <Label Text="👆 Nhấn để xem bản đồ chi tiết" FontSize="12" TextColor="#7F8C8D" HorizontalTextAlignment="Center"/>
+                    </Border.GestureRecognizers>
+                    <Grid>
+                        <WebView x:Name="MiniMapWebView"
+                                 HorizontalOptions="Fill" VerticalOptions="Fill"/>
+                        <Grid BackgroundColor="Transparent">
+                            <Grid.GestureRecognizers>
+                                <TapGestureRecognizer Tapped="OnMapClicked"/>
+                            </Grid.GestureRecognizers>
+                        </Grid>
+                        <!-- Overlay label -->
+                        <Border BackgroundColor="#FF6B3588" StrokeShape="RoundRectangle 8"
+                                Stroke="Transparent" Padding="10,6"
+                                HorizontalOptions="Center" VerticalOptions="End"
+                                Margin="0,0,0,12">
+                            <Label x:Name="LblTapHint" Text="👆 Nhấn để xem bản đồ chi tiết"
+                                   FontSize="12" TextColor="White" FontAttributes="Bold"/>
+                        </Border>
+                    </Grid>
+                </Border>
             </VerticalStackLayout>
 
-            <Button Text="Tour Toàn Cảnh" BackgroundColor="#F39C12" TextColor="White" FontSize="18" FontAttributes="Bold" HeightRequest="60" Margin="25,10,25,20" CornerRadius="12" Clicked="OnMapClicked"/>
+            <!-- ── TOUR CARDS ── -->
+            <VerticalStackLayout Padding="20,16,20,30" Spacing="14" Margin="0,12,0,0">
+                <HorizontalStackLayout Spacing="8">
+                    <Label Text="🧭" FontSize="18"/>
+                    <Label x:Name="LblTourTheme" Text="Chọn Tour của bạn"
+                           FontSize="16" FontAttributes="Bold" TextColor="#2C3E50"
+                           VerticalOptions="Center"/>
+                </HorizontalStackLayout>
 
-            <VerticalStackLayout Padding="25,0,25,30" Spacing="15">
-                <Label Text="Tour theo chủ đề" FontSize="16" FontAttributes="Bold" TextColor="#2C3E50"/>
-
-                <Frame BackgroundColor="White" CornerRadius="12" Padding="12" HasShadow="True">
-                    <Frame.GestureRecognizers>
+                <!-- Tour 1 -->
+                <Border BackgroundColor="White" StrokeShape="RoundRectangle 16"
+                        Stroke="Transparent">
+                    <Border.Shadow>
+                        <Shadow Brush="Black" Opacity="0.08" Radius="8" Offset="0,3"/>
+                    </Border.Shadow>
+                    <Border.GestureRecognizers>
                         <TapGestureRecognizer Tapped="OnTour1Clicked"/>
-                    </Frame.GestureRecognizers>
-                    <Grid ColumnDefinitions="100,*" ColumnSpacing="15">
-                        <Frame Grid.Column="0" CornerRadius="10" Padding="0">
-                            <Image Source="tour_oc.jpg" Aspect="AspectFill" WidthRequest="100" HeightRequest="80"/>
-                        </Frame>
-                        <VerticalStackLayout Grid.Column="1" Spacing="5" VerticalOptions="Center">
-                            <Label Text="Tour Ăn Ốc" FontSize="15" FontAttributes="Bold" TextColor="#2C3E50"/>
-                            <Label Text="3 quán ốc ngon" FontSize="12" TextColor="#7F8C8D"/>
-                            <HorizontalStackLayout Spacing="5">
-                                <Label Text="⭐ 4.4" FontSize="12" TextColor="#F39C12"/>
-                                <Label Text="•" FontSize="12" TextColor="#BDC3C7"/>
-                                <Label Text="45 phút" FontSize="12" TextColor="#7F8C8D"/>
+                    </Border.GestureRecognizers>
+                    <Grid ColumnDefinitions="90,*" ColumnSpacing="0">
+                        <Border Grid.Column="0" StrokeShape="RoundRectangle 16,0,0,16"
+                                BackgroundColor="#FF6B35" Padding="0">
+                            <VerticalStackLayout VerticalOptions="Center" HorizontalOptions="Center"
+                                                 Spacing="4">
+                                <Label Text="🦪" FontSize="34" HorizontalOptions="Center"/>
+                                <Label Text="ỐC" FontSize="11" FontAttributes="Bold"
+                                       TextColor="White" HorizontalOptions="Center"/>
+                            </VerticalStackLayout>
+                        </Border>
+                        <VerticalStackLayout Grid.Column="1" Spacing="4"
+                                             Padding="14,14,14,14" VerticalOptions="Center">
+                            <Label x:Name="LblTour1" Text="Tour Ăn Ốc"
+                                   FontSize="16" FontAttributes="Bold" TextColor="#1a1a2e"/>
+                            <Label Text="3 quán ốc ngon nổi tiếng"
+                                   FontSize="12" TextColor="#888"/>
+                            <HorizontalStackLayout Spacing="8" Margin="0,2,0,0">
+                                <Border BackgroundColor="#FFF3E0" StrokeShape="RoundRectangle 10"
+                                        Stroke="Transparent" Padding="8,4">
+                                    <Label Text="⭐ 4.4" FontSize="11" TextColor="#F39C12" FontAttributes="Bold"/>
+                                </Border>
+                                <Border BackgroundColor="#F0F4FF" StrokeShape="RoundRectangle 10"
+                                        Stroke="Transparent" Padding="8,4">
+                                    <Label Text="⏱ 45 phút" FontSize="11" TextColor="#3498DB"/>
+                                </Border>
+                                <Border BackgroundColor="#F0FFF4" StrokeShape="RoundRectangle 10"
+                                        Stroke="Transparent" Padding="8,4">
+                                    <Label Text="3 điểm" FontSize="11" TextColor="#27AE60"/>
+                                </Border>
                             </HorizontalStackLayout>
                         </VerticalStackLayout>
                     </Grid>
-                </Frame>
+                </Border>
 
-                <Frame BackgroundColor="White" CornerRadius="12" Padding="12" HasShadow="True">
-                    <Frame.GestureRecognizers>
+                <!-- Tour 2 -->
+                <Border BackgroundColor="White" StrokeShape="RoundRectangle 16"
+                        Stroke="Transparent">
+                    <Border.Shadow>
+                        <Shadow Brush="Black" Opacity="0.08" Radius="8" Offset="0,3"/>
+                    </Border.Shadow>
+                    <Border.GestureRecognizers>
                         <TapGestureRecognizer Tapped="OnTour2Clicked"/>
-                    </Frame.GestureRecognizers>
-                    <Grid ColumnDefinitions="100,*" ColumnSpacing="15">
-                        <Frame Grid.Column="0" CornerRadius="10" Padding="0">
-                            <Image Source="tour_nuong.jpg" Aspect="AspectFill" WidthRequest="100" HeightRequest="80"/>
-                        </Frame>
-                        <VerticalStackLayout Grid.Column="1" Spacing="5" VerticalOptions="Center">
-                            <Label Text="Tour Ăn Nướng" FontSize="15" FontAttributes="Bold" TextColor="#2C3E50"/>
-                            <Label Text="Lẩu nướng, bò lá lốt" FontSize="12" TextColor="#7F8C8D"/>
-                            <HorizontalStackLayout Spacing="5">
-                                <Label Text="⭐ 4.5" FontSize="12" TextColor="#F39C12"/>
-                                <Label Text="•" FontSize="12" TextColor="#BDC3C7"/>
-                                <Label Text="60 phút" FontSize="12" TextColor="#7F8C8D"/>
+                    </Border.GestureRecognizers>
+                    <Grid ColumnDefinitions="90,*" ColumnSpacing="0">
+                        <Border Grid.Column="0" StrokeShape="RoundRectangle 16,0,0,16"
+                                BackgroundColor="#E74C3C" Padding="0">
+                            <VerticalStackLayout VerticalOptions="Center" HorizontalOptions="Center"
+                                                 Spacing="4">
+                                <Label Text="🔥" FontSize="34" HorizontalOptions="Center"/>
+                                <Label Text="NƯỚNG" FontSize="10" FontAttributes="Bold"
+                                       TextColor="White" HorizontalOptions="Center"/>
+                            </VerticalStackLayout>
+                        </Border>
+                        <VerticalStackLayout Grid.Column="1" Spacing="4"
+                                             Padding="14,14,14,14" VerticalOptions="Center">
+                            <Label x:Name="LblTour2" Text="Tour Ăn Nướng"
+                                   FontSize="16" FontAttributes="Bold" TextColor="#1a1a2e"/>
+                            <Label Text="Lẩu nướng, bò lá lốt"
+                                   FontSize="12" TextColor="#888"/>
+                            <HorizontalStackLayout Spacing="8" Margin="0,2,0,0">
+                                <Border BackgroundColor="#FFF3E0" StrokeShape="RoundRectangle 10"
+                                        Stroke="Transparent" Padding="8,4">
+                                    <Label Text="⭐ 4.5" FontSize="11" TextColor="#F39C12" FontAttributes="Bold"/>
+                                </Border>
+                                <Border BackgroundColor="#F0F4FF" StrokeShape="RoundRectangle 10"
+                                        Stroke="Transparent" Padding="8,4">
+                                    <Label Text="⏱ 60 phút" FontSize="11" TextColor="#3498DB"/>
+                                </Border>
+                                <Border BackgroundColor="#F0FFF4" StrokeShape="RoundRectangle 10"
+                                        Stroke="Transparent" Padding="8,4">
+                                    <Label Text="3 điểm" FontSize="11" TextColor="#27AE60"/>
+                                </Border>
                             </HorizontalStackLayout>
                         </VerticalStackLayout>
                     </Grid>
-                </Frame>
+                </Border>
 
-                <Frame BackgroundColor="White" CornerRadius="12" Padding="12" HasShadow="True">
-                    <Frame.GestureRecognizers>
+                <!-- Tour 3 -->
+                <Border BackgroundColor="White" StrokeShape="RoundRectangle 16"
+                        Stroke="Transparent">
+                    <Border.Shadow>
+                        <Shadow Brush="Black" Opacity="0.08" Radius="8" Offset="0,3"/>
+                    </Border.Shadow>
+                    <Border.GestureRecognizers>
                         <TapGestureRecognizer Tapped="OnTour3Clicked"/>
-                    </Frame.GestureRecognizers>
-                    <Grid ColumnDefinitions="100,*" ColumnSpacing="15">
-                        <Frame Grid.Column="0" CornerRadius="10" Padding="0">
-                            <Image Source="tour_vat.jpg" Aspect="AspectFill" WidthRequest="100" HeightRequest="80"/>
-                        </Frame>
-                        <VerticalStackLayout Grid.Column="1" Spacing="5" VerticalOptions="Center">
-                            <Label Text="Tour Ăn Vặt" FontSize="15" FontAttributes="Bold" TextColor="#2C3E50"/>
-                            <Label Text="Cơm cháy, bún nướng" FontSize="12" TextColor="#7F8C8D"/>
-                            <HorizontalStackLayout Spacing="5">
-                                <Label Text="⭐ 4.3" FontSize="12" TextColor="#F39C12"/>
-                                <Label Text="•" FontSize="12" TextColor="#BDC3C7"/>
-                                <Label Text="40 phút" FontSize="12" TextColor="#7F8C8D"/>
+                    </Border.GestureRecognizers>
+                    <Grid ColumnDefinitions="90,*" ColumnSpacing="0">
+                        <Border Grid.Column="0" StrokeShape="RoundRectangle 16,0,0,16"
+                                BackgroundColor="#27AE60" Padding="0">
+                            <VerticalStackLayout VerticalOptions="Center" HorizontalOptions="Center"
+                                                 Spacing="4">
+                                <Label Text="🍚" FontSize="34" HorizontalOptions="Center"/>
+                                <Label Text="ĂN VẶT" FontSize="10" FontAttributes="Bold"
+                                       TextColor="White" HorizontalOptions="Center"/>
+                            </VerticalStackLayout>
+                        </Border>
+                        <VerticalStackLayout Grid.Column="1" Spacing="4"
+                                             Padding="14,14,14,14" VerticalOptions="Center">
+                            <Label x:Name="LblTour3" Text="Tour Ăn Vặt"
+                                   FontSize="16" FontAttributes="Bold" TextColor="#1a1a2e"/>
+                            <Label Text="Cơm cháy, bún nướng"
+                                   FontSize="12" TextColor="#888"/>
+                            <HorizontalStackLayout Spacing="8" Margin="0,2,0,0">
+                                <Border BackgroundColor="#FFF3E0" StrokeShape="RoundRectangle 10"
+                                        Stroke="Transparent" Padding="8,4">
+                                    <Label Text="⭐ 4.3" FontSize="11" TextColor="#F39C12" FontAttributes="Bold"/>
+                                </Border>
+                                <Border BackgroundColor="#F0F4FF" StrokeShape="RoundRectangle 10"
+                                        Stroke="Transparent" Padding="8,4">
+                                    <Label Text="⏱ 40 phút" FontSize="11" TextColor="#3498DB"/>
+                                </Border>
+                                <Border BackgroundColor="#F0FFF4" StrokeShape="RoundRectangle 10"
+                                        Stroke="Transparent" Padding="8,4">
+                                    <Label Text="2 điểm" FontSize="11" TextColor="#27AE60"/>
+                                </Border>
                             </HorizontalStackLayout>
                         </VerticalStackLayout>
                     </Grid>
-                </Frame>
+                </Border>
 
-                <Frame BackgroundColor="White" CornerRadius="12" Padding="12" HasShadow="True">
-                    <Frame.GestureRecognizers>
+                <!-- Tour 4 -->
+                <Border BackgroundColor="White" StrokeShape="RoundRectangle 16"
+                        Stroke="Transparent">
+                    <Border.Shadow>
+                        <Shadow Brush="Black" Opacity="0.08" Radius="8" Offset="0,3"/>
+                    </Border.Shadow>
+                    <Border.GestureRecognizers>
                         <TapGestureRecognizer Tapped="OnTour4Clicked"/>
-                    </Frame.GestureRecognizers>
-                    <Grid ColumnDefinitions="100,*" ColumnSpacing="15">
-                        <Frame Grid.Column="0" CornerRadius="10" Padding="0">
-                            <Image Source="tour_dacssan.jpg" Aspect="AspectFill" WidthRequest="100" HeightRequest="80"/>
-                        </Frame>
-                        <VerticalStackLayout Grid.Column="1" Spacing="5" VerticalOptions="Center">
-                            <Label Text="Tour Đặc Sản" FontSize="15" FontAttributes="Bold" TextColor="#2C3E50"/>
-                            <Label Text="Bún cá Châu Đốc" FontSize="12" TextColor="#7F8C8D"/>
-                            <HorizontalStackLayout Spacing="5">
-                                <Label Text="⭐ 4.6" FontSize="12" TextColor="#F39C12"/>
-                                <Label Text="•" FontSize="12" TextColor="#BDC3C7"/>
-                                <Label Text="50 phút" FontSize="12" TextColor="#7F8C8D"/>
+                    </Border.GestureRecognizers>
+                    <Grid ColumnDefinitions="90,*" ColumnSpacing="0">
+                        <Border Grid.Column="0" StrokeShape="RoundRectangle 16,0,0,16"
+                                BackgroundColor="#8E44AD" Padding="0">
+                            <VerticalStackLayout VerticalOptions="Center" HorizontalOptions="Center"
+                                                 Spacing="4">
+                                <Label Text="🍜" FontSize="34" HorizontalOptions="Center"/>
+                                <Label Text="ĐẶC SẢN" FontSize="10" FontAttributes="Bold"
+                                       TextColor="White" HorizontalOptions="Center"/>
+                            </VerticalStackLayout>
+                        </Border>
+                        <VerticalStackLayout Grid.Column="1" Spacing="4"
+                                             Padding="14,14,14,14" VerticalOptions="Center">
+                            <Label x:Name="LblTour4" Text="Tour Đặc Sản"
+                                   FontSize="16" FontAttributes="Bold" TextColor="#1a1a2e"/>
+                            <Label Text="Bún cá Châu Đốc"
+                                   FontSize="12" TextColor="#888"/>
+                            <HorizontalStackLayout Spacing="8" Margin="0,2,0,0">
+                                <Border BackgroundColor="#FFF3E0" StrokeShape="RoundRectangle 10"
+                                        Stroke="Transparent" Padding="8,4">
+                                    <Label Text="⭐ 4.6" FontSize="11" TextColor="#F39C12" FontAttributes="Bold"/>
+                                </Border>
+                                <Border BackgroundColor="#F0F4FF" StrokeShape="RoundRectangle 10"
+                                        Stroke="Transparent" Padding="8,4">
+                                    <Label Text="⏱ 50 phút" FontSize="11" TextColor="#3498DB"/>
+                                </Border>
+                                <Border BackgroundColor="#F0FFF4" StrokeShape="RoundRectangle 10"
+                                        Stroke="Transparent" Padding="8,4">
+                                    <Label Text="3 điểm" FontSize="11" TextColor="#27AE60"/>
+                                </Border>
                             </HorizontalStackLayout>
                         </VerticalStackLayout>
                     </Grid>
-                </Frame>
+                </Border>
 
             </VerticalStackLayout>
         </VerticalStackLayout>
