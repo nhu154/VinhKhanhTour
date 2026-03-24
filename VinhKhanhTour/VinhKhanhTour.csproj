@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
 		<TargetFrameworks>net8.0-android;net8.0-ios;net8.0-maccatalyst</TargetFrameworks>
@@ -10,6 +10,7 @@
 		<SingleProject>true</SingleProject>
 		<ImplicitUsings>enable</ImplicitUsings>
 		<Nullable>enable</Nullable>
+		<JavaMaximumHeapSize>1G</JavaMaximumHeapSize>
 
 		<ApplicationTitle>VinhKhanhTour</ApplicationTitle>
 		<ApplicationId>com.companyname.vinhkhanhtour</ApplicationId>
@@ -27,46 +28,32 @@
 	<ItemGroup>
 		<MauiIcon Include="Resources\AppIcon\appicon.svg" ForegroundFile="Resources\AppIcon\appiconfg.svg" Color="#512BD4" />
 		<MauiSplashScreen Include="Resources\Splash\splash.svg" Color="#512BD4" BaseSize="128,128" />
-		<MauiImage Include="Resources\Images\*" />
-		<MauiImage Update="Resources\Images\dotnet_bot.png" Resize="True" BaseSize="300,185" />
 		<MauiFont Include="Resources\Fonts\*" />
 		<MauiAsset Include="Resources\Raw\**" LogicalName="%(RecursiveDir)%(Filename)%(Extension)" />
 	</ItemGroup>
 
+	<!-- ✅ Ảnh POI quán ăn — dùng làm MauiAsset (load qua đường dẫn thô) -->
 	<ItemGroup>
-	  <MauiImage Remove="Resources\Images\bolalotcout.jpg" />
-	  <MauiImage Remove="Resources\Images\buncachaudoc.jpg" />
-	  <MauiImage Remove="Resources\Images\bunthitnuongconga.jpg" />
-	  <MauiImage Remove="Resources\Images\chililaunuong.jpg" />
-	  <MauiImage Remove="Resources\Images\comchaykhoquet.jpg" />
-	  <MauiImage Remove="Resources\Images\langquan.jpeg" />
-	  <MauiImage Remove="Resources\Images\oc_oanh.jpg" />
-	  <MauiImage Remove="Resources\Images\oc_sauno.jpg" />
-	  <MauiImage Remove="Resources\Images\oc_thao.jpg" />
-	  <MauiImage Remove="Resources\Images\otxiemquan.jpg" />
-	  <MauiImage Remove="Resources\Images\thegioibo.jpg" />
-	  <MauiImage Remove="Resources\Images\tour_dacssan.jpg" />
-	  <MauiImage Remove="Resources\Images\tour_nuong.jpg" />
-	  <MauiImage Remove="Resources\Images\tour_oc.jpg" />
-	  <MauiImage Remove="Resources\Images\tour_vat.jpg" />
+		<MauiAsset Include="Resources\Images\bolalotcout.jpg" />
+		<MauiAsset Include="Resources\Images\buncachaudoc.jpg" />
+		<MauiAsset Include="Resources\Images\bunthitnuongconga.jpg" />
+		<MauiAsset Include="Resources\Images\chililaunuong.jpg" />
+		<MauiAsset Include="Resources\Images\comchaykhoquet.jpg" />
+		<MauiAsset Include="Resources\Images\langquan.jpeg" />
+		<MauiAsset Include="Resources\Images\oc_oanh.jpg" />
+		<MauiAsset Include="Resources\Images\oc_sauno.jpg" />
+		<MauiAsset Include="Resources\Images\oc_thao.jpg" />
+		<MauiAsset Include="Resources\Images\otxiemquan.jpg" />
+		<MauiAsset Include="Resources\Images\thegioibo.jpg" />
 	</ItemGroup>
 
+	<!-- ✅ Ảnh Tour banner — dùng làm MauiImage (hiển thị trong XAML <Image Source="..."/>) -->
 	<ItemGroup>
-	  <MauiAsset Include="Resources\Images\bolalotcout.jpg" />
-	  <MauiAsset Include="Resources\Images\buncachaudoc.jpg" />
-	  <MauiAsset Include="Resources\Images\bunthitnuongconga.jpg" />
-	  <MauiAsset Include="Resources\Images\chililaunuong.jpg" />
-	  <MauiAsset Include="Resources\Images\comchaykhoquet.jpg" />
-	  <MauiAsset Include="Resources\Images\langquan.jpeg" />
-	  <MauiAsset Include="Resources\Images\oc_oanh.jpg" />
-	  <MauiAsset Include="Resources\Images\oc_sauno.jpg" />
-	  <MauiAsset Include="Resources\Images\oc_thao.jpg" />
-	  <MauiAsset Include="Resources\Images\otxiemquan.jpg" />
-	  <MauiAsset Include="Resources\Images\thegioibo.jpg" />
-	  <MauiAsset Include="Resources\Images\tour_dacssan.jpg" />
-	  <MauiAsset Include="Resources\Images\tour_nuong.jpg" />
-	  <MauiAsset Include="Resources\Images\tour_oc.jpg" />
-	  <MauiAsset Include="Resources\Images\tour_vat.jpg" />
+		<MauiImage Include="Resources\Images\tour_dacssan.jpg" />
+		<MauiImage Include="Resources\Images\tour_nuong.jpg" />
+		<MauiImage Include="Resources\Images\tour_oc.jpg" />
+		<MauiImage Include="Resources\Images\tour_vat.jpg" />
+		<MauiImage Update="Resources\Images\dotnet_bot.png" Resize="True" BaseSize="300,185" />
 	</ItemGroup>
 
 	<ItemGroup>
@@ -77,9 +64,6 @@
 		<PackageReference Include="SQLitePCLRaw.bundle_green" Version="2.1.11" />
 	</ItemGroup>
 
-	<!-- ✅ ĐÃ XÓA: ItemGroup chứa Xamarin.GooglePlayServices.Maps và Xamarin.Google.Android.Material -->
-	<!-- ✅ ĐÃ XÓA: ItemGroup Condition android chứa Xamarin.GooglePlayServices.Maps 119.0.0 -->
-
 	<ItemGroup>
 		<Compile Update="WelcomePage.xaml.cs">
 			<DependentUpon>WelcomePage.xaml</DependentUpon>
@@ -87,6 +71,9 @@
 	</ItemGroup>
 
 	<ItemGroup>
+		<MauiXaml Update="Analyticspage.xaml">
+		  <Generator>MSBuild:Compile</Generator>
+		</MauiXaml>
 		<MauiXaml Update="MainTabbedPage.xaml">
 			<Generator>MSBuild:Compile</Generator>
 		</MauiXaml>

@@ -1,0 +1,12 @@
+[
+  {
+    "Name": "New Profile",
+    "Projects": [
+      {
+        "Path": "VinhKhanhTour\\VinhKhanhTour.csproj",
+        "Action": "Start",
+        "DebugTarget": "Pixel 7 - API 34 (Android 14.0 - API 34)"
+      }
+    ]
+  }
+]

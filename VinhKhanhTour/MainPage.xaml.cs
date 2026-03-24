@@ -48,7 +48,7 @@ namespace VinhKhanhTour
             }
         }
 
-        // ✅ Bỏ OnGpsClicked vì tab GPS đã bị xóa
+        
         private async void OnMapClicked(object sender, EventArgs e)
         {
             await Navigation.PushAsync(new MapPage());

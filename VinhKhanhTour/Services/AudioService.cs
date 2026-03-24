@@ -1,0 +1,232 @@
+﻿using Microsoft.Maui.Media;
+using System.Text;
+using System.Text.Json;
+
+namespace VinhKhanhTour.Services
+{
+    public class AudioService
+    {
+        // ── Singleton ──────────────────────────────────────────────────────────
+        private static AudioService? _instance;
+        public static AudioService Instance => _instance ??= new AudioService();
+
+        // ── Google Cloud TTS config ────────────────────────────────────────────
+        private const string GOOGLE_TTS_API_KEY = "AIzaSyAMX0XgjmNv2O4Twk_CBBmjzDwopqtuexE";
+        private const string GOOGLE_TTS_URL =
+            "https://texttospeech.googleapis.com/v1/text:synthesize?key=" + GOOGLE_TTS_API_KEY;
+
+        // Giọng theo ngôn ngữ
+        private static readonly Dictionary<string, (string voice, string lang, string gender)> VoiceMap = new()
+        {
+            ["vi"] = ("vi-VN-Wavenet-A", "vi-VN", "FEMALE"),
+            ["en"] = ("en-US-Wavenet-F", "en-US", "FEMALE"),
+            ["zh"] = ("cmn-CN-Wavenet-A", "cmn-CN", "FEMALE"),
+        };
+
+        // ── Ngôn ngữ hiện tại ─────────────────────────────────────────────────
+        private string _language = "vi";
+
+        /// <summary>Đặt ngôn ngữ thuyết minh: "vi", "en", "zh"</summary>
+        public void SetLanguage(string lang)
+        {
+            _language = VoiceMap.ContainsKey(lang) ? lang : "vi";
+            System.Diagnostics.Debug.WriteLine($"[AudioService] Language set to: {_language}");
+        }
+
+        public string CurrentLanguage => _language;
+
+        // ── Trạng thái ─────────────────────────────────────────────────────────
+        private bool _isPlaying;
+        private int _currentPoiId = -1;
+        private CancellationTokenSource? _ttsCts;
+
+        public string? CurrentTrack { get; private set; }
+        public event Action<bool>? PlaybackStateChanged;
+
+        // ── Public API ─────────────────────────────────────────────────────────
+
+        public async Task PlayCommentaryAsync(int poiId, string ttsScript)
+        {
+            if (_isPlaying && _currentPoiId == poiId) return;
+
+            await StopAsync();
+
+            _isPlaying = true;
+            _currentPoiId = poiId;
+            PlaybackStateChanged?.Invoke(true);
+            VinhKhanhTour.Services.AnalyticsService.Instance.RecordListenStart(poiId);
+
+            try
+            {
+                var hasInternet = Connectivity.Current.NetworkAccess == NetworkAccess.Internet;
+                if (hasInternet)
+                    await PlayGoogleTtsAsync(ttsScript);
+                else
+                    await PlayMauiTtsAsync(ttsScript);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[AudioService] Google TTS lỗi: {ex.Message}, fallback MAUI");
+                try { await PlayMauiTtsAsync(ttsScript); }
+                catch (Exception tex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[AudioService] MAUI TTS lỗi: {tex.Message}");
+                }
+            }
+            finally
+            {
+                await VinhKhanhTour.Services.AnalyticsService.Instance.RecordListenEndAsync(_currentPoiId);
+                _isPlaying = false;
+                CurrentTrack = null;
+                PlaybackStateChanged?.Invoke(false);
+            }
+        }
+
+        public async Task StopAsync()
+        {
+            _ttsCts?.Cancel();
+            _ttsCts = null;
+
+            if (_isPlaying)
+            {
+                try { await TextToSpeech.Default.SpeakAsync("", new SpeechOptions()); }
+                catch { /* ignore */ }
+            }
+
+            _isPlaying = false;
+            _currentPoiId = -1;
+            CurrentTrack = null;
+        }
+
+        public bool IsPlaying => _isPlaying;
+
+        public void ResetPoi(int poiId)
+        {
+            if (_currentPoiId == poiId)
+                _currentPoiId = -1;
+        }
+
+        // ── Google Cloud TTS ───────────────────────────────────────────────────
+
+        private async Task PlayGoogleTtsAsync(string script)
+        {
+            var (voiceName, langCode, gender) = VoiceMap.GetValueOrDefault(_language, VoiceMap["vi"]);
+            CurrentTrack = $"Google TTS ({_language.ToUpper()})";
+            System.Diagnostics.Debug.WriteLine($"[AudioService] Google TTS [{_language}]: {script[..Math.Min(60, script.Length)]}...");
+
+            var requestBody = new
+            {
+                input = new { text = script },
+                voice = new
+                {
+                    languageCode = langCode,
+                    name = voiceName,
+                    ssmlGender = gender
+                },
+                audioConfig = new
+                {
+                    audioEncoding = "MP3",
+                    speakingRate = 0.95,
+                    pitch = 0.0
+                }
+            };
+
+            using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(15) };
+            var json = JsonSerializer.Serialize(requestBody);
+            var content = new StringContent(json, Encoding.UTF8, "application/json");
+            var response = await http.PostAsync(GOOGLE_TTS_URL, content);
+            response.EnsureSuccessStatusCode();
+
+            var responseJson = await response.Content.ReadAsStringAsync();
+            using var doc = JsonDocument.Parse(responseJson);
+            var audioBase64 = doc.RootElement.GetProperty("audioContent").GetString()
+                ?? throw new Exception("audioContent trống");
+
+            var audioBytes = Convert.FromBase64String(audioBase64);
+            var tempPath = Path.Combine(FileSystem.CacheDirectory, $"gtts_{_currentPoiId}_{_language}.mp3");
+            await File.WriteAllBytesAsync(tempPath, audioBytes);
+
+            await PlayLocalFileAsync(tempPath);
+        }
+
+        // ── Phát file MP3 local ────────────────────────────────────────────────
+
+        private static Task PlayLocalFileAsync(string filePath)
+        {
+#if ANDROID
+            return Task.Run(() =>
+            {
+                var player = new Android.Media.MediaPlayer();
+                player.SetDataSource(filePath);
+                player.Prepare();
+                player.Start();
+
+                var done = new System.Threading.ManualResetEventSlim(false);
+                player.Completion += (s, e) => { done.Set(); player.Release(); };
+                done.Wait(TimeSpan.FromMinutes(5));
+            });
+#elif IOS
+            return Task.Run(() =>
+            {
+                var url    = new Foundation.NSUrl(filePath, false);
+                using var session = AVFoundation.AVAudioSession.SharedInstance();
+                session.SetCategory(AVFoundation.AVAudioSessionCategory.Playback);
+                session.SetActive(true);
+
+                var player = AVFoundation.AVAudioPlayer.FromUrl(url);
+                if (player == null) return;
+                player.PrepareToPlay();
+                player.Play();
+                System.Threading.Thread.Sleep((int)(player.Duration * 1000) + 500);
+                player.Stop();
+                player.Dispose();
+            });
+#else
+            throw new PlatformNotSupportedException();
+#endif
+        }
+
+        // ── MAUI TTS fallback (offline) ────────────────────────────────────────
+
+        private async Task PlayMauiTtsAsync(string script)
+        {
+            if (string.IsNullOrWhiteSpace(script)) return;
+
+            CurrentTrack = $"TTS offline ({_language.ToUpper()})";
+            System.Diagnostics.Debug.WriteLine($"[AudioService] MAUI TTS [{_language}]: {script[..Math.Min(60, script.Length)]}...");
+
+            var locale = await GetLocaleAsync(_language);
+            await Task.Delay(600);
+
+            _ttsCts = new CancellationTokenSource();
+            var opts = new SpeechOptions
+            {
+                Volume = 1.0f,
+                Pitch = 1.0f,
+                Locale = locale
+            };
+
+            await MainThread.InvokeOnMainThreadAsync(async () =>
+            {
+                await TextToSpeech.Default.SpeakAsync(script, opts, _ttsCts.Token);
+            });
+        }
+
+        private static async Task<Locale?> GetLocaleAsync(string lang)
+        {
+            try
+            {
+                var locales = await TextToSpeech.Default.GetLocalesAsync();
+                string prefix = lang switch
+                {
+                    "en" => "en",
+                    "zh" => "zh",
+                    _ => "vi"
+                };
+                return locales.FirstOrDefault(l =>
+                    l.Language.StartsWith(prefix, StringComparison.OrdinalIgnoreCase));
+            }
+            catch { return null; }
+        }
+    }
+}

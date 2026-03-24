@@ -1,11 +1,12 @@
-﻿using VinhKhanhTour.Models;
+using VinhKhanhTour.Models;
 
 namespace VinhKhanhTour
 {
     public partial class WelcomePage : ContentPage
     {
-        private const string MAPS_API_KEY = "AIzaSyCqEET9xuXB2sGAByb-5zGALGamJ2bwbxc";
+        private const string MAPS_API_KEY = Config.GoogleMapsApiKey;
         private bool _dropdownOpen = false;
+        private string _currentLang = Preferences.Default.Get("app_lang", "vi");
 
         public WelcomePage()
         {
@@ -42,12 +43,12 @@ function initMap(){{
   pois.forEach(function(p){{
     new google.maps.Marker({{position:p,map:map,icon:{{
       path:google.maps.SymbolPath.CIRCLE,scale:9,
-      fillColor:'#FF6B35',fillOpacity:1,strokeColor:'white',strokeWeight:2
+      fillColor:'#42A5F5',fillOpacity:1,strokeColor:'white',strokeWeight:2
     }}}});
   }});
 }}
 </script>
-<script src='https://maps.googleapis.com/maps/api/js?key={MAPS_API_KEY}&callback=initMap' async defer></script>
+<script src='https://maps.googleapis.com/maps/api/js?key={MAPS_API_KEY}&loading=async&callback=initMap'></script>
 </body>
 </html>";
             MiniMapWebView.Source = new HtmlWebViewSource { Html = html };
@@ -74,51 +75,117 @@ function initMap(){{
             _dropdownOpen = false;
             LangDropdown.IsVisible = false;
 
+            if (_currentLang == lang) return;
+
+            Preferences.Default.Set("app_lang", lang);
+            VinhKhanhTour.Services.AudioService.Instance.SetLanguage(lang);
+
+            if (Application.Current?.MainPage is MainTabbedPage tabbedPage)
+                tabbedPage.UpdateLanguage(lang);
+            else
+                UpdateLanguage(lang);
+        }
+
+        public void UpdateLanguage(string lang)
+        {
+            _currentLang = lang;
+
             LangFlag.Text = lang switch { "en" => "🇺🇸", "zh" => "🇨🇳", _ => "🇻🇳" };
 
-            var activeColor = Color.FromArgb("#FF6B35");
-            var inactiveColor = Color.FromArgb("#F5F5F5");
+            var activeColor = Color.FromArgb("#1565C0");
+            var inactiveColor = Color.FromArgb("#F0F6FF");
             BtnVI.BackgroundColor = lang == "vi" ? activeColor : inactiveColor;
+            LblLangVI.TextColor = lang == "vi" ? Colors.White : Color.FromArgb("#5A7A9A");
             BtnEN.BackgroundColor = lang == "en" ? activeColor : inactiveColor;
+            LblLangEN.TextColor = lang == "en" ? Colors.White : Color.FromArgb("#5A7A9A");
             BtnZH.BackgroundColor = lang == "zh" ? activeColor : inactiveColor;
+            LblLangZH.TextColor = lang == "zh" ? Colors.White : Color.FromArgb("#5A7A9A");
 
             switch (lang)
             {
                 case "en":
                     LblNarration.Text = "Narration language";
+                    LblNarrationSub.Text = "Select audio tour language";
                     LblChoTour.Text = "Vinh Khanh area";
+                    LblChoTourSub.Text = "Famous food street in District 4";
                     LblTapHint.Text = "👆 Tap to view detailed map";
-                    BtnTourAll.Text = "🗺️ Start Exploring";
                     LblTourTheme.Text = "Choose your Tour";
-                    LblTour1.Text = "Shellfish Tour";
-                    LblTour2.Text = "BBQ Tour";
-                    LblTour3.Text = "Snack Tour";
-                    LblTour4.Text = "Specialty Tour";
-                    LblWelcome.Text = "Explore Quan 4 food street";
+                    LblTourThemeSub.Text = "4 unique food journeys";
+                    LblWelcome.Text = "Explore District 4 food street";
+                    LblLocation.Text = "District 4 · HCMC";
+                    LblMainSubtitle.Text = "  FOOD TOUR GUIDE";
+                    LblStats1Value.Text = "11"; LblStats1Text.Text = "Spots";
+                    LblStats2Value.Text = "4"; LblStats2Text.Text = "Themes";
+                    LblStats3Value.Text = "4.5★"; LblStats3Text.Text = "Rating";
+                    LblCTA.Text = "🗺️  Start Exploring";
+                    LblTour1.Text = "Shellfish Tour"; LblTag1.Text = "OC";
+                    LblTour2.Text = "BBQ Tour"; LblTag2.Text = "BBQ";
+                    LblTour3.Text = "Snack Tour"; LblTag3.Text = "SNACK";
+                    LblTour4.Text = "Specialty Tour"; LblTag4.Text = "SPECIAL";
+                    LblDesc1.Text = "3 famous shellfish restaurants";
+                    LblDesc2.Text = "BBQ, grilled beef in pepper leaves";
+                    LblDesc3.Text = "Crispy rice, grilled pork noodles";
+                    LblDesc4.Text = "Chau Doc fish noodle soup";
+                    LblDur1.Text = "⏱ 45 min"; LblPts1.Text = "3 spots";
+                    LblDur2.Text = "⏱ 60 min"; LblPts2.Text = "3 spots";
+                    LblDur3.Text = "⏱ 40 min"; LblPts3.Text = "2 spots";
+                    LblDur4.Text = "⏱ 50 min"; LblPts4.Text = "3 spots";
                     break;
                 case "zh":
                     LblNarration.Text = "解说语言";
+                    LblNarrationSub.Text = "选择语音导览语言";
                     LblChoTour.Text = "永庆地区";
+                    LblChoTourSub.Text = "第四郡著名美食街";
                     LblTapHint.Text = "👆 点击查看详细地图";
-                    BtnTourAll.Text = "🗺️ 开始探索";
                     LblTourTheme.Text = "选择您的路线";
-                    LblTour1.Text = "贝类美食游";
-                    LblTour2.Text = "烧烤美食游";
-                    LblTour3.Text = "小吃游";
-                    LblTour4.Text = "特产美食游";
+                    LblTourThemeSub.Text = "4条独特的美食之旅";
                     LblWelcome.Text = "探索第四郡美食街";
+                    LblLocation.Text = "第四郡 · 胡志明市";
+                    LblMainSubtitle.Text = "  美食指南";
+                    LblStats1Value.Text = "11"; LblStats1Text.Text = "餐厅";
+                    LblStats2Value.Text = "4"; LblStats2Text.Text = "主题游";
+                    LblStats3Value.Text = "4.5★"; LblStats3Text.Text = "评分";
+                    LblCTA.Text = "🗺️  开始探索";
+                    LblTour1.Text = "贝类美食游"; LblTag1.Text = "海鲜";
+                    LblTour2.Text = "烧烤美食游"; LblTag2.Text = "烧烤";
+                    LblTour3.Text = "小吃游"; LblTag3.Text = "小吃";
+                    LblTour4.Text = "特产美食游"; LblTag4.Text = "特产";
+                    LblDesc1.Text = "3家知名贝类餐厅";
+                    LblDesc2.Text = "烧烤，胡椒叶牛肉";
+                    LblDesc3.Text = "锅巴，烤猪肉米线";
+                    LblDesc4.Text = "朱笃鱼米线";
+                    LblDur1.Text = "⏱ 45分钟"; LblPts1.Text = "3个景点";
+                    LblDur2.Text = "⏱ 60分钟"; LblPts2.Text = "3个景点";
+                    LblDur3.Text = "⏱ 40分钟"; LblPts3.Text = "2个景点";
+                    LblDur4.Text = "⏱ 50分钟"; LblPts4.Text = "3个景点";
                     break;
                 default:
                     LblNarration.Text = "Giọng thuyết minh";
+                    LblNarrationSub.Text = "Chọn ngôn ngữ audio tour";
                     LblChoTour.Text = "Khu vực Vĩnh Khánh";
+                    LblChoTourSub.Text = "Phố ẩm thực nổi tiếng Quận 4";
                     LblTapHint.Text = "👆 Nhấn để xem bản đồ chi tiết";
-                    BtnTourAll.Text = "🗺️ Bắt đầu khám phá";
                     LblTourTheme.Text = "Chọn Tour của bạn";
-                    LblTour1.Text = "Tour Ăn Ốc";
-                    LblTour2.Text = "Tour Ăn Nướng";
-                    LblTour3.Text = "Tour Ăn Vặt";
-                    LblTour4.Text = "Tour Đặc Sản";
-                    LblWelcome.Text = "Khám phá phố ẩm thực Quận 4";
+                    LblTourThemeSub.Text = "4 hành trình ẩm thực độc đáo";
+                    LblWelcome.Text = "Khám phá phố ẩm thực nổi tiếng nhất Quận 4";
+                    LblLocation.Text = "Quận 4 · TP.HCM";
+                    LblMainSubtitle.Text = "  CẨM NANG ẨM THỰC";
+                    LblStats1Value.Text = "11"; LblStats1Text.Text = "Quán ăn";
+                    LblStats2Value.Text = "4"; LblStats2Text.Text = "Tour chủ đề";
+                    LblStats3Value.Text = "4.5★"; LblStats3Text.Text = "Đánh giá";
+                    LblCTA.Text = "🗺️  Bắt đầu khám phá";
+                    LblTour1.Text = "Tour Ăn Ốc"; LblTag1.Text = "ỐC";
+                    LblTour2.Text = "Tour Ăn Nướng"; LblTag2.Text = "NƯỚNG";
+                    LblTour3.Text = "Tour Ăn Vặt"; LblTag3.Text = "ĂN VẶT";
+                    LblTour4.Text = "Tour Đặc Sản"; LblTag4.Text = "ĐẶC SẢN";
+                    LblDesc1.Text = "3 quán ốc ngon nổi tiếng";
+                    LblDesc2.Text = "Lẩu nướng, bò lá lốt";
+                    LblDesc3.Text = "Cơm cháy, bún nướng";
+                    LblDesc4.Text = "Bún cá Châu Đốc";
+                    LblDur1.Text = "⏱ 45 phút"; LblPts1.Text = "3 điểm";
+                    LblDur2.Text = "⏱ 60 phút"; LblPts2.Text = "3 điểm";
+                    LblDur3.Text = "⏱ 40 phút"; LblPts3.Text = "2 điểm";
+                    LblDur4.Text = "⏱ 50 phút"; LblPts4.Text = "3 điểm";
                     break;
             }
         }
@@ -128,9 +195,9 @@ function initMap(){{
             Navigation.PushAsync(new TourDetailPage(new Tour
             {
                 Id = "1",
-                Name = "Tour Ăn Ốc",
-                Description = "3 quán ốc ngon nổi tiếng",
-                Duration = "45 phút",
+                Name = _currentLang switch { "en" => "Shellfish Tour", "zh" => "贝类美食游", _ => "Tour Ăn Ốc" },
+                Description = _currentLang switch { "en" => "3 famous shellfish restaurants", "zh" => "3家知名贝类餐厅", _ => "3 quán ốc ngon nổi tiếng" },
+                Duration = _currentLang switch { "en" => "45 min", "zh" => "45分钟", _ => "45 phút" },
                 Rating = 4.4,
                 RestaurantIds = new List<int> { 1, 2, 3 }
             }));
@@ -141,9 +208,9 @@ function initMap(){{
             Navigation.PushAsync(new TourDetailPage(new Tour
             {
                 Id = "2",
-                Name = "Tour Ăn Nướng",
-                Description = "Lẩu nướng, bò lá lốt",
-                Duration = "60 phút",
+                Name = _currentLang switch { "en" => "BBQ Tour", "zh" => "烧烤美食游", _ => "Tour Ăn Nướng" },
+                Description = _currentLang switch { "en" => "BBQ, grilled beef in pepper leaves", "zh" => "烧烤，胡椒叶牛肉", _ => "Lẩu nướng, bò lá lốt" },
+                Duration = _currentLang switch { "en" => "60 min", "zh" => "60分钟", _ => "60 phút" },
                 Rating = 4.5,
                 RestaurantIds = new List<int> { 7, 8, 10 }
             }));
@@ -154,9 +221,9 @@ function initMap(){{
             Navigation.PushAsync(new TourDetailPage(new Tour
             {
                 Id = "3",
-                Name = "Tour Ăn Vặt",
-                Description = "Cơm cháy, bún thịt nướng",
-                Duration = "40 phút",
+                Name = _currentLang switch { "en" => "Snack Tour", "zh" => "小吃游", _ => "Tour Ăn Vặt" },
+                Description = _currentLang switch { "en" => "Crispy rice, grilled pork noodles", "zh" => "锅巴，烤猪肉米线", _ => "Cơm cháy, bún thịt nướng" },
+                Duration = _currentLang switch { "en" => "40 min", "zh" => "40分钟", _ => "40 phút" },
                 Rating = 4.3,
                 RestaurantIds = new List<int> { 9, 11 }
             }));
@@ -167,9 +234,9 @@ function initMap(){{
             Navigation.PushAsync(new TourDetailPage(new Tour
             {
                 Id = "4",
-                Name = "Tour Đặc Sản",
-                Description = "Bún cá Châu Đốc",
-                Duration = "50 phút",
+                Name = _currentLang switch { "en" => "Specialty Tour", "zh" => "特产美食游", _ => "Tour Đặc Sản" },
+                Description = _currentLang switch { "en" => "Chau Doc fish noodle soup", "zh" => "朱笃鱼米线", _ => "Bún cá Châu Đốc" },
+                Duration = _currentLang switch { "en" => "50 min", "zh" => "50分钟", _ => "50 phút" },
                 Rating = 4.6,
                 RestaurantIds = new List<int> { 4, 5, 6 }
             }));
