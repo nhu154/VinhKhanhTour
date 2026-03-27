@@ -3,729 +3,296 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Vĩnh Khánh Tour - CMS</title>
-<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<title>Vĩnh Khánh Tour - Premium CMS</title>
+<script>if(sessionStorage.getItem('cms_logged_in') !== 'true') window.location.href='login.html';</script>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<!-- Icons & Charts -->
+<script src="https://unpkg.com/lucide@latest"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAMX0XgjmNv2O4Twk_CBBmjzDwopqtuexE&libraries=places&callback=initMap"></script>
 <style>
-:root {
-  --bg: #0a0f1e; --bg2: #0d1629; --bg3: #111a30;
-  --card: #131c33; --border: #1a2848;
-  --accent: #3b82f6; --accent2: #60a5fa; --accent-glow: #3b82f615;
-  --green: #10b981; --orange: #f59e0b; --red: #ef4444; --purple: #8b5cf6;
-  --text: #e2e8f0; --text2: #94a3b8; --text3: #475569;
-  --font: 'Be Vietnam Pro', sans-serif; --mono: 'JetBrains Mono', monospace;
-  --glass: rgba(13,22,41,0.7);
-  --shadow: 0 20px 40px rgba(0,0,0,0.4);
-}
-* { margin:0; padding:0; box-sizing:border-box; }
-body { font-family:var(--font); background:var(--bg); color:var(--text); height:100vh; overflow:hidden; display:flex; }
-::-webkit-scrollbar { width:5px; } ::-webkit-scrollbar-thumb { background:var(--border); border-radius:3px; }
-
-/* ── SIDEBAR ── */
-.sidebar {
-  width:255px; min-height:100vh; background:var(--bg2);
-  border-right:1px solid var(--border); display:flex; flex-direction:column;
-  flex-shrink:0; position:relative; z-index:20;
-}
-.sidebar::after {
-  content:''; position:absolute; top:0; right:0; width:1px; height:100%;
-  background:linear-gradient(180deg,transparent,var(--accent)44,transparent);
-}
-.sidebar-header {
-  padding:28px 20px 22px; border-bottom:1px solid var(--border);
-}
-.logo-row { display:flex; align-items:center; gap:10px; margin-bottom:6px; }
-.logo-icon {
-  width:36px; height:36px; border-radius:10px;
-  background:linear-gradient(135deg,var(--accent),var(--purple));
-  display:flex; align-items:center; justify-content:center; font-size:18px;
-}
-.sidebar-header h2 {
-  font-size:15px; font-weight:800; color:#fff;
-  background:linear-gradient(90deg,#fff,var(--accent2));
-  -webkit-background-clip:text; -webkit-text-fill-color:transparent;
-}
-.version-badge {
-  display:inline-block; background:var(--accent-glow); color:var(--accent2);
-  border:1px solid var(--accent)33; padding:3px 8px; border-radius:6px;
-  font-size:10px; font-weight:700; font-family:var(--mono); margin-top:2px;
-}
-
-.sidebar-nav { flex:1; padding:16px 10px; display:flex; flex-direction:column; gap:3px; }
-.nav-section-label {
-  font-size:10px; font-weight:700; color:var(--text3);
-  letter-spacing:1.5px; text-transform:uppercase;
-  padding:12px 10px 6px; margin-top:4px;
-}
-.nav-item {
-  background:transparent; border:none; color:var(--text2);
-  padding:10px 14px; text-align:left; font-size:13.5px; font-weight:500;
-  border-radius:10px; cursor:pointer; transition:all .2s;
-  display:flex; align-items:center; gap:10px;
-  font-family:var(--font); width:100%;
-}
-.nav-item .icon { font-size:16px; width:20px; text-align:center; }
-.nav-item:hover { background:var(--bg3); color:var(--text); }
-.nav-item.active {
-  background:var(--accent-glow); color:var(--accent2);
-  border-left:3px solid var(--accent); font-weight:600;
-}
-.nav-badge {
-  margin-left:auto; background:var(--accent); color:#fff;
-  font-size:10px; padding:2px 6px; border-radius:8px; font-weight:700;
-}
-
-.sidebar-footer { padding:16px; border-top:1px solid var(--border); }
-.user-card { display:flex; align-items:center; gap:10px; margin-bottom:12px; }
-.avatar { width:36px; height:36px; border-radius:50%; border:2px solid var(--accent)44; object-fit:cover; }
-.user-info .name { font-size:13px; font-weight:600; }
-.user-info .role { font-size:11px; color:var(--text3); }
-.btn-outline {
-  width:100%; background:transparent; color:var(--text2);
-  border:1px solid var(--border); padding:10px; border-radius:10px;
-  font-weight:600; cursor:pointer; transition:all .2s; font-size:13px;
-  font-family:var(--font);
-}
-.btn-outline:hover { background:var(--bg3); color:var(--text); border-color:var(--accent)55; }
-
-/* ── MAIN ── */
-.content-area { flex:1; display:flex; flex-direction:column; overflow:hidden; background:radial-gradient(ellipse at 80% 0%,#1565c015 0%,transparent 60%); }
-
-.top-header {
-  padding:0 32px; height:62px; display:flex; align-items:center; gap:16px;
-  border-bottom:1px solid var(--border); background:var(--bg2); flex-shrink:0;
-  position:relative; z-index:10;
-}
-.breadcrumb { display:flex; align-items:center; gap:6px; flex:1; }
-.breadcrumb .bc-base { font-size:12px; color:var(--text3); }
-.breadcrumb .bc-sep { color:var(--border); font-size:14px; }
-.breadcrumb h1 { font-size:16px; font-weight:700; color:var(--text); }
-.search-input {
-  background:var(--bg3); border:1px solid var(--border);
-  padding:9px 16px; border-radius:10px; color:var(--text);
-  font-size:13px; width:220px; transition:all .2s; font-family:var(--font);
-}
-.search-input:focus { outline:none; border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-glow); }
-.search-input::placeholder { color:var(--text3); }
-.btn-primary {
-  background:linear-gradient(135deg,var(--accent),#2563eb);
-  color:#fff; border:none; padding:9px 18px; border-radius:10px;
-  font-weight:600; cursor:pointer; transition:all .2s; font-size:13px;
-  font-family:var(--font); box-shadow:0 4px 14px var(--accent)44;
-}
-.btn-primary:hover { transform:translateY(-1px); box-shadow:0 6px 20px var(--accent)55; }
-
-/* ── PANELS ── */
-.panels { flex:1; overflow-y:auto; padding:28px 32px; }
-.panel { display:none; }
-.panel.active { display:block; animation:fadeUp .3s ease; }
-@keyframes fadeUp { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
-
-.toolbar { display:flex; align-items:center; gap:12px; margin-bottom:20px; }
-.toolbar .spacer { flex:1; }
-
-/* ── CARDS ── */
-.card {
-  background:var(--card); border:1px solid var(--border);
-  border-radius:16px; overflow:hidden;
-}
-.card-header { padding:18px 22px; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:8px; }
-.card-header h3 { font-size:14px; font-weight:700; }
-.card-dot { width:8px; height:8px; border-radius:50%; }
-.cd-blue { background:var(--accent); } .cd-green { background:var(--green); }
-.cd-orange { background:var(--orange); } .cd-purple { background:var(--purple); }
-
-/* ── TABLE ── */
-.data-table { width:100%; border-collapse:collapse; font-size:13px; }
-.data-table th {
-  padding:11px 18px; text-align:left; font-size:11px; font-weight:700;
-  color:var(--text3); letter-spacing:.8px; text-transform:uppercase;
-  border-bottom:1px solid var(--border); background:var(--bg3);
-}
-.data-table td { padding:13px 18px; border-bottom:1px solid var(--border)66; vertical-align:middle; color:var(--text2); }
-.data-table tr:hover td { background:var(--bg3); }
-.data-table tr:last-child td { border-bottom:none; }
-.td-name { color:var(--text); font-weight:600; font-size:14px; }
-.poi-thumb { width:44px; height:44px; border-radius:10px; object-fit:cover; border:1px solid var(--border); }
-.coord-badge { font-family:var(--mono); font-size:11px; background:var(--bg3); border:1px solid var(--border); padding:5px 10px; border-radius:6px; color:var(--accent2); }
-.tag { display:inline-flex; align-items:center; padding:4px 10px; border-radius:20px; font-size:11px; font-weight:700; }
-.tag-ok { background:#10b98120; color:#34d399; }
-.tag-pending { background:#f59e0b20; color:#fbbf24; }
-.tag-danger { background:#ef444420; color:#f87171; }
-.tag-blue { background:var(--accent-glow); color:var(--accent2); }
-.priority-badge { background:#f59e0b15; color:#fbbf24; padding:4px 10px; border-radius:6px; font-weight:700; font-size:12px; font-family:var(--mono); }
-.td-actions { display:flex; gap:6px; }
-.action-btn {
-  width:30px; height:30px; border-radius:8px; background:var(--bg3);
-  border:1px solid var(--border); cursor:pointer; font-size:13px;
-  display:flex; align-items:center; justify-content:center; transition:all .2s; color:var(--text2);
-}
-.action-btn:hover { background:var(--accent-glow); border-color:var(--accent)44; color:var(--accent2); }
-.action-btn.del:hover { background:#ef444415; border-color:#ef444444; color:#f87171; }
-
-/* ── STATS GRID ── */
-.stats-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; margin-bottom:24px; }
-.stat-card {
-  background:var(--card); border:1px solid var(--border); border-radius:16px;
-  padding:22px; display:flex; align-items:center; gap:18px;
-  position:relative; overflow:hidden; transition:transform .2s;
-}
-.stat-card:hover { transform:translateY(-2px); }
-.stat-card::before { content:''; position:absolute; top:0; left:0; right:0; height:2px; }
-.sc-blue::before { background:linear-gradient(90deg,var(--accent),var(--accent2)); }
-.sc-green::before { background:linear-gradient(90deg,var(--green),#34d399); }
-.sc-orange::before { background:linear-gradient(90deg,var(--orange),#fbbf24); }
-.stat-icon-box {
-  width:52px; height:52px; border-radius:14px; display:flex;
-  align-items:center; justify-content:center; font-size:22px; flex-shrink:0;
-}
-.sib-blue { background:var(--accent-glow); border:1px solid var(--accent)33; }
-.sib-green { background:#10b98115; border:1px solid #10b98133; }
-.sib-orange { background:#f59e0b15; border:1px solid #f59e0b33; }
-.stat-info h3 { font-size:12px; color:var(--text3); font-weight:500; margin-bottom:6px; }
-.stat-value { font-size:28px; font-weight:800; letter-spacing:-1px; }
-.sv-blue { color:var(--accent2); } .sv-green { color:#34d399; } .sv-orange { color:#fbbf24; }
-
-/* Bar chart */
-.bar-chart { display:flex; flex-direction:column; gap:11px; padding:18px 22px; }
-.bar-row { display:flex; align-items:center; gap:10px; }
-.bar-label { font-size:12px; color:var(--text2); width:130px; text-align:right; flex-shrink:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.bar-track { flex:1; height:7px; background:var(--bg3); border-radius:4px; overflow:hidden; }
-.bar-fill { height:100%; border-radius:4px; }
-.bar-val { font-size:11px; color:var(--text3); width:36px; font-family:var(--mono); }
-
-/* Chart container */
-.chart-wrap { padding:22px; }
-.chart-wrap h3 { font-size:13px; font-weight:700; margin-bottom:22px; color:var(--text2); }
-.mock-chart {
-  display:flex; align-items:flex-end; justify-content:space-around;
-  height:200px; padding-bottom:28px; border-bottom:1px solid var(--border);
-}
-.mock-chart .bar {
-  width:42px; background:linear-gradient(0deg,var(--accent),var(--accent2));
-  border-radius:8px 8px 0 0; position:relative; transition:height 1s cubic-bezier(.16,1,.3,1);
-  box-shadow:0 0 16px var(--accent)33; cursor:pointer;
-}
-.mock-chart .bar:hover { filter:brightness(1.2); }
-.mock-chart .bar span { position:absolute; bottom:-24px; left:50%; transform:translateX(-50%); font-size:11px; color:var(--text3); white-space:nowrap; }
-
-/* Audio */
-.audio-item {
-  display:flex; align-items:center; gap:12px; padding:14px 22px;
-  border-bottom:1px solid var(--border)66; transition:background .2s;
-}
-.audio-item:hover { background:var(--bg3); }
-.audio-item:last-child { border-bottom:none; }
-.play-btn {
-  width:34px; height:34px; border-radius:50%;
-  background:linear-gradient(135deg,var(--accent),#2563eb);
-  border:none; color:#fff; cursor:pointer; font-size:12px;
-  display:flex; align-items:center; justify-content:center; flex-shrink:0;
-  transition:all .2s; box-shadow:0 3px 10px var(--accent)44;
-}
-.play-btn:hover { transform:scale(1.08); }
-.audio-name { font-size:13px; font-weight:600; color:var(--text); margin-bottom:2px; }
-.audio-meta { font-size:11px; color:var(--text3); }
-.audio-wave { flex:1; display:flex; align-items:center; gap:2px; height:22px; }
-.wv { width:3px; border-radius:2px; background:var(--accent); }
-
-/* Upload */
-.upload-zone {
-  border:2px dashed var(--border); border-radius:12px; padding:28px;
-  text-align:center; cursor:pointer; transition:all .2s; background:var(--bg3);
-  margin:18px 22px;
-}
-.upload-zone:hover { border-color:var(--accent); background:var(--accent-glow); }
-.upload-zone .uz-icon { font-size:28px; margin-bottom:8px; }
-.upload-zone p { font-size:13px; color:var(--text2); margin-bottom:4px; }
-.upload-zone span { font-size:11px; color:var(--text3); }
-
-/* Tour */
-.tour-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:20px; }
-.tour-card {
-  border-radius:16px; overflow:hidden; background:var(--card);
-  border:1px solid var(--border); transition:all .2s; cursor:pointer;
-}
-.tour-card:hover { transform:translateY(-4px); border-color:var(--accent)44; box-shadow:0 16px 40px #00000040; }
-.tour-cover { height:160px; width:100%; object-fit:cover; display:block; }
-.tour-info { padding:18px; }
-.tour-info h3 { font-size:15px; font-weight:700; margin-bottom:6px; }
-.tour-info p { font-size:12px; color:var(--text3); line-height:1.6; margin-bottom:14px; }
-.tour-meta { display:flex; justify-content:space-between; align-items:center; padding-top:12px; border-top:1px solid var(--border); font-size:12px; font-weight:600; }
-.tour-meta .poi-count { background:#f59e0b15; color:#fbbf24; padding:4px 10px; border-radius:6px; }
-.tour-meta .edit-action { color:var(--accent2); }
-
-/* Lang tabs */
-.lang-tabs { display:flex; gap:6px; }
-.lang-tab {
-  padding:7px 16px; border-radius:8px; font-size:12px; font-weight:600;
-  cursor:pointer; border:1px solid var(--border); background:var(--bg3);
-  color:var(--text2); transition:all .2s; font-family:var(--font);
-}
-.lang-tab.active { background:var(--accent); color:#fff; border-color:var(--accent); }
-
-/* Modal */
-.modal-overlay {
-  position:fixed; inset:0; background:#00000088;
-  backdrop-filter:blur(6px); z-index:200;
-  display:flex; align-items:center; justify-content:center;
-  opacity:0; pointer-events:none; transition:.3s;
-}
-.modal-overlay.active { opacity:1; pointer-events:auto; }
-.modal {
-  background:var(--card); border:1px solid var(--border);
-  border-radius:20px; width:580px; max-width:94vw; max-height:88vh;
-  overflow-y:auto; box-shadow:var(--shadow);
-  transform:scale(.96) translateY(16px); transition:.3s cubic-bezier(.16,1,.3,1);
-}
-.modal-overlay.active .modal { transform:scale(1) translateY(0); }
-.modal-header { padding:22px 26px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; }
-.modal-header h2 { font-size:16px; font-weight:700; }
-.close-btn { width:30px; height:30px; border-radius:8px; background:var(--bg3); border:1px solid var(--border); cursor:pointer; font-size:16px; color:var(--text2); display:flex; align-items:center; justify-content:center; transition:.2s; }
-.close-btn:hover { color:var(--text); background:var(--border); }
-.modal-body { padding:24px 26px; }
-.modal-footer { padding:16px 26px; border-top:1px solid var(--border); display:flex; gap:10px; justify-content:flex-end; background:var(--bg3); border-radius:0 0 20px 20px; }
-
-/* Form */
-.form-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
-.form-group { display:flex; flex-direction:column; gap:7px; }
-.form-group.full-width { grid-column:1/-1; }
-.form-group label { font-size:11px; font-weight:700; color:var(--text3); letter-spacing:.5px; text-transform:uppercase; }
-.form-input {
-  background:var(--bg3); border:1px solid var(--border); border-radius:10px;
-  padding:10px 14px; color:var(--text); font-size:13px; font-family:var(--font); outline:none; transition:.2s;
-}
-.form-input:focus { border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-glow); }
-.form-input::placeholder { color:var(--text3); }
-textarea.form-input { resize:vertical; min-height:90px; line-height:1.5; }
-select.form-input option { background:var(--bg3); }
-
-/* Live dot */
-@keyframes pulse { 0%,100%{opacity:1}50%{opacity:.4} }
-.live-dot { width:7px; height:7px; border-radius:50%; background:var(--green); display:inline-block; animation:pulse 2s infinite; margin-right:5px; }
-.section-sub { font-size:13px; color:var(--text3); margin-bottom:22px; }
+  /* Local overrides for the final features */
+  .poi-checklist { max-height: 250px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px; background: #f8fafc; }
+  .poi-check-item { display: flex; align-items: center; gap: 10px; padding: 8px; border-bottom: 1px solid #f1f5f9; cursor: pointer; transition: 0.2s; }
+  .poi-check-item:hover { background: #fff; }
+  
+  /* Quick Detail Panel on Map */
+  .map-detail-panel { 
+    position: absolute; bottom: 20px; left: 20px; width: 380px; 
+    background: #fff; border-radius: 16px; box-shadow: var(--shadow-lg); 
+    display: none; flex-direction: column; overflow: hidden; z-index: 100;
+    animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  @keyframes slideUp { from { transform: translateY(100px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+  .map-detail-img { width: 100%; height: 160px; object-fit: cover; }
+  .map-detail-body { padding: 20px; position: relative; }
+  .map-detail-close { position: absolute; top: 12px; right: 12px; border: none; background: rgba(0,0,0,0.4); color: #fff; width: 28px; height: 28px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+  
+  .central-modal { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; z-index: 1000; background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(8px); padding: 20px; }
+  .modal-box { background: white; width: 100%; max-width: 800px; max-height: 90vh; border-radius: 16px; display: flex; flex-direction: column; overflow: hidden; }
+  #export-code-area { width: 100%; height: 400px; font-family: monospace; font-size: 13px; padding: 16px; background: #0f172a; color: #38bdf8; border-radius: 8px; overflow: auto; white-space: pre; }
 </style>
 </head>
 <body>
-<!-- SIDEBAR -->
-<aside class="sidebar">
-  <div class="sidebar-header">
-    <div class="logo-row">
-      <div class="logo-icon">🍜</div>
-      <h2>Vĩnh Khánh CMS</h2>
-    </div>
-    <div class="version-badge">v2.0</div>
+
+<!-- ══ SIDEBAR ══ -->
+<aside class="sidebar" style="background: #2563eb;">
+  <div class="sidebar-header" style="padding: 40px 24px;">
+    <h2 style="font-size: 42px; font-weight: 900; color: #fff; letter-spacing: -2px; margin-bottom: 0; line-height: 1;">GPS</h2>
+    <p style="color: rgba(255,255,255,0.8); font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px;">Admin Dashboard</p>
   </div>
-  <nav class="sidebar-nav">
-    <div class="nav-section-label">Nội dung</div>
-    <button class="nav-item active" data-target="poi-panel">
-      <span class="icon">📍</span> Quản lý POI <span class="nav-badge">4</span>
-    </button>
-    <button class="nav-item" data-target="audio-panel">
-      <span class="icon">🎧</span> Quản lý Audio
-    </button>
-    <button class="nav-item" data-target="trans-panel">
-      <span class="icon">🌐</span> Quản lý Bản dịch
-    </button>
-    <div class="nav-section-label">Dữ liệu</div>
-    <button class="nav-item" data-target="analytics-panel">
-      <span class="icon">📊</span> Lịch sử sử dụng
-    </button>
-    <button class="nav-item" data-target="tour-panel">
-      <span class="icon">🗺️</span> Quản lý Tour
-    </button>
+  <nav class="sidebar-menu">
+    <div class="menu-item active" id="menu-dashboard" onclick="switchPage('page-dashboard', this)">
+      <i data-lucide="layout-dashboard"></i> Tổng quan
+    </div>
+    <div class="menu-item" id="menu-poi" onclick="switchPage('page-poi', this)">
+      <i data-lucide="map-pin"></i> Quản lý địa điểm
+    </div>
+    <div class="menu-item" id="menu-tour" onclick="switchPage('page-tour', this)">
+      <i data-lucide="share-2"></i> Quản lý Tour
+    </div>
+    <div class="menu-item" id="menu-audio" onclick="switchPage('page-audio', this)">
+      <i data-lucide="headphones"></i> Quản lý Audio
+    </div>
+    <div class="menu-item" id="menu-trans" onclick="switchPage('page-trans', this)">
+      <i data-lucide="languages"></i> Bản dịch đa ngữ
+    </div>
+    <div class="menu-item" id="menu-history" onclick="switchPage('page-history', this)">
+      <i data-lucide="history"></i> Lịch sử sử dụng
+    </div>
   </nav>
   <div class="sidebar-footer">
-    <div class="user-card">
-      <img src="https://i.pravatar.cc/150?img=11" class="avatar" alt="Avatar">
-      <div class="user-info">
-        <div class="name">Quản trị viên</div>
-        <div class="role">Super Admin</div>
-      </div>
-    </div>
-    <button class="btn-outline">🚀 Khởi động App</button>
+    <button class="btn-logout" onclick="sessionStorage.removeItem('cms_logged_in'); window.location.href='login.html'">
+      <i data-lucide="log-out"></i> Logout
+    </button>
   </div>
 </aside>
 
-<!-- MAIN -->
-<main class="content-area">
-  <header class="top-header">
-    <div class="breadcrumb">
-      <span class="bc-base">CMS</span>
-      <span class="bc-sep">›</span>
-      <h1 id="page-title">Quản lý POI</h1>
+<!-- ══ MAIN WRAPPER ══ -->
+<div class="main-wrapper">
+  <header class="header">
+    <div class="header-title">
+      <h1 id="current-page-title">Tổng quan hệ thống</h1>
     </div>
-    <input type="text" placeholder="🔍  Tìm kiếm..." class="search-input">
-    <button class="btn-primary" id="top-action-btn" onclick="poiManager.showModal()">+ Thêm POI mới</button>
+    <div class="header-actions">
+      <button class="btn btn-outline" style="background:#fff;border:1px solid #e2e8f0;padding:8px 16px" onclick="exportDataToCSharp()">
+        <i data-lucide="download"></i> Export Mobile Data
+      </button>
+    </div>
   </header>
 
-  <div class="panels">
+  <!-- ════ TRANG TỔNG QUAN (DASHBOARD) ════ -->
+  <main class="main-content active" id="page-dashboard">
+    <div class="stats-grid" id="dashboard-stats"></div>
+    <div class="dashboard-grid">
+      <div class="chart-card">
+        <div class="card-header"><h3>Sự tương tác của du khách</h3><div class="badge badge-success">Live</div></div>
+        <div style="height:320px;width:100%"><canvas id="mainChart"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="card-header"><h3>Phân loại địa điểm</h3></div>
+        <div style="height:320px;width:100%"><canvas id="pieChart"></canvas></div>
+      </div>
+    </div>
+    <div class="card" style="background:#fff;padding:24px;border-radius:12px;border:1px solid #e2e8f0;overflow:hidden">
+      <h3>Hoạt động gần nhất</h3>
+      <table class="cms-table" style="margin-top:16px"><tbody id="dashboard-recent-tbody"></tbody></table>
+    </div>
+  </main>
 
-    <!-- ══ POI PANEL ══ -->
-    <section id="poi-panel" class="panel active">
-      <p class="section-sub"><span class="live-dot"></span>4 địa điểm · Vĩnh Khánh, Quận 4</p>
-      <div class="card">
-        <table class="data-table" id="poi-table">
-          <thead>
-            <tr>
-              <th>ID</th><th>Ảnh</th><th>Tên điểm</th>
-              <th>Tọa độ GPS</th><th>Bán kính</th><th>Ưu tiên</th><th>Thao tác</th>
-            </tr>
-          </thead>
-          <tbody></tbody>
-        </table>
-      </div>
-    </section>
-
-    <!-- ══ AUDIO PANEL ══ -->
-    <section id="audio-panel" class="panel">
-      <p class="section-sub">File audio và script TTS cho từng POI</p>
-      <div class="toolbar">
-        <input type="text" placeholder="🔍  Tìm kiếm audio..." class="search-input">
-        <div class="spacer"></div>
-        <button class="btn-primary">📤 Upload Audio</button>
-      </div>
-      <div class="card" style="margin-bottom:16px">
-        <div class="card-header"><div class="card-dot cd-blue"></div><h3>File Audio có sẵn</h3></div>
-        <div id="audio-list"></div>
-      </div>
-      <div class="card">
-        <div class="card-header"><div class="card-dot cd-orange"></div><h3>Upload file mới</h3></div>
-        <div class="upload-zone">
-          <div class="uz-icon">🎵</div>
-          <p>Kéo thả file audio vào đây</p>
-          <span>Hỗ trợ MP3, WAV, AAC · Tối đa 10MB</span>
-        </div>
-      </div>
-    </section>
-
-    <!-- ══ TRANSLATION PANEL ══ -->
-    <section id="trans-panel" class="panel">
-      <p class="section-sub">Nội dung thuyết minh đa ngôn ngữ</p>
-      <div class="toolbar">
-        <div class="lang-tabs">
-          <button class="lang-tab active" onclick="setLang(this,'vi')">🇻🇳 Tiếng Việt</button>
-          <button class="lang-tab" onclick="setLang(this,'en')">🇺🇸 English</button>
-          <button class="lang-tab" onclick="setLang(this,'zh')">🇨🇳 中文</button>
-        </div>
-        <div class="spacer"></div>
-        <button class="btn-primary">💾 Lưu bản dịch</button>
-      </div>
-      <div class="card">
-        <table class="data-table" id="trans-table">
-          <thead>
-            <tr><th>Mục tiêu</th><th>Loại</th><th>Trạng thái bản dịch</th><th>Nội dung</th><th>Thao tác</th></tr>
-          </thead>
-          <tbody></tbody>
-        </table>
-      </div>
-    </section>
-
-    <!-- ══ ANALYTICS PANEL ══ -->
-    <section id="analytics-panel" class="panel">
-      <p class="section-sub"><span class="live-dot"></span>Dữ liệu realtime · 30 ngày gần nhất</p>
-      <div class="stats-grid">
-        <div class="stat-card sc-blue">
-          <div class="stat-icon-box sib-blue">🎧</div>
-          <div class="stat-info"><h3>Tổng lượt nghe</h3><div class="stat-value sv-blue">12,450</div></div>
-        </div>
-        <div class="stat-card sc-green">
-          <div class="stat-icon-box sib-green">⏱️</div>
-          <div class="stat-info"><h3>Thời gian TB / POI</h3><div class="stat-value sv-green">4.2 phút</div></div>
-        </div>
-        <div class="stat-card sc-orange">
-          <div class="stat-icon-box sib-orange">🔥</div>
-          <div class="stat-info"><h3>POI Nổi Bật</h3><div class="stat-value sv-orange" style="font-size:18px">Quán Ốc Vũ</div></div>
-        </div>
-      </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
-        <div class="card">
-          <div class="card-header"><div class="card-dot cd-blue"></div><h3>Top POI được nghe</h3></div>
-          <div class="bar-chart" id="bar-chart"></div>
-        </div>
-        <div class="card">
-          <div class="card-header"><div class="card-dot cd-orange"></div><h3>Lượt tương tác theo giờ</h3></div>
-          <div class="chart-wrap">
-            <div class="mock-chart" id="mock-chart">
-              <div class="bar" style="height:40%"><span>10:00</span></div>
-              <div class="bar" style="height:60%"><span>12:00</span></div>
-              <div class="bar" style="height:30%"><span>14:00</span></div>
-              <div class="bar" style="height:80%"><span>16:00</span></div>
-              <div class="bar" style="height:100%"><span>18:00</span></div>
-              <div class="bar" style="height:90%"><span>20:00</span></div>
-              <div class="bar" style="height:50%"><span>22:00</span></div>
-            </div>
+  <!-- ════ TRANG ĐỊA ĐIỂM (MAP VIEW) ════ -->
+  <main class="main-content" id="page-poi">
+    <div class="map-container">
+      <div id="google-map"></div>
+      <!-- Quick Detail Panel Overlay -->
+      <div class="map-detail-panel" id="map-detail-panel">
+        <button class="map-detail-close" onclick="closeMapDetail()"><i data-lucide="x" style="width:16px;height:16px"></i></button>
+        <img id="map-detail-img" src="" class="map-detail-img">
+        <div class="map-detail-body">
+          <h3 id="map-detail-title" style="font-size:18px;font-weight:700">Tên quán ăn</h3>
+          <p id="map-detail-addr" style="font-size:12px;color:var(--text-muted);margin:4px 0 12px">Địa chỉ...</p>
+          <p id="map-detail-desc" style="font-size:13px;color:var(--text-main);line-height:1.5">Mô tả chi tiết tại đây...</p>
+          <div style="margin-top:20px;display:flex;gap:10px">
+            <button class="btn btn-primary" id="btn-edit-from-map" style="flex:1"><i data-lucide="edit-3"></i> Chỉnh sửa</button>
+            <button class="btn btn-ghost" id="btn-audio-from-map" style="border:1px solid #e2e8f0"><i data-lucide="volume-2"></i> Nghe TTS</button>
           </div>
         </div>
       </div>
-    </section>
-
-    <!-- ══ TOUR PANEL ══ -->
-    <section id="tour-panel" class="panel">
-      <p class="section-sub">3 hành trình · Vĩnh Khánh Tour</p>
-      <div class="toolbar">
-        <div class="spacer"></div>
-        <button class="btn-primary">+ Tạo Tour Mới</button>
+      <div class="map-controls">
+        <div style="position: absolute; top: 20px; right: 20px; z-index: 10;">
+          <button class="btn btn-primary" onclick="openNewPoiForm()" style="padding: 10px 24px; box-shadow: var(--shadow-lg); background: #2563eb; font-size: 15px;">
+            <i data-lucide="plus-circle"></i> + Thêm điểm mới
+          </button>
+        </div>
+        <div id="pac-container" style="background:#fff;padding:4px;border-radius:8px;box-shadow:var(--shadow-lg)">
+          <input id="pac-input" type="text" placeholder="Tìm kiếm vị trí..." class="form-control" style="width:280px;border:none">
+        </div>
+        <button class="btn btn-primary" onclick="toggleUserLocation()" style="margin-top:10px;box-shadow:var(--shadow-md)">
+          <i data-lucide="navigation"></i> Vị trí người dùng (Sim)
+        </button>
       </div>
-      <div class="tour-grid" id="tour-grid"></div>
-    </section>
-
-  </div><!-- /panels -->
-</main>
-
-<!-- ══ MODAL POI ══ -->
-<div id="poi-modal" class="modal-overlay">
-  <div class="modal">
-    <div class="modal-header">
-      <h2>📍 Thêm / Sửa POI</h2>
-      <button class="close-btn" onclick="poiManager.closeModal()">✕</button>
     </div>
-    <div class="modal-body">
-      <div class="form-grid">
-        <div class="form-group full-width">
-          <label>Tên Điểm (POI Name)</label>
-          <input type="text" id="poi-name" class="form-input" placeholder="VD: Ốc Oanh">
+    <h3 style="margin:24px 0 16px;font-size:16px;font-weight:700">Khám phá vị trí các điểm tham quan</h3>
+    <div class="horizontal-scroll" id="poi-carousel"></div>
+  </main>
+
+  <!-- ════ TRANG LỊCH SỬ (USAGE HISTORY) ════ -->
+  <main class="main-content" id="page-history">
+    <div class="card" style="background:#fff;padding:24px;border-radius:12px;border:1px solid #e2e8f0;overflow:hidden">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+        <h3>Nhật ký hành trình du khách</h3>
+        <input type="text" id="history-search" class="form-control" placeholder="Tìm tên quán..." style="width:250px">
+      </div>
+      <table class="cms-table">
+        <thead><tr><th>Tên quán</th><th>Loại sự kiện</th><th>Tọa độ truy cập</th><th>Thời gian</th><th>Trạng thái</th></tr></thead>
+        <tbody id="history-tbody"></tbody>
+      </table>
+    </div>
+  </main>
+
+  <!-- ════ TRANG AUDIO, TRANSLATION, TOUR ════ -->
+  <main class="main-content" id="page-audio"><div id="audio-list"></div></main>
+  <main class="main-content" id="page-trans"><table class="cms-table"><thead><tr><th>Tên quán</th><th>Vietnamese</th><th>English</th><th>Chinese</th><th>Thao tác</th></tr></thead><tbody id="trans-tbody"></tbody></table></main>
+  <main class="main-content" id="page-tour">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px"><h3>Thiết lập hành trình Tour</h3><button class="btn btn-primary" onclick="showTourModal()">+ Tạo Tour mới</button></div>
+    <div class="tour-grid" id="tour-grid"></div>
+  </main>
+</div>
+
+<!-- ══ SLIDE PANEL (POI ADD/EDIT) PROFESSIONAL ══ -->
+<div class="panel-overlay" id="panel-overlay-poi" style="display:none" onclick="closePoiForm()"></div>
+<div class="side-panel" id="poi-form-panel">
+  <div class="panel-header" style="border-bottom: none; padding: 25px 30px;">
+    <div style="display: flex; align-items: center; gap: 12px;">
+      <div style="background: #10b981; color: #fff; width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center;">
+        <i data-lucide="map-pin" style="width: 20px;"></i>
+      </div>
+      <h3 id="poi-form-title" style="margin:0; font-size: 18px; font-weight: 700;">Quản lý điểm</h3>
+    </div>
+    <button class="btn-ghost" onclick="closePoiForm()"><i data-lucide="x"></i></button>
+  </div>
+  
+  <div class="panel-body" style="padding: 0 30px 30px;">
+    <input type="hidden" id="poi-id">
+    
+    <!-- SECTION 1: VỊ TRÍ -->
+    <div class="form-section">
+      <div class="section-title"><i data-lucide="navigation"></i> Vị trí <i data-lucide="chevron-up" class="chevron"></i></div>
+      <div class="section-content">
+        <p style="font-size: 12px; color: #64748b; margin-bottom: 15px;">Click vào bản đồ để chọn vị trí hoặc nhập thủ công</p>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+          <div class="form-group" style="margin:0"><label>Latitude</label><input type="text" class="form-control" id="poi-lat"></div>
+          <div class="form-group" style="margin:0"><label>Longitude</label><input type="text" class="form-control" id="poi-lng"></div>
         </div>
-        <div class="form-group">
-          <label>Tọa độ GPS</label>
-          <input type="text" id="poi-coords" class="form-input" placeholder="10.762, 106.703">
+        <div class="form-group"><label>Phạm vi (meters)</label><input type="number" class="form-control" id="poi-radius" value="50"></div>
+      </div>
+    </div>
+
+    <!-- SECTION 2: THÔNG TIN ĐA NGÔN NGỮ -->
+    <div class="form-section">
+      <div class="section-title"><i data-lucide="languages"></i> Thông tin đa ngôn ngữ <i data-lucide="chevron-up" class="chevron"></i></div>
+      <div class="section-content">
+        <!-- 🇻🇳 TIẾNG VIỆT -->
+        <div style="background: #f8fafc; padding: 15px; border-radius: 10px; border: 1px solid #e2e8f0; margin-bottom: 20px;">
+          <label style="color: #2563eb; display: flex; align-items: center; gap: 6px; font-size: 10px;"><i data-lucide="flag" style="width:12px"></i> TIẾNG VIỆT (MẶC ĐỊNH)</label>
+          <div class="form-group"><label>Tên điểm</label><input type="text" class="form-control" id="poi-name-vi" placeholder="Ví dụ: Ốc Oanh"></div>
+          <div class="form-group"><label>Mô tả / Thuyết minh</label><textarea class="form-control" id="poi-desc-vi" rows="2" placeholder="Nội dung thuyết minh tiếng Việt..."></textarea></div>
         </div>
-        <div class="form-group">
-          <label>Bán kính Geofence (m)</label>
-          <input type="number" id="poi-radius" class="form-input" value="50">
+        
+        <!-- 🇬🇧 TIẾNG ANH -->
+        <div style="background: #fff; padding: 15px; border-radius: 10px; border: 1px solid #e2e8f0; margin-bottom: 20px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+            <label style="color: #64748b; display: flex; align-items: center; gap: 6px; font-size: 10px; margin:0;"><i data-lucide="flag" style="width:12px"></i> ENGLISH (TRANSLATION)</label>
+            <button class="btn-ghost" onclick="autoTranslate('en', this)" style="padding: 4px 10px; font-size: 11px; height: auto; background: #eff6ff; color: #2563eb; border: 1px solid #dbeafe;">
+              <i data-lucide="sparkles" style="width:12px"></i> Dịch tự động
+            </button>
+          </div>
+          <div class="form-group"><label>Point Name</label><input type="text" class="form-control" id="poi-name-en" placeholder="Example: Oanh Snail Restaurant"></div>
+          <div class="form-group"><label>Description / Script</label><textarea class="form-control" id="poi-desc-en" rows="2" placeholder="English audio script..."></textarea></div>
         </div>
-        <div class="form-group">
-          <label>Độ ưu tiên (0–100)</label>
-          <input type="number" id="poi-priority" class="form-input" placeholder="50">
+
+        <!-- 🇨🇳 TIẾNG TRUNG -->
+        <div style="background: #fff; padding: 15px; border-radius: 10px; border: 1px solid #e2e8f0;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+            <label style="color: #64748b; display: flex; align-items: center; gap: 6px; font-size: 10px; margin:0;"><i data-lucide="flag" style="width:12px"></i> CHINESE (TRANSLATION)</label>
+            <button class="btn-ghost" onclick="autoTranslate('zh', this)" style="padding: 4px 10px; font-size: 11px; height: auto; background: #fff7ed; color: #ea580c; border: 1px solid #ffedd5;">
+              <i data-lucide="sparkles" style="width:12px"></i> Dịch tự động
+            </button>
+          </div>
+          <div class="form-group"><label>点名</label><input type="text" class="form-control" id="poi-name-zh" placeholder="例如：蜗牛餐厅"></div>
+          <div class="form-group"><label>描述 / 脚本</label><textarea class="form-control" id="poi-desc-zh" rows="2" placeholder="中文语音脚本..."></textarea></div>
         </div>
+
+        <div class="form-group" style="margin-top: 20px;"><label><i data-lucide="volume-2"></i> Audio URL (Dùng chung)</label><input type="text" class="form-control" id="poi-audio-url" placeholder="https://example.com/audio.mp3"></div>
+      </div>
+    </div>
+
+    <!-- SECTION 3: LOẠI ĐIỂM -->
+    <div class="form-section">
+      <div class="section-title"><i data-lucide="settings"></i> Loại điểm <i data-lucide="chevron-up" class="chevron"></i></div>
+      <div class="section-content">
         <div class="form-group">
-          <label>Danh mục</label>
-          <select class="form-input">
-            <option>🦪 Ốc</option><option>🔥 Nướng</option>
-            <option>🍚 Ăn vặt</option><option>🍜 Đặc sản</option>
+          <label>Loại điểm</label>
+          <select class="form-control" id="poi-category">
+            <option value="Quán ăn">Điểm chính (Quán ăn)</option>
+            <option value="WC">Nhà vệ sinh</option>
+            <option value="Gửi xe">Bãi gửi xe</option>
+            <option value="Bán vé">Quầy bán vé</option>
+            <option value="Bến thuyền">Bến thuyền</option>
           </select>
         </div>
-        <div class="form-group full-width">
-          <label>Mô tả / Script TTS (Tiếng Việt)</label>
-          <textarea id="poi-desc" class="form-input" placeholder="Nhập nội dung thuyết minh..."></textarea>
-        </div>
-        <div class="form-group full-width">
-          <label>Ảnh minh họa</label>
-          <div class="upload-zone" style="margin:0">
-            <div class="uz-icon">🖼️</div>
-            <p>Kéo thả ảnh vào đây</p>
-            <span>JPG, PNG · Tối đa 5MB</span>
-          </div>
+      </div>
+    </div>
+
+    <!-- SECTION 4: TÙY CHỌN -->
+    <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; margin-top: 15px;">
+      <div style="display: flex; align-items: center; gap: 15px;">
+        <input type="checkbox" id="poi-ads-popup" style="width: 20px; height: 20px; cursor: pointer;">
+        <div>
+          <label for="poi-ads-popup" style="font-weight: 700; font-size: 14px; margin: 0; cursor: pointer;">Popup quảng cáo</label>
+          <p style="font-size: 12px; color: #64748b; margin: 0;">Hiển thị popup quảng cáo khi click vào điểm</p>
         </div>
       </div>
     </div>
-    <div class="modal-footer">
-      <button class="btn-outline" onclick="poiManager.closeModal()">Hủy</button>
-      <button class="btn-primary" onclick="poiManager.saveData()">💾 Lưu POI</button>
+  </div>
+
+  <div class="panel-footer" style="padding:20px 30px; border-top: 1px solid #f1f5f9; gap: 12px; flex-wrap: wrap;">
+    <button class="btn btn-ghost" id="btn-delete-poi" onclick="deletePoiData()" style="background: #fee2e2; border: 1px solid #fecaca; color: #dc2626; display: none;">
+      <i data-lucide="trash-2"></i> Xóa
+    </button>
+    <div style="flex: 1; display: flex; gap: 12px;">
+      <button class="btn btn-ghost" onclick="resetPoiForm()" style="flex: 1; background: #fff; border: 1px solid #e2e8f0;"><i data-lucide="refresh-cw"></i> Đặt lại</button>
+      <button class="btn btn-primary" id="btn-save-poi" onclick="savePoiData()" style="flex: 2; background: #10b981; border: none;"><i data-lucide="plus"></i> Tạo điểm</button>
     </div>
   </div>
 </div>
 
-<script>
-// ── DATA ──
-const mockData = {
-  pois: [
-    { id:'P01', name:'Quán Ốc Vũ', lat:10.7621, lng:106.7023, radius:50, priority:10, img:'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?auto=format&fit=crop&w=150&q=80', audio:'oc_vu_vi.mp3', trans:'ok' },
-    { id:'P02', name:'Thế Giới Bò', lat:10.7618, lng:106.7033, radius:40, priority:8, img:'https://images.unsplash.com/photo-1544025162-81111421550a?auto=format&fit=crop&w=150&q=80', audio:'-', trans:'pending' },
-    { id:'P03', name:'Chè Xô Viết', lat:10.7631, lng:106.7041, radius:30, priority:5, img:'https://images.unsplash.com/photo-1563805042-7684c8a9e9ce?auto=format&fit=crop&w=150&q=80', audio:'che_xv_vi.mp3', trans:'ok' },
-    { id:'P04', name:'Sushi Nhí', lat:10.7601, lng:106.7011, radius:60, priority:7, img:'https://images.unsplash.com/photo-1579871494447-9811cf80d66c?auto=format&fit=crop&w=150&q=80', audio:'-', trans:'pending' }
-  ],
-  tours: [
-    { id:'T01', name:'Tour Hải Sản Vĩnh Khánh', desc:'Khám phá thiên đường ốc và hải sản tươi rực rỡ nhất quận 4.', count:12, img:'https://images.unsplash.com/photo-1565557623262-b51c2513a641?auto=format&fit=crop&w=600&q=80' },
-    { id:'T02', name:'Tour Ăn Vặt Lề Đường', desc:'Trải nghiệm ẩm thực hè phố đậm chất Sài Gòn độc tôn.', count:8, img:'https://images.unsplash.com/photo-1574484284002-952d92456975?auto=format&fit=crop&w=600&q=80' },
-    { id:'T03', name:'Tour Nướng & Bia', desc:'Dành cho hội bạn nhậu với các quán BBQ đỉnh cao nhất tuyến đường.', count:5, img:'https://images.unsplash.com/photo-1544025162-81111421550a?auto=format&fit=crop&w=600&q=80' }
-  ]
-};
+<!-- ══ SLIDE PANEL (TOUR ADD/EDIT) ══ -->
+<div class="panel-overlay" id="panel-overlay-tour" style="display:none" onclick="closeTourModal()"></div>
+<div class="side-panel" id="tour-form-panel">
+  <div class="panel-header"><h3 id="tour-form-title">Quản lý Tour</h3><button class="btn-ghost" onclick="closeTourModal()"><i data-lucide="x"></i></button></div>
+  <div class="panel-body">
+    <input type="hidden" id="tour-id"><div class="form-group"><label>Tên Tour</label><input type="text" class="form-control" id="tour-name"></div><div class="form-group"><label>Mô tả ngắn</label><textarea class="form-control" id="tour-desc" rows="2"></textarea></div><div class="form-group"><label>Ảnh Tour (URL)</label><input type="text" class="form-control" id="tour-img"></div>
+    <div class="form-group">
+      <label style="display:flex; justify-content:space-between">
+        Chọn các quán trong hành trình (Theo thứ tự đi)
+        <small style="color:var(--primary); font-weight:700">Đã chọn: <span id="selected-poi-count">0</span></small>
+      </label>
+      <div class="poi-checklist" id="tour-poi-checklist" style="max-height:250px; overflow-y:auto; padding:10px; background:#f8fafc; border-radius:8px; border:1px solid #e2e8f0; display:grid; grid-template-columns:1fr 1fr; gap:10px"></div>
+    </div>
+  </div>
+  <div class="panel-footer" style="padding:20px 30px; background:#f8fafc; border-top:1px solid #e2e8f0">
+    <button class="btn btn-ghost" onclick="closeTourModal()" style="flex:1">Hủy</button>
+    <button class="btn btn-primary" onclick="saveTourData()" style="flex:2">Lưu Tour</button>
+  </div>
+</div>
 
-// ── ROUTING ──
-const pageNames = { 'poi-panel':'Quản lý POI','audio-panel':'Quản lý Audio','trans-panel':'Quản lý Bản dịch','analytics-panel':'Lịch sử sử dụng','tour-panel':'Quản lý Tour' };
-document.querySelectorAll('.nav-item').forEach(item => {
-  item.addEventListener('click', () => {
-    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-    item.classList.add('active');
-    const target = item.getAttribute('data-target');
-    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
-    document.getElementById(target).classList.add('active');
-    document.getElementById('page-title').textContent = pageNames[target] || '';
-  });
-});
+<!-- ══ EXPORT MODAL ══ -->
+<div class="central-modal" id="modal-export"><div class="modal-box"><div class="modal-header"><h3>Mã nguồn C# Mobile</h3><button class="btn-ghost" onclick="document.getElementById('modal-export').style.display='none'"><i data-lucide="x"></i></button></div><div class="modal-body"><div id="export-code-area"></div></div><div class="modal-footer"><button class="btn btn-primary" onclick="copyExportCode()"><i data-lucide="copy"></i> Copy Code</button></div></div></div>
 
-// ── POI ──
-const poiManager = {
-  render() {
-    const tbody = document.querySelector('#poi-table tbody');
-    tbody.innerHTML = '';
-    mockData.pois.forEach(p => {
-      const tr = document.createElement('tr');
-      tr.innerHTML = `
-        <td style="font-family:var(--mono);font-size:12px;color:var(--text3)">${p.id}</td>
-        <td><img src="${p.img}" class="poi-thumb"></td>
-        <td><div class="td-name">${p.name}</div></td>
-        <td><span class="coord-badge">${p.lat}, ${p.lng}</span></td>
-        <td style="font-family:var(--mono);font-size:12px">${p.radius}m</td>
-        <td><span class="priority-badge">${p.priority}</span></td>
-        <td><div class="td-actions">
-          <button class="action-btn" onclick="poiManager.showModal('${p.id}')" title="Sửa">✏️</button>
-          <button class="action-btn" title="Audio">🎵</button>
-          <button class="action-btn del" onclick="alert('Xóa ${p.name}?')" title="Xoá">🗑️</button>
-        </div></td>`;
-      tbody.appendChild(tr);
-    });
-  },
-  showModal(id) {
-    if (id) {
-      const p = mockData.pois.find(x => x.id === id);
-      document.getElementById('poi-name').value = p.name;
-      document.getElementById('poi-coords').value = `${p.lat}, ${p.lng}`;
-      document.getElementById('poi-priority').value = p.priority;
-      document.getElementById('poi-radius').value = p.radius;
-    } else {
-      ['poi-name','poi-coords','poi-desc'].forEach(id => document.getElementById(id).value = '');
-      document.getElementById('poi-priority').value = '50';
-      document.getElementById('poi-radius').value = '50';
-    }
-    document.getElementById('poi-modal').classList.add('active');
-  },
-  closeModal() { document.getElementById('poi-modal').classList.remove('active'); },
-  saveData() { alert('Đã lưu dữ liệu!'); this.closeModal(); }
-};
-
-// ── AUDIO ──
-const audioManager = {
-  render() {
-    const list = document.getElementById('audio-list');
-    list.innerHTML = '';
-    mockData.pois.forEach(p => {
-      const hasAudio = p.audio !== '-';
-      const div = document.createElement('div');
-      div.className = 'audio-item';
-      div.innerHTML = `
-        <button class="play-btn">${hasAudio ? '▶' : '○'}</button>
-        <div style="flex:1">
-          <div class="audio-name">${p.name}</div>
-          <div class="audio-meta">${hasAudio ? p.audio + ' · Tiếng Việt' : 'Chưa có file audio'}</div>
-        </div>
-        <div class="audio-wave" id="aw-${p.id}"></div>
-        <span class="tag ${hasAudio ? 'tag-ok' : 'tag-danger'}" style="margin:0 10px">${hasAudio ? '✓ Có audio' : '✗ Thiếu'}</span>
-        <button class="action-btn" title="Upload">📤</button>
-        <button class="action-btn del" title="Xoá">🗑️</button>`;
-      list.appendChild(div);
-      if (hasAudio) {
-        const wv = document.getElementById('aw-' + p.id);
-        for (let i = 0; i < 20; i++) {
-          const b = document.createElement('div');
-          b.className = 'wv';
-          b.style.height = (3 + Math.random() * 16) + 'px';
-          b.style.opacity = (.2 + Math.random() * .6).toFixed(2);
-          wv.appendChild(b);
-        }
-      }
-    });
-  }
-};
-
-// ── TRANSLATION ──
-const transManager = {
-  render() {
-    const tbody = document.querySelector('#trans-table tbody');
-    tbody.innerHTML = '';
-    mockData.pois.forEach(p => {
-      const isOk = p.trans === 'ok';
-      const tr = document.createElement('tr');
-      tr.innerHTML = `
-        <td class="td-name">${p.name}</td>
-        <td style="color:var(--text3);font-size:12px">Văn bản / TTS</td>
-        <td><span class="tag ${isOk ? 'tag-ok' : 'tag-pending'}">${isOk ? '✓ Đã dịch (100%)' : '⏳ Cần cập nhật'}</span></td>
-        <td style="color:var(--text3);font-size:12px;max-width:200px">${isOk ? 'Bản dịch hoàn tất và được duyệt.' : 'Đang chờ bổ sung nội dung...'}</td>
-        <td><div class="td-actions">
-          <button class="action-btn" title="Sửa">✏️</button>
-          <button class="action-btn" title="Xem">👁️</button>
-        </div></td>`;
-      tbody.appendChild(tr);
-    });
-  }
-};
-
-// ── TOUR ──
-const tourManager = {
-  render() {
-    const grid = document.getElementById('tour-grid');
-    grid.innerHTML = '';
-    mockData.tours.forEach(t => {
-      const div = document.createElement('div');
-      div.className = 'tour-card';
-      div.innerHTML = `
-        <img src="${t.img}" class="tour-cover">
-        <div class="tour-info">
-          <h3>${t.name}</h3>
-          <p>${t.desc}</p>
-          <div class="tour-meta">
-            <span class="poi-count">📍 ${t.count} điểm</span>
-            <span class="edit-action">✏️ Cấu hình</span>
-          </div>
-        </div>`;
-      grid.appendChild(div);
-    });
-  }
-};
-
-// ── ANALYTICS BAR CHART ──
-function renderBarChart() {
-  const data = [
-    { label:'Quán Ốc Vũ', val:247, w:92, color:'linear-gradient(90deg,#3b82f6,#60a5fa)' },
-    { label:'Thế Giới Bò', val:210, w:78, color:'linear-gradient(90deg,#8b5cf6,#a78bfa)' },
-    { label:'Chè Xô Viết', val:175, w:65, color:'linear-gradient(90deg,#10b981,#34d399)' },
-    { label:'Sushi Nhí', val:112, w:42, color:'linear-gradient(90deg,#f59e0b,#fbbf24)' },
-  ];
-  const bc = document.getElementById('bar-chart');
-  bc.innerHTML = '';
-  data.forEach(d => {
-    bc.innerHTML += `<div class="bar-row">
-      <div class="bar-label">${d.label}</div>
-      <div class="bar-track"><div class="bar-fill" style="width:${d.w}%;background:${d.color}"></div></div>
-      <div class="bar-val">${d.val}</div>
-    </div>`;
-  });
-}
-
-// ── LANG TABS ──
-function setLang(el) {
-  document.querySelectorAll('.lang-tab').forEach(t => t.classList.remove('active'));
-  el.classList.add('active');
-}
-
-// ── MODAL CLOSE ON OVERLAY ──
-document.getElementById('poi-modal').addEventListener('click', function(e) {
-  if (e.target === this) poiManager.closeModal();
-});
-
-// ── SIDEBAR FOOTER BUTTON ──
-document.querySelector('.sidebar-footer .btn-outline').addEventListener('click', () => {
-  alert('Khởi động ứng dụng Vĩnh Khánh Tour MAUI Mobile...');
-});
-
-// ── CHART ANIMATE ──
-function animateBars() {
-  document.querySelectorAll('.mock-chart .bar').forEach(bar => {
-    const h = bar.style.height;
-    bar.style.height = '0%';
-    setTimeout(() => bar.style.height = h, 150);
-  });
-}
-
-// ── INIT ──
-window.onload = () => {
-  poiManager.render();
-  audioManager.render();
-  transManager.render();
-  tourManager.render();
-  renderBarChart();
-  setTimeout(animateBars, 400);
-};
-</script>
+<div id="toast-container"></div>
+<script src="app.js"></script>
+<script>lucide.createIcons();</script>
 </body>
 </html>

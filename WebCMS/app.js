@@ -1,178 +1,438 @@
-// Data Mocking
-const mockData = {
-    pois: [
-        { id: 'P01', name: 'Quán Ốc Vũ', lat: 10.7621, lng: 106.7023, radius: 50, priority: 10, img: 'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?auto=format&fit=crop&w=150&q=80', audio: 'oc_vu_vi.mp3', trans: 'ok' },
-        { id: 'P02', name: 'Thế Giới Bò', lat: 10.7618, lng: 106.7033, radius: 40, priority: 8, img: 'https://images.unsplash.com/photo-1544025162-81111421550a?auto=format&fit=crop&w=150&q=80', audio: '-', trans: 'pending' },
-        { id: 'P03', name: 'Chè Xô Viết', lat: 10.7631, lng: 106.7041, radius: 30, priority: 5, img: 'https://images.unsplash.com/photo-1563805042-7684c8a9e9ce?auto=format&fit=crop&w=150&q=80', audio: 'che_xv_vi.mp3', trans: 'ok' },
-        { id: 'P04', name: 'Sushi Nhí', lat: 10.7601, lng: 106.7011, radius: 60, priority: 7, img: 'https://images.unsplash.com/photo-1579871494447-9811cf80d66c?auto=format&fit=crop&w=150&q=80', audio: '-', trans: 'pending' }
-    ],
-    tours: [
-        { id: 'T01', name: 'Tour Hải Sản Vĩnh Khánh', desc: 'Khám phá thiên đường ốc và hải sản tươi rực rỡ nhất quận 4.', count: 12, img: 'https://images.unsplash.com/photo-1565557623262-b51c2513a641?auto=format&fit=crop&w=600&q=80' },
-        { id: 'T02', name: 'Tour Ăn Vặt Lề Đường', desc: 'Trải nghiệm ẩm thực hè phố đậm chất Sài Gòn độc tôn.', count: 8, img: 'https://images.unsplash.com/photo-1574484284002-952d92456975?auto=format&fit=crop&w=600&q=80' },
-        { id: 'T03', name: 'Tour Nướng & Bia', desc: 'Dành cho hội bạn nhậu với các quán BBQ đỉnh cao nhất tuyến đường.', count: 5, img: 'https://images.unsplash.com/photo-1544025162-81111421550a?auto=format&fit=crop&w=600&q=80' }
-    ]
+const API = 'http://localhost:5256/api', BASE_URL = 'http://localhost:5256';
+let map, markers = [], allPois = [], tours = [], historyData = [];
+let mainChart, pieChart;
+
+// ══ FORM STATE (POI) ══
+let currentPoiLang = 'vi';
+let poiLangData = {
+  vi: { name: '', desc: '', audio: '' },
+  en: { name: '', desc: '', audio: '' },
+  zh: { name: '', desc: '', audio: '' }
 };
 
-// Routing Logic
-const navItems = document.querySelectorAll('.nav-item');
-const panels = document.querySelectorAll('.panel');
-const pageTitle = document.getElementById('page-title');
+// ══ FORM STATE (TOUR) ══
+let selectedPois = [];
 
-navItems.forEach(item => {
-    item.addEventListener('click', () => {
-        // Update Nav
-        navItems.forEach(n => n.classList.remove('active'));
-        item.classList.add('active');
-        
-        // Update Title
-        pageTitle.textContent = item.textContent.trim().replace(/^[\u2700-\u27BF]|[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u2011-\u26FF]|\uD83E[\uDD10-\uDDFF]/g, '').trim();
-        
-        // Update Panel
-        const target = item.getAttribute('data-target');
-        panels.forEach(p => p.classList.remove('active'));
-        document.getElementById(target).classList.add('active');
+document.addEventListener('DOMContentLoaded', () => {
+    initApp();
+    setupAccordions();
+});
+
+async function initApp() {
+    await loadPois();
+    await loadTours();
+    await loadAnalytics();
+    lucide.createIcons();
+    switchPage('page-dashboard', document.getElementById('menu-dashboard'));
+}
+
+function setupAccordions() {
+    document.querySelectorAll('.section-title').forEach(title => {
+        title.addEventListener('click', () => title.parentElement.classList.toggle('closed'));
     });
-});
+}
 
-// POI Manager
-const poiManager = {
-    render: function() {
-        const tbody = document.querySelector('#poi-table tbody');
-        tbody.innerHTML = '';
-        mockData.pois.forEach(p => {
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td style="font-weight:700; color:var(--primary-light)">${p.id}</td>
-                <td><img src="${p.img}" class="poi-thumb"></td>
-                <td style="font-weight:600; font-size:15px">${p.name}</td>
-                <td><code style="background:rgba(255,255,255,0.05);padding:6px 10px;border-radius:6px;font-family:monospace;color:#90caf9">${p.lat}, ${p.lng}</code></td>
-                <td>${p.radius}m</td>
-                <td><span style="background:rgba(255,202,40,0.15);color:var(--accent);padding:4px 10px;border-radius:6px;font-weight:600">${p.priority}</span></td>
-                <td>
-                    <button class="action-btn" onclick="poiManager.showModal('${p.id}')">✏️ Cập nhật</button>
-                    <button class="action-btn delete" onclick="alert('Xóa ${p.name}?')">🗑️</button>
-                </td>
-            `;
-            tbody.appendChild(tr);
-        });
-    },
-    showModal: function(id) {
-        if(id) {
-            const poi = mockData.pois.find(x => x.id === id);
-            document.getElementById('poi-name').value = poi.name;
-            document.getElementById('poi-coords').value = `${poi.lat}, ${poi.lng}`;
-            document.getElementById('poi-priority').value = poi.priority;
-            document.getElementById('poi-radius').value = poi.radius;
-        } else {
-            document.getElementById('poi-name').value = '';
-            document.getElementById('poi-coords').value = '';
-            document.getElementById('poi-priority').value = '50';
-            document.getElementById('poi-radius').value = '50';
-            document.getElementById('poi-desc').value = '';
-        }
-        document.getElementById('poi-modal').classList.add('active');
-    },
-    closeModal: function() {
-        document.getElementById('poi-modal').classList.remove('active');
-    },
-    saveData: function() {
-        alert('Đã đồng bộ dữ liệu tĩnh cục bộ!');
-        this.closeModal();
-    }
-};
+// ══ PAGE NAVIGATION ══
+function switchPage(pageId, navEl) {
+  document.querySelectorAll('.main-content').forEach(p => p.classList.remove('active'));
+  const target = document.getElementById(pageId);
+  if (target) target.classList.add('active');
+  
+  document.querySelectorAll('.menu-item').forEach(m => m.classList.remove('active'));
+  if (navEl) navEl.classList.add('active');
 
-// Audio Manager
-const audioManager = {
-    render: function() {
-        const tbody = document.querySelector('#audio-table tbody');
-        tbody.innerHTML = '';
-        mockData.pois.forEach(p => {
-            const tr = document.createElement('tr');
-            const hasAudio = p.audio !== '-';
-            tr.innerHTML = `
-                <td style="font-weight:600; font-size:15px">${p.name}</td>
-                <td>${hasAudio ? `🔊 <span style="color:#64B5F6">${p.audio}</span>` : '<span style="color:var(--text-muted)">Chưa có file</span>'}</td>
-                <td><span style="color:var(--text-muted);font-style:italic">${hasAudio ? 'Dữ liệu thoại tự động...' : 'Nhấn để định cấu hình...'}</span></td>
-                <td>
-                    ${hasAudio 
-                        ? '<span class="status-badge" style="background:rgba(0,230,118,0.15);color:var(--success);">Đã đồng bộ</span>' 
-                        : '<span class="status-badge" style="background:rgba(255,82,82,0.15);color:var(--danger);">Thiếu file</span>'}
-                </td>
-                <td>
-                    <button class="action-btn">🎙️ Upload tệp</button>
-                    <button class="action-btn">✍️ Ghi đè chữ</button>
-                </td>
-            `;
-            tbody.appendChild(tr);
-        });
-    }
-};
+  const titleMap = {
+    'page-dashboard': 'Tổng quan hệ thống',
+    'page-poi': 'Bản đồ & Quản lý điểm',
+    'page-tour': 'Quản lý hành trình Tour',
+    'page-audio': 'Quản lý âm thanh thuyết minh',
+    'page-trans': 'Quản lý nội dung đa ngữ',
+    'page-history': 'Nhật ký hành trình khách hàng'
+  };
+  document.getElementById('current-page-title').textContent = titleMap[pageId] || 'VinhKhanhTour Admin';
 
-// Translation Manager
-const transManager = {
-    render: function() {
-        const tbody = document.querySelector('#trans-table tbody');
-        tbody.innerHTML = '';
-        mockData.pois.forEach(p => {
-            const tr = document.createElement('tr');
-            const isOk = p.trans === 'ok';
-            tr.innerHTML = `
-                <td style="font-weight:600; font-size:15px">POI: ${p.name}</td>
-                <td>Văn bản hiển thị / TTS</td>
-                <td style="color:#B0BEC5">${isOk ? 'Bản dịch đã hoàn tất và được duyệt 100%.' : 'Đang chờ dịch thuật bổ sung nội dung...'()}</td>
-                <td>
-                    ${isOk 
-                        ? '<span class="status-badge" style="background:rgba(0,230,118,0.15);color:var(--success);">Đã dịch (100%)</span>' 
-                        : '<span class="status-badge" style="background:rgba(255,202,40,0.15);color:var(--accent);">Cần cập nhật</span>'}
-                </td>
-                <td><button class="action-btn">🌐 Quản lý từ vựng</button></td>
-            `;
-            tbody.appendChild(tr);
-        });
-    }
-};
+  if (pageId === 'page-poi') setTimeout(() => google.maps.event.trigger(map, 'resize'), 300);
+  if (pageId === 'page-audio') renderAudio();
+  if (pageId === 'page-trans') renderTrans();
+  if (pageId === 'page-history') renderHistory();
+  if (pageId === 'page-dashboard') initCharts();
+}
 
-// Tour Manager
-const tourManager = {
-    render: function() {
-        const grid = document.getElementById('tour-grid');
-        grid.innerHTML = '';
-        mockData.tours.forEach(t => {
-            const div = document.createElement('div');
-            div.className = 'tour-card';
-            div.innerHTML = `
-                <img src="${t.img}" class="tour-cover">
-                <div class="tour-info">
-                    <h3>${t.name}</h3>
-                    <p>${t.desc}</p>
-                    <div class="tour-meta">
-                        <span class="poi-count">📍 Bao gồm ${t.count} mục</span>
-                        <span class="edit-action">✏️ Cấu hình</span>
-                    </div>
-                </div>
-            `;
-            grid.appendChild(div);
-        });
-    }
-};
+// ══ GOOGLE MAPS ══
+function initMap() {
+  map = new google.maps.Map(document.getElementById('google-map'), {
+    center: { lat: 10.8231, lng: 106.6297 }, zoom: 15,
+    styles: [ { featureType: "poi", elementType: "labels", stylers: [{ visibility: "off" }] } ]
+  });
+  map.addListener('click', e => { closeMapDetail(); openNewPoiForm(e.latLng.lat(), e.latLng.lng()); });
+}
 
-document.querySelector('.sidebar-footer button').addEventListener('click', () => {
-    alert("Khởi động ứng dụng Vĩnh Khánh Tour MAUI Mobile...");
-});
+function renderMarkers() {
+  markers.forEach(m => m.setMap(null)); markers = [];
+  allPois.forEach(p => {
+    const isMajor = (p.category || p.Category || 'Quán ăn') === 'Quán ăn';
+    const color = isMajor ? 'red' : 'green';
+    const m = new google.maps.Marker({ 
+      position: { lat: p.latitude || p.Latitude, lng: p.longitude || p.Longitude }, 
+      map, 
+      icon: { url: `https://maps.google.com/mapfiles/ms/icons/${color}-dot.png`, scaledSize: new google.maps.Size(32, 32) } 
+    });
+    m.addListener('click', () => { closePoiForm(); showMapDetail(p); map.panTo(m.getPosition()); });
+    markers.push(m);
+  });
+  renderPoiCarousel();
+}
 
-// Initialize Framework
-window.onload = () => {
-    poiManager.render();
-    audioManager.render();
-    transManager.render();
-    tourManager.render();
+function renderPoiCarousel() {
+  const el = document.getElementById('poi-carousel'); if (!el) return;
+  el.innerHTML = allPois.map(p => `
+    <div class="poi-mini-card" onclick="map.panTo({lat:${p.latitude || p.Latitude}, lng:${p.longitude || p.Longitude}}); showMapDetail(${JSON.stringify(p).replace(/"/g, '&quot;')})">
+      <img src="${getImgUrl(p)}">
+      <div class="poi-mini-info"><h4>${p.name || p.Name}</h4><small>${p.category || p.Category || 'Quán ăn'}</small></div>
+    </div>`).join('');
+}
+
+function showMapDetail(poi) {
+  const panel = document.getElementById('map-detail-panel');
+  const cat = poi.category || poi.Category || 'Quán ăn';
+  const badgeClass = cat === 'Quán ăn' ? 'badge-danger' : 'badge-success';
+  document.getElementById('map-detail-title').innerHTML = `${poi.name || poi.Name} <span class="badge ${badgeClass}" style="margin-left:8px">${cat}</span>`;
+  document.getElementById('map-detail-addr').textContent = poi.address || poi.Address || 'Không có địa chỉ';
+  document.getElementById('map-detail-desc').textContent = poi.description || poi.Description || 'Chưa có mô tả chi tiết cho địa điểm này.';
+  document.getElementById('map-detail-img').src = getImgUrl(poi);
+  document.getElementById('btn-edit-from-map').onclick = () => openEditPoiForm(poi);
+  panel.style.display = 'flex'; lucide.createIcons();
+}
+
+function closeMapDetail() { document.getElementById('map-detail-panel').style.display = 'none'; }
+
+// ══ POI DATA CRUD (GPS ADMIN STYLE) ══
+async function loadPois() {
+  try {
+    const res = await fetch(`${API}/restaurants`);
+    allPois = await res.json();
+    renderMarkers();
+  } catch(e) { console.error(e); }
+}
+
+function openNewPoiForm(lat, lng) {
+    resetPoiForm();
+    document.getElementById('poi-form-title').textContent = '📍 Tạo điểm mới';
     
-    // Animate Chart randomly on load for effects
-    setTimeout(() => {
-        document.querySelectorAll('.mock-chart .bar').forEach(bar => {
-            const currentHeight = parseInt(bar.style.height);
-            bar.style.height = '0%';
-            setTimeout(() => { bar.style.height = currentHeight + '%'; }, 100);
+    // Nếu không có tọa độ truyền vào, lấy trung tâm bản đồ hiện tại hoặc để trống tùy ý
+    const center = map.getCenter();
+    document.getElementById('poi-lat').value = (lat || center.lat()).toFixed(7);
+    document.getElementById('poi-lng').value = (lng || center.lng()).toFixed(7);
+    
+    // UI Adjustments
+    const btnSave = document.getElementById('btn-save-poi');
+    if (btnSave) btnSave.innerHTML = '<i data-lucide="plus"></i> Tạo điểm mới';
+    const btnDel = document.getElementById('btn-delete-poi');
+    if (btnDel) btnDel.style.display = 'none';
+
+    document.getElementById('poi-form-panel').classList.add('open');
+    document.getElementById('panel-overlay-poi').style.display = 'block';
+    lucide.createIcons();
+}
+
+function openEditPoiForm(poi) {
+    resetPoiForm();
+    const p = poi;
+    document.getElementById('poi-form-title').textContent = '📝 Chỉnh sửa điểm';
+    document.getElementById('poi-id').value = p.id || p.Id;
+    document.getElementById('poi-lat').value = (p.latitude || p.Latitude || 0).toFixed(7);
+    document.getElementById('poi-lng').value = (p.longitude || p.Longitude || 0).toFixed(7);
+    document.getElementById('poi-radius').value = p.radius || p.Radius || 50;
+    document.getElementById('poi-category').value = p.category || p.Category || 'Quán ăn';
+    document.getElementById('poi-ads-popup').checked = p.isAdsPopup || p.IsAdsPopup || false;
+    document.getElementById('poi-audio-url').value = p.audioUrl || p.AudioUrl || p.audioFile || p.AudioFile || '';
+    
+    // UI Adjustments
+    const btnSave = document.getElementById('btn-save-poi');
+    if (btnSave) btnSave.innerHTML = '<i data-lucide="save"></i> Lưu thay đổi';
+    const btnDel = document.getElementById('btn-delete-poi');
+    if (btnDel) btnDel.style.display = 'block';
+
+    // Populate Language Fields
+    document.getElementById('poi-name-vi').value = p.name || p.Name || '';
+    document.getElementById('poi-desc-vi').value = p.description || p.Description || p.ttsScript || p.TtsScript || '';
+    
+    document.getElementById('poi-name-en').value = p.ttsScriptEn || p.TtsScriptEn || ''; // Assuming EN Name/Script stored here
+    document.getElementById('poi-desc-en').value = p.ttsScriptEn || ''; 
+    
+    document.getElementById('poi-name-zh').value = p.ttsScriptZh || p.TtsScriptZh || '';
+    document.getElementById('poi-desc-zh').value = p.ttsScriptZh || '';
+
+    document.getElementById('poi-form-panel').classList.add('open');
+    document.getElementById('panel-overlay-poi').style.display = 'block';
+    lucide.createIcons();
+}
+
+function switchFormLanguage(lang) {
+    poiLangData[currentPoiLang] = { name: document.getElementById('poi-name').value, desc: document.getElementById('poi-desc').value, audio: document.getElementById('poi-audio-url').value };
+    currentPoiLang = lang; updateFormFieldsFromState();
+}
+
+function updateFormFieldsFromState() {
+    const data = poiLangData[currentPoiLang];
+    document.getElementById('poi-name').value = data.name;
+    document.getElementById('poi-desc').value = data.desc;
+    document.getElementById('poi-audio-url').value = data.audio;
+}
+
+async function savePoiData() {
+    const id = document.getElementById('poi-id').value;
+    const body = {
+        Name: document.getElementById('poi-name-vi').value,
+        Description: document.getElementById('poi-desc-vi').value,
+        Category: document.getElementById('poi-category').value,
+        Latitude: parseFloat(document.getElementById('poi-lat').value),
+        Longitude: parseFloat(document.getElementById('poi-lng').value),
+        Radius: parseInt(document.getElementById('poi-radius').value),
+        IsAdsPopup: document.getElementById('poi-ads-popup').checked,
+        AudioUrl: document.getElementById('poi-audio-url').value,
+        AudioFile: document.getElementById('poi-audio-url').value,
+        TtsScript: document.getElementById('poi-desc-vi').value,
+        TtsScriptEn: document.getElementById('poi-name-en').value,
+        TtsScriptZh: document.getElementById('poi-name-zh').value,
+        Address: 'Bình Thạnh, TP.HCM'
+    };
+    const method = id ? 'PUT' : 'POST', url = id ? `${API}/restaurants/${id}` : `${API}/restaurants`;
+    await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    showToast('✅ Đã lưu thành công!', 'success'); closePoiForm(); loadPois();
+}
+
+async function deletePoiData() {
+    const id = document.getElementById('poi-id').value;
+    if (!id) return;
+    if (!confirm('⚠️ Bạn có chắc chắn muốn xóa địa điểm này không? Thao tác này không thể hoàn tác.')) return;
+
+    try {
+        const res = await fetch(`${API}/restaurants/${id}`, { method: 'DELETE' });
+        if (res.ok) {
+            showToast('🗑️ Đã xóa địa điểm thành công', 'success');
+            closePoiForm();
+            loadPois();
+        }
+    } catch (e) { console.error('Delete fail:', e); }
+}
+
+function resetPoiForm() {
+    document.getElementById('poi-id').value = ''; 
+    document.getElementById('poi-lat').value = ''; 
+    document.getElementById('poi-lng').value = '';
+    document.getElementById('poi-radius').value = 50;
+    document.getElementById('poi-audio-url').value = '';
+    document.getElementById('poi-ads-popup').checked = false;
+    
+    // Clear all language fields
+    ['vi','en','zh'].forEach(lang => {
+        document.getElementById(`poi-name-${lang}`).value = '';
+        document.getElementById(`poi-desc-${lang}`).value = '';
+    });
+}
+function closePoiForm() { document.getElementById('poi-form-panel').classList.remove('open'); document.getElementById('panel-overlay-poi').style.display = 'none'; }
+
+// ══ TOUR ══
+async function loadTours() {
+  try { const res = await fetch(`${API}/tours`); tours = await res.json(); renderTours(); } catch(e) { console.error(e); }
+}
+function renderTours() {
+  const el = document.getElementById('tour-grid'); if (!el) return;
+  el.innerHTML = tours.map((t, idx) => {
+    const ps = typeof t.Pois === 'string' ? JSON.parse(t.Pois) : (t.Pois || []);
+    return `
+      <div class="card" style="background:#fff;border-radius:12px;overflow:hidden;border:1px solid #e2e8f0;padding:0">
+        <img src="${t.ImageUrl || t.img || 'https://via.placeholder.com/400x150'}" style="width:100%;height:150px;object-fit:cover">
+        <div style="padding:16px">
+          <h4 style="font-weight:700">${t.Name || t.name}</h4>
+          <p style="font-size:12px;color:#64748b;margin-top:6px">${t.Description || t.desc}</p>
+          <div style="margin-top:16px;display:flex;justify-content:space-between;align-items:center">
+            <span style="font-size:12px;font-weight:700;color:var(--primary)">📍 ${ps.length} điểm dừng</span>
+            <div style="display:flex;gap:4px">
+              <button class="btn btn-ghost" onclick="editTour(${idx})"><i data-lucide="edit-3"></i></button>
+              <button class="btn btn-ghost" onclick="deleteTour(${t.id || t.Id})"><i data-lucide="trash-2"></i></button>
+            </div>
+          </div>
+        </div>
+      </div>`;
+  }).join('');
+  lucide.createIcons();
+}
+function showTourModal() { resetTourForm(); renderPoiChecklist(); document.getElementById('tour-form-title').textContent = '📍 Tạo hành trình mới'; document.getElementById('tour-form-panel').classList.add('open'); document.getElementById('panel-overlay-tour').style.display = 'block'; }
+function editTour(idx) { 
+    const t = tours[idx]; resetTourForm(); 
+    document.getElementById('tour-id').value = t.id || t.Id; document.getElementById('tour-name').value = t.Name || t.name; 
+    document.getElementById('tour-desc').value = t.Description || t.desc; document.getElementById('tour-img').value = t.ImageUrl || t.img; 
+    selectedPois = typeof t.Pois === 'string' ? JSON.parse(t.Pois) : (t.Pois || []);
+    renderPoiChecklist(); document.getElementById('tour-form-panel').classList.add('open'); document.getElementById('panel-overlay-tour').style.display = 'block'; 
+}
+function selectPoiInTour(id) {
+    const idx = selectedPois.indexOf(id);
+    if (idx > -1) selectedPois.splice(idx, 1); else selectedPois.push(id);
+    renderPoiChecklist();
+}
+function renderPoiChecklist() { 
+    const el = document.getElementById('tour-poi-checklist'); el.innerHTML = '';
+    document.getElementById('selected-poi-count').textContent = selectedPois.length;
+    allPois.forEach(p => {
+        const pId = p.id || p.Id, ord = selectedPois.indexOf(pId) + 1;
+        const div = document.createElement('div'); div.className = `poi-check-item ${ord > 0 ? 'selected' : ''}`;
+        div.style = `display:flex; align-items:center; gap:8px; padding:10px; background:#fff; border-radius:8px; cursor:pointer; border:1px solid ${ord > 0 ? 'var(--primary)' : '#e2e8f0'}`;
+        div.onclick = () => selectPoiInTour(pId);
+        div.innerHTML = `<span style="width:24px; height:24px; display:flex; align-items:center; justify-content:center; border-radius:50%; background:${ord > 0 ? 'var(--primary)' : '#f1f5f9'}; color:${ord > 0 ? '#fff' : '#64748b'}; font-size:12px; font-weight:700">${ord > 0 ? ord : ''}</span><span style="font-size:13px; font-weight:500">${p.name || p.Name}</span>`;
+        el.appendChild(div);
+    });
+}
+async function saveTourData() {
+  const id = document.getElementById('tour-id').value;
+  const body = { Name: document.getElementById('tour-name').value, Description: document.getElementById('tour-desc').value, ImageUrl: document.getElementById('tour-img').value, Pois: JSON.stringify(selectedPois) };
+  if (!body.Name || selectedPois.length === 0) { showToast('Nhập tên và chọn ít nhất 1 điểm', 'danger'); return; }
+  const method = id ? 'PUT' : 'POST', url = id ? `${API}/tours/${id}` : `${API}/tours`;
+  await fetch(url, { method, headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
+  showToast('✅ Đã lưu Tour!', 'success'); closeTourModal(); await loadTours();
+}
+function closeTourModal() { document.getElementById('tour-form-panel').classList.remove('open'); document.getElementById('panel-overlay-tour').style.display = 'none'; }
+function resetTourForm() { ['tour-id','tour-name','tour-desc','tour-img'].forEach(id => document.getElementById(id).value = ''); selectedPois = []; }
+
+// ══ ANALYTICS & DASHBOARD ══
+async function loadAnalytics() {
+  try { 
+    const res = await fetch(`${API}/analytics`); 
+    historyData = await res.json(); 
+    renderHistory(); 
+    renderDashboardRecent(); 
+    renderStatsCards();
+  } catch(e) { console.error(e); }
+}
+
+function renderStatsCards() {
+  const el = document.getElementById('dashboard-stats'); if (!el) return;
+  const totalPois = allPois.length;
+  const totalTours = tours.length;
+  const totalInteractions = historyData.length;
+  const majorPois = allPois.filter(p => (p.category || p.Category) === 'Quán ăn').length;
+
+  el.innerHTML = `
+    <div class="stat-card">
+      <div class="stat-icon blue"><i data-lucide="map-pin"></i></div>
+      <div class="stat-info"><p class="text-muted">Tổng POI</p><h2 class="stat-val">${totalPois}</h2></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon green"><i data-lucide="share-2"></i></div>
+      <div class="stat-info"><p class="text-muted">Hành trình Tour</p><h2 class="stat-val">${totalTours}</h2></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon orange"><i data-lucide="activity"></i></div>
+      <div class="stat-info"><p class="text-muted">Tương tác</p><h2 class="stat-val">${totalInteractions}</h2></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon" style="background:#fef2f2;color:#ef4444"><i data-lucide="utensils"></i></div>
+      <div class="stat-info"><p class="text-muted">Quán ăn chính</p><h2 class="stat-val">${majorPois}</h2></div>
+    </div>`;
+  lucide.createIcons();
+}
+function renderHistory() {
+  const tbody = document.getElementById('history-tbody'); if (!tbody) return;
+  tbody.innerHTML = historyData.map(h => `
+    <tr>
+      <td style="font-weight:700">${h.RestaurantName || 'Hệ thống'}</td>
+      <td><span class="badge ${h.EventType==='Click'?'badge-success':'badge-danger'}">${h.EventType || 'View'}</span></td>
+      <td style="font-family:monospace;font-size:12px">POI ID: ${h.RestaurantId}</td>
+      <td>${new Date(h.Timestamp).toLocaleString('vi-VN')}</td>
+      <td><span style="color:#10b981">● Completed</span></td>
+    </tr>`).join('');
+}
+function renderDashboardRecent() {
+  const tbody = document.getElementById('dashboard-recent-tbody'); if (!tbody) return;
+  tbody.innerHTML = historyData.slice(0, 5).map(h => `<tr><td><strong>${h.RestaurantName || 'POI'}</strong></td><td>${h.EventType}</td><td class="text-muted">${new Date(h.Timestamp).toLocaleTimeString()}</td></tr>`).join('');
+}
+function initCharts() {
+  const ctx = document.getElementById('mainChart')?.getContext('2d');
+  const ctxPie = document.getElementById('pieChart')?.getContext('2d');
+  if (!ctx || !ctxPie) return;
+  if (mainChart) mainChart.destroy(); if (pieChart) pieChart.destroy();
+  
+  const labels = historyData.slice(0, 7).map(h => new Date(h.Timestamp).toLocaleTimeString());
+  const data = historyData.slice(0, 7).map(() => Math.floor(Math.random() * 50) + 10);
+
+  mainChart = new Chart(ctx, { type: 'line', data: { labels, datasets: [{ label: 'Lượt tương tác', data, borderColor: '#2563eb', fill: true, backgroundColor: 'rgba(37, 99, 235, 0.1)', tension: 0.4 }] } });
+  
+  const cats = {}; allPois.forEach(p => { const c = p.category || p.Category || 'Quán ăn'; cats[c] = (cats[c] || 0) + 1; });
+  pieChart = new Chart(ctxPie, { type: 'doughnut', data: { labels: Object.keys(cats), datasets: [{ data: Object.values(cats), backgroundColor: ['#2563eb', '#10b981', '#f59e0b', '#ef4444', '#6366f1'] }] } });
+}
+
+// ══ AUDIO & TRANS ══
+function renderAudio() {
+  const el = document.getElementById('audio-list'); if (!el) return;
+  el.innerHTML = allPois.map(p => {
+    const audioUrl = p.audioUrl || p.AudioUrl || (p.audioFile || p.AudioFile ? `${BASE_URL}/uploads/${p.audioFile || p.AudioFile}` : '');
+    return `
+    <div class="card" style="display:flex; align-items:center; gap:20px; margin-bottom:12px">
+      <div style="background:#eff6ff;padding:12px;border-radius:10px;color:#2563eb"><i data-lucide="music"></i></div>
+      <div style="flex:1"><strong>${p.name || p.Name}</strong><br><small>${p.category || p.Category}</small></div>
+      ${audioUrl ? `<audio controls style="height:32px"><source src="${audioUrl}"></audio>` : '<span class="badge badge-danger">Thiếu File</span>'}
+    </div>`;
+  }).join('');
+  lucide.createIcons();
+}
+function renderTrans() {
+  const tbody = document.getElementById('trans-tbody'); if (!tbody) return;
+  tbody.innerHTML = allPois.map(p => `<tr><td><strong>${p.name || p.Name}</strong></td><td><div class="trans-snippet">${p.ttsScript||'—'}</div></td><td><div class="trans-snippet">${p.ttsScriptEn||'—'}</div></td><td><div class="trans-snippet">${p.ttsScriptZh||'—'}</div></td><td><button class="btn btn-ghost" onclick="openEditPoiForm(${JSON.stringify(p).replace(/"/g, '&quot;')})">Sửa</button></td></tr>`).join('');
+}
+
+// ══ AI TRANSLATION ══
+async function autoTranslate(targetLang, btn) {
+    const srcName = document.getElementById('poi-name-vi').value;
+    const srcDesc = document.getElementById('poi-desc-vi').value;
+    
+    if (!srcName && !srcDesc) {
+        showToast('Vui lòng nhập nội dung Tiếng Việt trước khi dịch', 'warning');
+        return;
+    }
+
+    const originalHtml = btn.innerHTML;
+    btn.innerHTML = '<i data-lucide="loader-2" class="spin"></i> Đang dịch...';
+    btn.disabled = true;
+    lucide.createIcons();
+
+    try {
+        if (srcName) {
+            const translatedName = await translateText(srcName, targetLang);
+            document.getElementById(`poi-name-${targetLang}`).value = translatedName;
+        }
+        if (srcDesc) {
+            const translatedDesc = await translateText(srcDesc, targetLang);
+            document.getElementById(`poi-desc-${targetLang}`).value = translatedDesc;
+        }
+        showToast(`✅ Đã dịch xong sang ${targetLang.toUpperCase()}`, 'success');
+    } catch (e) {
+        console.error('Translation error:', e);
+        showToast('❌ Lỗi dịch thuật. Vui lòng thử lại sau.', 'danger');
+    } finally {
+        btn.innerHTML = originalHtml;
+        btn.disabled = false;
+        lucide.createIcons();
+    }
+}
+
+async function translateText(text, targetLang) {
+    // Sử dụng Public Google Translate API (gtx endpoint)
+    const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=vi&tl=${targetLang}&dt=t&q=${encodeURI(text)}`;
+    const res = await fetch(url);
+    const json = await res.json();
+    
+    // Gộp các mảng kết quả dịch (đối với văn bản dài)
+    let translated = "";
+    if (json && json[0]) {
+        json[0].forEach(part => {
+            if (part[0]) translated += part[0];
         });
-    }, 500);
-};
+    }
+    return translated || text;
+}
+
+// ══ HELPERS ══
+function getImgUrl(p) { const img = p.imageUrl || p.ImageUrl; if (!img) return 'https://via.placeholder.com/400x200?text=No+Image'; if (img.startsWith('http') || img.startsWith('data:')) return img; return `${BASE_URL}/${img}`; }
+function showToast(msg, type='success') { const container = document.getElementById('toast-container'); const toast = document.createElement('div'); toast.className = `toast ${type}`; toast.innerHTML = `<i data-lucide="${type==='success'?'check-circle':'alert-circle'}"></i> <span>${msg}</span>`; container.appendChild(toast); lucide.createIcons(); setTimeout(() => toast.remove(), 3000); }
+function logout() { sessionStorage.removeItem('cms_logged_in'); window.location.href='login.html'; }
