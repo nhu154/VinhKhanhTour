@@ -1,4 +1,5 @@
 ﻿using VinhKhanhTour.Models;
+using VinhKhanhTour.Services;
 
 namespace VinhKhanhTour
 {
@@ -14,20 +15,27 @@ namespace VinhKhanhTour
         {
             try
             {
-                await Task.Delay(500);
+                // Thử load từ API trước
+                var apiList = await ApiService.Instance.GetRestaurantsAsync();
+                if (apiList.Count > 0)
+                {
+                    RestaurantsCollection.ItemsSource = apiList;
+                    return;
+                }
+            }
+            catch { }
+
+            // Fallback: dùng SQLite local
+            try
+            {
+                await Task.Delay(300);
                 var restaurants = await App.Database.GetRestaurantsAsync();
-                if (restaurants.Count == 0)
-                {
-                    await DisplayAlert("Thông báo", "Chưa có dữ liệu nhà hàng. Đang khởi tạo...", "OK");
-                }
-                else
-                {
+                if (restaurants.Count > 0)
                     RestaurantsCollection.ItemsSource = restaurants;
-                }
             }
             catch (Exception ex)
             {
-                await DisplayAlert("Lỗi", $"Không thể tải danh sách: {ex.Message}", "OK");
+                System.Diagnostics.Debug.WriteLine($"[MainPage] Load error: {ex.Message}");
             }
         }
 
@@ -48,7 +56,6 @@ namespace VinhKhanhTour
             }
         }
 
-        
         private async void OnMapClicked(object sender, EventArgs e)
         {
             await Navigation.PushAsync(new MapPage());

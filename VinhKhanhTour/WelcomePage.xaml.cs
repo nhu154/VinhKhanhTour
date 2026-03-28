@@ -1,4 +1,6 @@
+using VinhKhanhTour.Services;
 using VinhKhanhTour.Models;
+
 
 namespace VinhKhanhTour
 {
@@ -7,6 +9,44 @@ namespace VinhKhanhTour
         private const string MAPS_API_KEY = Config.GoogleMapsApiKey;
         private bool _dropdownOpen = false;
         private string _currentLang = Preferences.Default.Get("app_lang", "vi");
+        private List<ApiTour> _apiTours = new();
+
+        protected override void OnAppearing()
+        {
+            base.OnAppearing();
+            _ = LoadToursFromApiAsync();
+        }
+
+        private async Task LoadToursFromApiAsync()
+        {
+            try
+            {
+                var tours = await ApiService.Instance.GetToursAsync();
+                if (tours.Count >= 4)
+                {
+                    _apiTours = tours;
+                    // Update UI labels with API tour data
+                    MainThread.BeginInvokeOnMainThread(() => UpdateTourLabelsFromApi());
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[WelcomePage] Tours load failed: {ex.Message}");
+            }
+        }
+
+        private void UpdateTourLabelsFromApi()
+        {
+            if (_apiTours.Count == 0) return;
+            try
+            {
+                if (_apiTours.Count > 0) { LblTour1.Text = _apiTours[0].GetName(_currentLang); LblDesc1.Text = _apiTours[0].GetDescription(_currentLang); LblDur1.Text = "⏱ " + _apiTours[0].GetDuration(_currentLang); LblPts1.Text = _apiTours[0].GetRestaurantIds().Count + (_currentLang == "en" ? " spots" : _currentLang == "zh" ? "个景点" : " điểm"); }
+                if (_apiTours.Count > 1) { LblTour2.Text = _apiTours[1].GetName(_currentLang); LblDesc2.Text = _apiTours[1].GetDescription(_currentLang); LblDur2.Text = "⏱ " + _apiTours[1].GetDuration(_currentLang); LblPts2.Text = _apiTours[1].GetRestaurantIds().Count + (_currentLang == "en" ? " spots" : _currentLang == "zh" ? "个景点" : " điểm"); }
+                if (_apiTours.Count > 2) { LblTour3.Text = _apiTours[2].GetName(_currentLang); LblDesc3.Text = _apiTours[2].GetDescription(_currentLang); LblDur3.Text = "⏱ " + _apiTours[2].GetDuration(_currentLang); LblPts3.Text = _apiTours[2].GetRestaurantIds().Count + (_currentLang == "en" ? " spots" : _currentLang == "zh" ? "个景点" : " điểm"); }
+                if (_apiTours.Count > 3) { LblTour4.Text = _apiTours[3].GetName(_currentLang); LblDesc4.Text = _apiTours[3].GetDescription(_currentLang); LblDur4.Text = "⏱ " + _apiTours[3].GetDuration(_currentLang); LblPts4.Text = _apiTours[3].GetRestaurantIds().Count + (_currentLang == "en" ? " spots" : _currentLang == "zh" ? "个景点" : " điểm"); }
+            }
+            catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"[WelcomePage] UpdateLabels: {ex.Message}"); }
+        }
 
         public WelcomePage()
         {
@@ -192,53 +232,57 @@ function initMap(){{
 
         private void OnTour1Clicked(object sender, EventArgs e)
         {
+            var t = _apiTours.Count > 0 ? _apiTours[0] : null;
             Navigation.PushAsync(new TourDetailPage(new Tour
             {
-                Id = "1",
-                Name = _currentLang switch { "en" => "Shellfish Tour", "zh" => "贝类美食游", _ => "Tour Ăn Ốc" },
-                Description = _currentLang switch { "en" => "3 famous shellfish restaurants", "zh" => "3家知名贝类餐厅", _ => "3 quán ốc ngon nổi tiếng" },
-                Duration = _currentLang switch { "en" => "45 min", "zh" => "45分钟", _ => "45 phút" },
-                Rating = 4.4,
-                RestaurantIds = new List<int> { 1, 2, 3 }
+                Id = t != null ? t.Id.ToString() : "1",
+                Name = t != null ? t.GetName(_currentLang) : _currentLang switch { "en" => "Shellfish Tour", "zh" => "贝类美食游", _ => "Tour Ăn Ốc" },
+                Description = t != null ? t.GetDescription(_currentLang) : _currentLang switch { "en" => "3 famous shellfish restaurants", "zh" => "3家知名贝类餐厅", _ => "3 quán ốc ngon nổi tiếng" },
+                Duration = t != null ? t.GetDuration(_currentLang) : _currentLang switch { "en" => "45 min", "zh" => "45分钟", _ => "45 phút" },
+                Rating = t != null ? t.Rating : 4.4,
+                RestaurantIds = t != null ? t.GetRestaurantIds() : new List<int> { 1, 2, 3 }
             }));
         }
 
         private void OnTour2Clicked(object sender, EventArgs e)
         {
+            var t = _apiTours.Count > 1 ? _apiTours[1] : null;
             Navigation.PushAsync(new TourDetailPage(new Tour
             {
-                Id = "2",
-                Name = _currentLang switch { "en" => "BBQ Tour", "zh" => "烧烤美食游", _ => "Tour Ăn Nướng" },
-                Description = _currentLang switch { "en" => "BBQ, grilled beef in pepper leaves", "zh" => "烧烤，胡椒叶牛肉", _ => "Lẩu nướng, bò lá lốt" },
-                Duration = _currentLang switch { "en" => "60 min", "zh" => "60分钟", _ => "60 phút" },
-                Rating = 4.5,
-                RestaurantIds = new List<int> { 7, 8, 10 }
+                Id = t != null ? t.Id.ToString() : "2",
+                Name = t != null ? t.GetName(_currentLang) : _currentLang switch { "en" => "BBQ Tour", "zh" => "烧烤美食游", _ => "Tour Ăn Nướng" },
+                Description = t != null ? t.GetDescription(_currentLang) : _currentLang switch { "en" => "BBQ, grilled beef in pepper leaves", "zh" => "烧烤，胡椒叶牛肉", _ => "Lẩu nướng, bò lá lốt" },
+                Duration = t != null ? t.GetDuration(_currentLang) : _currentLang switch { "en" => "60 min", "zh" => "60分钟", _ => "60 phút" },
+                Rating = t != null ? t.Rating : 4.5,
+                RestaurantIds = t != null ? t.GetRestaurantIds() : new List<int> { 7, 8, 10 }
             }));
         }
 
         private void OnTour3Clicked(object sender, EventArgs e)
         {
+            var t = _apiTours.Count > 2 ? _apiTours[2] : null;
             Navigation.PushAsync(new TourDetailPage(new Tour
             {
-                Id = "3",
-                Name = _currentLang switch { "en" => "Snack Tour", "zh" => "小吃游", _ => "Tour Ăn Vặt" },
-                Description = _currentLang switch { "en" => "Crispy rice, grilled pork noodles", "zh" => "锅巴，烤猪肉米线", _ => "Cơm cháy, bún thịt nướng" },
-                Duration = _currentLang switch { "en" => "40 min", "zh" => "40分钟", _ => "40 phút" },
-                Rating = 4.3,
-                RestaurantIds = new List<int> { 9, 11 }
+                Id = t != null ? t.Id.ToString() : "3",
+                Name = t != null ? t.GetName(_currentLang) : _currentLang switch { "en" => "Snack Tour", "zh" => "小吃游", _ => "Tour Ăn Vặt" },
+                Description = t != null ? t.GetDescription(_currentLang) : _currentLang switch { "en" => "Crispy rice, grilled pork noodles", "zh" => "锅巴，烤猪肉米线", _ => "Cơm cháy, bún thịt nướng" },
+                Duration = t != null ? t.GetDuration(_currentLang) : _currentLang switch { "en" => "40 min", "zh" => "40分钟", _ => "40 phút" },
+                Rating = t != null ? t.Rating : 4.3,
+                RestaurantIds = t != null ? t.GetRestaurantIds() : new List<int> { 9, 11 }
             }));
         }
 
         private void OnTour4Clicked(object sender, EventArgs e)
         {
+            var t = _apiTours.Count > 3 ? _apiTours[3] : null;
             Navigation.PushAsync(new TourDetailPage(new Tour
             {
-                Id = "4",
-                Name = _currentLang switch { "en" => "Specialty Tour", "zh" => "特产美食游", _ => "Tour Đặc Sản" },
-                Description = _currentLang switch { "en" => "Chau Doc fish noodle soup", "zh" => "朱笃鱼米线", _ => "Bún cá Châu Đốc" },
-                Duration = _currentLang switch { "en" => "50 min", "zh" => "50分钟", _ => "50 phút" },
-                Rating = 4.6,
-                RestaurantIds = new List<int> { 4, 5, 6 }
+                Id = t != null ? t.Id.ToString() : "4",
+                Name = t != null ? t.GetName(_currentLang) : _currentLang switch { "en" => "Specialty Tour", "zh" => "特产美食游", _ => "Tour Đặc Sản" },
+                Description = t != null ? t.GetDescription(_currentLang) : _currentLang switch { "en" => "Chau Doc fish noodle soup", "zh" => "朱笃鱼米线", _ => "Bún cá Châu Đốc" },
+                Duration = t != null ? t.GetDuration(_currentLang) : _currentLang switch { "en" => "50 min", "zh" => "50分钟", _ => "50 phút" },
+                Rating = t != null ? t.Rating : 4.6,
+                RestaurantIds = t != null ? t.GetRestaurantIds() : new List<int> { 4, 5, 6 }
             }));
         }
     }

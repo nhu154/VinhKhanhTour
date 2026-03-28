@@ -255,7 +255,7 @@ Mục tiêu là chuẩn hoá trải nghiệm khám phá ẩm thực bằng audio
 
 ## 15. Lộ trình phát triển
 
-### Phase 1 — Core (Hiện tại ✅)
+### Phase 1 — Core (Hiện tại )
 - SQLite offline DB + seed 11 POI thật với tọa độ GPS thực.
 - GPS tracking + Geofence (Haversine 50m, cooldown 300s).
 - Google Cloud TTS (VI / EN / ZH Wavenet).
@@ -291,9 +291,9 @@ Mục tiêu là chuẩn hoá trải nghiệm khám phá ẩm thực bằng audio
 
 ## Phụ lục — Danh sách 11 POI thực tế
 
-- P01 – Ốc Oanh: 10.760825, 106.703313 – Ốc – 4.3★
-- P02 – Ốc Sáu Nở: 10.761090, 106.702899 – Ốc – 4.4★
-- P03 – Ốc Thảo: 10.761758, 106.702358 – Ốc – 4.2★
+- P01 – Ốc Oanh: 10.760825, 106.703313 – Ốc – 4.3
+- P02 – Ốc Sáu Nở: 10.761090, 106.702899 – Ốc – 4.4
+- P03 – Ốc Thảo: 10.761758, 106.702358 – Ốc – 4.2
 - P04 – Lãng Quán: 10.761281, 106.705373 – Ăn vặt
 - P05 – Chili Lẩu Nướng: 10.761345, 106.705690 – Nướng
 - P06 – Ốc Xiêm Quan: 10.761060, 106.706682 – Ốc
@@ -301,5 +301,5 @@ Mục tiêu là chuẩn hoá trải nghiệm khám phá ẩm thực bằng audio
 - P08 – Bún Cá Châu Đốc: 10.764267, 106.701181 – Đặc sản
 - P09 – Cơm Chay Khô Quẹt: 10.760625, 106.703716 – Ăn vặt
 - P10 – Bún Thịt Nướng Conga: 10.761278, 106.705293 – Nướng
-- P11 – Thế Giới Bò: 10.760883, 106.706741 – Nướng – 4.5★
+- P11 – Thế Giới Bò: 10.760883, 106.706741 – Nướng – 4.5
 

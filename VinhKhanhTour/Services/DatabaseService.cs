@@ -14,7 +14,6 @@ namespace VinhKhanhTour.Services
         {
             string dbPath = Path.Combine(FileSystem.AppDataDirectory, "vinhkhanh.db");
             _database = new SQLiteAsyncConnection(dbPath);
-
             Task.Run(async () => await InitAsync()).GetAwaiter().GetResult();
         }
 
@@ -24,7 +23,6 @@ namespace VinhKhanhTour.Services
 
             var meta = await _database.Table<DbMeta>()
                                       .FirstOrDefaultAsync(m => m.Key == VERSION_KEY);
-
             int currentVersion = meta == null ? 0 : int.Parse(meta.Value);
 
             if (currentVersion < DB_VERSION)
@@ -46,25 +44,20 @@ namespace VinhKhanhTour.Services
             await _database.CreateTableAsync<User>();
         }
 
-        // ── Auth ───────────────────────────────
+        // ── Auth ───────────────────────────────────────────────────
 
         public async Task<User?> GetUserAsync(string username, string password)
-        {
-            return await _database.Table<User>()
-                                  .FirstOrDefaultAsync(u => u.Username == username && u.Password == password);
-        }
+            => await _database.Table<User>()
+                              .FirstOrDefaultAsync(u => u.Username == username && u.Password == password);
 
         public async Task<bool> IsUsernameTakenAsync(string username)
-        {
-            var user = await _database.Table<User>()
-                                      .FirstOrDefaultAsync(u => u.Username == username);
-            return user != null;
-        }
+            => await _database.Table<User>()
+                              .FirstOrDefaultAsync(u => u.Username == username) != null;
 
         public Task<int> SaveUserAsync(User user)
             => _database.InsertAsync(user);
 
-        // ── Restaurant ─────────────────────────
+        // ── Restaurant ─────────────────────────────────────────────
 
         public Task<List<Restaurant>> GetRestaurantsAsync()
             => _database.Table<Restaurant>().ToListAsync();
@@ -78,7 +71,10 @@ namespace VinhKhanhTour.Services
         public Task<List<Restaurant>> GetFavoriteRestaurantsAsync()
             => _database.Table<Restaurant>().Where(r => r.IsFavorite).ToListAsync();
 
-        // ── Visit ─────────────────────────────
+        public async Task DeleteRestaurantAsync(int id)
+            => await _database.DeleteAsync<Restaurant>(id);
+
+        // ── Visit ──────────────────────────────────────────────────
 
         public Task<int> SaveVisitAsync(VisitHistory visit)
             => _database.InsertAsync(visit);
@@ -88,7 +84,7 @@ namespace VinhKhanhTour.Services
                         .OrderByDescending(v => v.VisitedAt)
                         .ToListAsync();
 
-        // ── Analytics (ĐÃ FIX ĐÚNG CHỖ) ────────
+        // ── Analytics ──────────────────────────────────────────────
 
         public Task<int> InsertAnalyticsEventAsync(AnalyticsEvent e)
             => _database.InsertAsync(e);
@@ -107,8 +103,6 @@ namespace VinhKhanhTour.Services
         public Task<int> ClearAnalyticsAsync()
             => _database.DeleteAllAsync<AnalyticsEvent>();
     }
-
-    // ── MODEL ONLY (KHÔNG CÓ LOGIC DB) ───────
 
     [Table("db_meta")]
     public class DbMeta

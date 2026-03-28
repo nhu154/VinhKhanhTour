@@ -9,16 +9,16 @@ namespace VinhKhanhTour
         private VerticalStackLayout _content = null!;
 
         // ── Palette ───────────────────────────────────────────────
-        static readonly Color BgPage       = Color.FromArgb("#0F0F1A");
-        static readonly Color BgCard       = Color.FromArgb("#1C1C2E");
-        static readonly Color BgCardAlt    = Color.FromArgb("#16213E");
-        static readonly Color AccentRed    = Color.FromArgb("#FF4757");
+        static readonly Color BgPage = Color.FromArgb("#0F0F1A");
+        static readonly Color BgCard = Color.FromArgb("#1C1C2E");
+        static readonly Color BgCardAlt = Color.FromArgb("#16213E");
+        static readonly Color AccentRed = Color.FromArgb("#FF4757");
         static readonly Color AccentOrange = Color.FromArgb("#FF6B35");
-        static readonly Color AccentBlue   = Color.FromArgb("#4ECDC4");
-        static readonly Color AccentGold   = Color.FromArgb("#FFD93D");
-        static readonly Color TextPrimary  = Color.FromArgb("#FFFFFF");
-        static readonly Color TextSecond   = Color.FromArgb("#8892A4");
-        static readonly Color Divider      = Color.FromArgb("#252538");
+        static readonly Color AccentBlue = Color.FromArgb("#4ECDC4");
+        static readonly Color AccentGold = Color.FromArgb("#FFD93D");
+        static readonly Color TextPrimary = Color.FromArgb("#FFFFFF");
+        static readonly Color TextSecond = Color.FromArgb("#8892A4");
+        static readonly Color Divider = Color.FromArgb("#252538");
 
         public AnalyticsPage()
         {
@@ -49,8 +49,8 @@ namespace VinhKhanhTour
 
             try
             {
-                var summary  = await AnalyticsService.Instance.GetSummaryAsync();
-                var topPois  = await AnalyticsService.Instance.GetTopPoisAsync(6);
+                var summary = await AnalyticsService.Instance.GetSummaryAsync();
+                var topPois = await AnalyticsService.Instance.GetTopPoisAsync(6);
 
                 // ── Stat cards row ────────────────────────────────
                 _content.Add(BuildStatCardsRow(summary.TotalListens, summary.UniquePois, summary.AvgListenSec, summary.TourCompletes));
@@ -118,7 +118,8 @@ namespace VinhKhanhTour
             // red accent line left
             grid.Add(new BoxView
             {
-                WidthRequest = 4, HeightRequest = 60,
+                WidthRequest = 4,
+                HeightRequest = 60,
                 CornerRadius = 2,
                 BackgroundColor = Color.FromArgb("#FF4757"),
                 HorizontalOptions = LayoutOptions.Start,
@@ -179,16 +180,16 @@ namespace VinhKhanhTour
             var grid = new Grid
             {
                 ColumnDefinitions = { new ColumnDefinition(), new ColumnDefinition() },
-                RowDefinitions    = { new RowDefinition { Height = GridLength.Auto }, new RowDefinition { Height = GridLength.Auto } },
+                RowDefinitions = { new RowDefinition { Height = GridLength.Auto }, new RowDefinition { Height = GridLength.Auto } },
                 ColumnSpacing = 12,
                 RowSpacing = 12,
                 Margin = new Thickness(16, 20, 16, 0)
             };
 
-            grid.Add(MakeStatCard("🎧", listens.ToString(),    "Lần nghe thuyết minh", AccentRed),    0, 0);
-            grid.Add(MakeStatCard("📍", pois.ToString(),       "Địa điểm khác nhau",   AccentOrange),  1, 0);
-            grid.Add(MakeStatCard("⏱", $"{avgSec:F0}s",       "Thời gian nghe TB",    AccentBlue),    0, 1);
-            grid.Add(MakeStatCard("🗺️", tours.ToString(),      "Tour hoàn thành",      AccentGold),    1, 1);
+            grid.Add(MakeStatCard("🎧", listens.ToString(), "Lần nghe thuyết minh", AccentRed), 0, 0);
+            grid.Add(MakeStatCard("📍", pois.ToString(), "Địa điểm khác nhau", AccentOrange), 1, 0);
+            grid.Add(MakeStatCard("⏱", $"{avgSec:F0}s", "Thời gian nghe TB", AccentBlue), 0, 1);
+            grid.Add(MakeStatCard("🗺️", tours.ToString(), "Tour hoàn thành", AccentGold), 1, 1);
 
             return grid;
         }
@@ -198,15 +199,16 @@ namespace VinhKhanhTour
             // accent dot top-right
             var dot = new BoxView
             {
-                WidthRequest = 6, HeightRequest = 6,
+                WidthRequest = 6,
+                HeightRequest = 6,
                 CornerRadius = 3,
                 BackgroundColor = accent,
                 HorizontalOptions = LayoutOptions.End,
                 VerticalOptions = LayoutOptions.Start,
                 Margin = new Thickness(0, 2, 2, 0)
             };
-            var iconLbl = new Label { Text = icon,  FontSize = 28, HorizontalOptions = LayoutOptions.Start };
-            var valLbl  = new Label
+            var iconLbl = new Label { Text = icon, FontSize = 28, HorizontalOptions = LayoutOptions.Start };
+            var valLbl = new Label
             {
                 Text = value,
                 FontSize = 26,
@@ -296,7 +298,8 @@ namespace VinhKhanhTour
 
             grid.Add(new BoxView
             {
-                WidthRequest = 3, HeightRequest = 18,
+                WidthRequest = 3,
+                HeightRequest = 18,
                 CornerRadius = 2,
                 BackgroundColor = AccentRed,
                 VerticalOptions = LayoutOptions.Center
@@ -330,7 +333,7 @@ namespace VinhKhanhTour
 
             var rows = new VerticalStackLayout { Spacing = 0 };
             string[] medals = { "🥇", "🥈", "🥉" };
-            Color[]  barColors = { AccentRed, AccentOrange, AccentBlue, AccentGold,
+            Color[] barColors = { AccentRed, AccentOrange, AccentBlue, AccentGold,
                                    Color.FromArgb("#A29BFE"), Color.FromArgb("#55EFC4") };
 
             for (int i = 0; i < pois.Count; i++)
@@ -460,7 +463,7 @@ namespace VinhKhanhTour
 
                 var barTrack = new Grid { VerticalOptions = LayoutOptions.Center };
                 barTrack.Add(new BoxView { BackgroundColor = Color.FromArgb("#252538"), CornerRadius = 4, HeightRequest = 8, HorizontalOptions = LayoutOptions.Fill });
-                barTrack.Add(new BoxView { BackgroundColor = AccentBlue,               CornerRadius = 4, HeightRequest = 8, HorizontalOptions = LayoutOptions.Start, WidthRequest = Math.Max(pct * barMax, 6) });
+                barTrack.Add(new BoxView { BackgroundColor = AccentBlue, CornerRadius = 4, HeightRequest = 8, HorizontalOptions = LayoutOptions.Start, WidthRequest = Math.Max(pct * barMax, 6) });
                 row.Add(barTrack, 1, 0);
 
                 row.Add(new Label
@@ -510,7 +513,13 @@ namespace VinhKhanhTour
             btn.Clicked += async (s, e) =>
             {
                 bool ok = await DisplayAlert("Xác nhận", "Xóa toàn bộ dữ liệu thống kê?", "Xóa", "Hủy");
-                if (ok) { await App.Database.ClearAnalyticsAsync(); await LoadAsync(); }
+                if (ok)
+                {
+                    await App.Database.ClearAnalyticsAsync();
+                    // Xóa luôn trên server
+                    _ = VinhKhanhTour.Services.ApiService.Instance.ClearAnalyticsOnServerAsync();
+                    await LoadAsync();
+                }
             };
             return btn;
         }

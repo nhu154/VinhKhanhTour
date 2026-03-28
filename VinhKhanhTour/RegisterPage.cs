@@ -1,3 +1,4 @@
+using VinhKhanhTour.Services;
 using System;
 using Microsoft.Maui.Controls;
 using Microsoft.Maui.Controls.Shapes;
@@ -30,16 +31,16 @@ namespace VinhKhanhTour
             };
 
             // Back button
-            var backBtn = new Label 
-            { 
-                Text = "← Trở về Đăng nhập", 
+            var backBtn = new Label
+            {
+                Text = "← Trở về Đăng nhập",
                 TextColor = Color.FromArgb("#8ba0b2"),
                 FontSize = 14,
                 Margin = new Thickness(0, 0, 0, 20)
             };
-            backBtn.GestureRecognizers.Add(new TapGestureRecognizer 
-            { 
-                Command = new Command(async () => await Navigation.PopAsync()) 
+            backBtn.GestureRecognizers.Add(new TapGestureRecognizer
+            {
+                Command = new Command(async () => await Navigation.PopAsync())
             });
             mainLayout.Add(backBtn);
 
@@ -83,7 +84,8 @@ namespace VinhKhanhTour
                 BackgroundColor = Color.FromArgb("#1565C0"),
                 Background = new LinearGradientBrush
                 {
-                    StartPoint = new Point(0, 0), EndPoint = new Point(1, 0),
+                    StartPoint = new Point(0, 0),
+                    EndPoint = new Point(1, 0),
                     GradientStops = new GradientStopCollection
                     {
                         new GradientStop(Color.FromArgb("#1565C0"), 0),
@@ -145,11 +147,13 @@ namespace VinhKhanhTour
                 Password = pass
             };
 
+            // Lưu vào SQLite local
             await App.Database.SaveUserAsync(newUser);
-            
+
+            // Đồng thời đăng ký lên API server
+            await ApiService.Instance.RegisterAsync(user, pass, fname);
+
             await DisplayAlert("Thành công", "Tạo tài khoản thành công! Khám phá ẩm thực ngay.", "Vào App");
-            
-            // Go directly into the app
             Application.Current.MainPage = new MainTabbedPage();
         }
 

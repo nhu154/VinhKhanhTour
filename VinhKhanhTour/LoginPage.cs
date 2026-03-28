@@ -1,3 +1,4 @@
+using VinhKhanhTour.Services;
 using System;
 using Microsoft.Maui.Controls;
 using Microsoft.Maui.Controls.Shapes;
@@ -78,7 +79,8 @@ namespace VinhKhanhTour
                 BackgroundColor = Color.FromArgb("#1565C0"), // Fallback
                 Background = new LinearGradientBrush
                 {
-                    StartPoint = new Point(0, 0), EndPoint = new Point(1, 0),
+                    StartPoint = new Point(0, 0),
+                    EndPoint = new Point(1, 0),
                     GradientStops = new GradientStopCollection
                     {
                         new GradientStop(Color.FromArgb("#1565C0"), 0),
@@ -101,9 +103,9 @@ namespace VinhKhanhTour
                 Margin = new Thickness(0, 10, 0, 30),
                 TextDecorations = TextDecorations.Underline
             };
-            registerLabel.GestureRecognizers.Add(new TapGestureRecognizer 
-            { 
-                Command = new Command(async () => await Navigation.PushAsync(new RegisterPage())) 
+            registerLabel.GestureRecognizers.Add(new TapGestureRecognizer
+            {
+                Command = new Command(async () => await Navigation.PushAsync(new RegisterPage()))
             });
             mainLayout.Add(registerLabel);
 
@@ -166,11 +168,29 @@ namespace VinhKhanhTour
             _btnLogin.Text = "Đang xử lý...";
             _btnLogin.IsEnabled = false;
 
-            var dbUser = await App.Database.GetUserAsync(user, pass);
-            
-            if (dbUser != null)
+            // Thử đăng nhập qua API trước
+            bool apiLogin = false;
+            try
             {
-                // Optionally store the logged-in user in application properties
+                apiLogin = await ApiService.Instance.LoginAsync(user, pass);
+            }
+            catch { }
+
+            // Fallback: đăng nhập qua SQLite local
+            bool localLogin = false;
+            if (!apiLogin)
+            {
+                var dbUser = await App.Database.GetUserAsync(user, pass);
+                localLogin = dbUser != null;
+                // Tài khoản admin mặc định
+                if (!localLogin && user == "admin" && pass == "admin123")
+                    localLogin = true;
+                if (!localLogin && user == "admin" && pass == "admin")
+                    localLogin = true;
+            }
+
+            if (apiLogin || localLogin)
+            {
                 Application.Current.MainPage = new MainTabbedPage();
             }
             else
