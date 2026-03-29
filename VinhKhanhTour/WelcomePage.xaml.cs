@@ -22,7 +22,7 @@ namespace VinhKhanhTour
             try
             {
                 var tours = await ApiService.Instance.GetToursAsync();
-                if (tours.Count >= 4)
+                if (tours.Count > 0)
                 {
                     _apiTours = tours;
                     // Update UI labels with API tour data
@@ -254,7 +254,7 @@ function initMap(){{
                 Description = t != null ? t.GetDescription(_currentLang) : _currentLang switch { "en" => "BBQ, grilled beef in pepper leaves", "zh" => "烧烤，胡椒叶牛肉", _ => "Lẩu nướng, bò lá lốt" },
                 Duration = t != null ? t.GetDuration(_currentLang) : _currentLang switch { "en" => "60 min", "zh" => "60分钟", _ => "60 phút" },
                 Rating = t != null ? t.Rating : 4.5,
-                RestaurantIds = t != null ? t.GetRestaurantIds() : new List<int> { 7, 8, 10 }
+                RestaurantIds = t != null ? t.GetRestaurantIds() : new List<int> { 2, 4, 1 }
             }));
         }
 
@@ -268,7 +268,7 @@ function initMap(){{
                 Description = t != null ? t.GetDescription(_currentLang) : _currentLang switch { "en" => "Crispy rice, grilled pork noodles", "zh" => "锅巴，烤猪肉米线", _ => "Cơm cháy, bún thịt nướng" },
                 Duration = t != null ? t.GetDuration(_currentLang) : _currentLang switch { "en" => "40 min", "zh" => "40分钟", _ => "40 phút" },
                 Rating = t != null ? t.Rating : 4.3,
-                RestaurantIds = t != null ? t.GetRestaurantIds() : new List<int> { 9, 11 }
+                RestaurantIds = t != null ? t.GetRestaurantIds() : new List<int> { 3, 5 }
             }));
         }
 
@@ -282,7 +282,7 @@ function initMap(){{
                 Description = t != null ? t.GetDescription(_currentLang) : _currentLang switch { "en" => "Chau Doc fish noodle soup", "zh" => "朱笃鱼米线", _ => "Bún cá Châu Đốc" },
                 Duration = t != null ? t.GetDuration(_currentLang) : _currentLang switch { "en" => "50 min", "zh" => "50分钟", _ => "50 phút" },
                 Rating = t != null ? t.Rating : 4.6,
-                RestaurantIds = t != null ? t.GetRestaurantIds() : new List<int> { 4, 5, 6 }
+                RestaurantIds = t != null ? t.GetRestaurantIds() : new List<int> { 1, 6 }
             }));
         }
     }

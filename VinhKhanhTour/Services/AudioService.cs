@@ -54,7 +54,7 @@ namespace VinhKhanhTour.Services
             _isPlaying = true;
             _currentPoiId = poiId;
             PlaybackStateChanged?.Invoke(true);
-            VinhKhanhTour.Services.AnalyticsService.Instance.RecordListenStart(poiId);
+            _ = VinhKhanhTour.Services.AnalyticsService.Instance.RecordPoiVisitAsync(poiId);
 
             try
             {
@@ -75,7 +75,7 @@ namespace VinhKhanhTour.Services
             }
             finally
             {
-                await VinhKhanhTour.Services.AnalyticsService.Instance.RecordListenEndAsync(_currentPoiId);
+                await VinhKhanhTour.Services.AnalyticsService.Instance.RecordAudioPlayedAsync(_currentPoiId, CurrentLanguage, 0);
                 _isPlaying = false;
                 CurrentTrack = null;
                 PlaybackStateChanged?.Invoke(false);

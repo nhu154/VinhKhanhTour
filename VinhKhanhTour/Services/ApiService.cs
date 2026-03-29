@@ -1,4 +1,4 @@
-﻿using System.Net.Http.Json;
+using System.Net.Http.Json;
 using VinhKhanhTour.Models;
 
 namespace VinhKhanhTour.Services
@@ -125,8 +125,27 @@ namespace VinhKhanhTour.Services
 
         public List<int> GetRestaurantIds()
         {
-            try { return System.Text.Json.JsonSerializer.Deserialize<List<int>>(Pois) ?? new List<int>(); }
-            catch { return new List<int>(); }
+            if (string.IsNullOrWhiteSpace(Pois) || Pois == "[]") return new List<int>();
+            try 
+            { 
+                // Xử lý cả trường hợp Pois là JSON array [1,2,3] hoặc chuỗi phân tách bởi dấu phẩy
+                if (Pois.Trim().StartsWith("["))
+                {
+                    return System.Text.Json.JsonSerializer.Deserialize<List<int>>(Pois) ?? new List<int>(); 
+                }
+                else
+                {
+                    return Pois.Split(',', StringSplitOptions.RemoveEmptyEntries)
+                               .Select(s => int.TryParse(s.Trim(), out var id) ? id : 0)
+                               .Where(id => id > 0)
+                               .ToList();
+                }
+            }
+            catch (Exception ex) 
+            { 
+                System.Diagnostics.Debug.WriteLine($"[ApiTour] Parse Pois Error: {ex.Message} (Data: {Pois})");
+                return new List<int>(); 
+            }
         }
 
         public string GetName(string lang) => lang switch

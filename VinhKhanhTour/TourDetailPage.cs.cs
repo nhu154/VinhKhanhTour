@@ -1,5 +1,6 @@
 using Microsoft.Maui.Controls.Shapes;
 using VinhKhanhTour.Models;
+using VinhKhanhTour.Services;
 
 namespace VinhKhanhTour
 {
@@ -12,13 +13,25 @@ namespace VinhKhanhTour
             _tour = tour;
             Title = tour.Name;
             NavigationPage.SetHasNavigationBar(this, false); // Giao diện viền mỏng immersive
-            BackgroundColor = Color.FromArgb("#F0F6FF"); 
+            BackgroundColor = Color.FromArgb("#F0F6FF");
             CreateUI();
         }
 
         private async void CreateUI()
         {
-            var allRestaurants = await App.Database.GetRestaurantsAsync();
+            // Load từ API trước để đảm bảo đúng ID với MySQL
+            List<Restaurant> allRestaurants;
+            try
+            {
+                allRestaurants = await ApiService.Instance.GetRestaurantsAsync();
+                if (allRestaurants.Count == 0)
+                    allRestaurants = await App.Database.GetRestaurantsAsync();
+            }
+            catch
+            {
+                allRestaurants = await App.Database.GetRestaurantsAsync();
+            }
+
             var tourRestaurants = allRestaurants
                 .Where(r => _tour.RestaurantIds.Contains(r.Id))
                 .ToList();
@@ -31,7 +44,7 @@ namespace VinhKhanhTour
                     new RowDefinition { Height = GridLength.Auto }
                 }
             };
-          
+
             var scrollView = new ScrollView { VerticalScrollBarVisibility = ScrollBarVisibility.Never };
             var contentLayout = new VerticalStackLayout { Spacing = 0 };
 
@@ -100,7 +113,7 @@ namespace VinhKhanhTour
                 Content = new Label { Text = "TOUR", TextColor = Colors.White, FontSize = 10, FontAttributes = FontAttributes.Bold }
             });
             tagLine.Add(new Label { Text = $"⭐ {_tour.Rating}", TextColor = Color.FromArgb("#64B5F6"), FontSize = 12, FontAttributes = FontAttributes.Bold, VerticalOptions = LayoutOptions.Center });
-            
+
             headerContent.Add(tagLine);
 
             headerContent.Add(new Label
@@ -129,11 +142,11 @@ namespace VinhKhanhTour
 
             // 2. Restaurant List Area
             var listLayout = new VerticalStackLayout { Padding = new Thickness(20, 10, 20, 100), Spacing = 16 };
-            listLayout.Add(new Label 
-            { 
-                Text = "Hành trình ẩm thực", 
-                FontSize = 18, 
-                FontAttributes = FontAttributes.Bold, 
+            listLayout.Add(new Label
+            {
+                Text = "Hành trình ẩm thực",
+                FontSize = 18,
+                FontAttributes = FontAttributes.Bold,
                 TextColor = Color.FromArgb("#0D2137"),
                 Margin = new Thickness(0, 0, 0, 5)
             });
@@ -161,7 +174,8 @@ namespace VinhKhanhTour
                 HeightRequest = 56,
                 Background = new LinearGradientBrush
                 {
-                    StartPoint = new Point(0, 0), EndPoint = new Point(1, 0),
+                    StartPoint = new Point(0, 0),
+                    EndPoint = new Point(1, 0),
                     GradientStops = new GradientStopCollection
                     {
                         new GradientStop(Color.FromArgb("#1565C0"), 0),
@@ -172,17 +186,17 @@ namespace VinhKhanhTour
             };
 
             var btnGrid = new Grid { ColumnDefinitions = { new ColumnDefinition(GridLength.Star), new ColumnDefinition(GridLength.Auto) }, Padding = new Thickness(24, 0) };
-            
+
             var btnLabelStack = new HorizontalStackLayout { Spacing = 8, VerticalOptions = LayoutOptions.Center };
             btnLabelStack.Add(new Microsoft.Maui.Controls.Shapes.Path { Data = (Geometry)new PathGeometryConverter().ConvertFromInvariantString("M3 11 L22 2 L13 21 L11 13 Z"), Stroke = Colors.White, StrokeThickness = 2, Fill = new SolidColorBrush(Colors.Transparent), WidthRequest = 18, HeightRequest = 18, VerticalOptions = LayoutOptions.Center });
             btnLabelStack.Add(new Label { Text = "Bắt đầu dẫn đường", FontSize = 16, FontAttributes = FontAttributes.Bold, TextColor = Colors.White, VerticalOptions = LayoutOptions.Center });
-            
+
             btnGrid.Add(btnLabelStack, 0, 0);
             btnGrid.Add(new Label { Text = "→", FontSize = 22, TextColor = Colors.White, VerticalOptions = LayoutOptions.Center }, 1, 0);
-            
+
             btnBorder.Content = btnGrid;
             btnBorder.GestureRecognizers.Add(new TapGestureRecognizer { Command = new Command(async () => await StartTour(tourRestaurants)) });
-            
+
             ctaContainer.Content = btnBorder;
             mainLayout.Add(ctaContainer, 0, 1);
 
@@ -260,7 +274,12 @@ namespace VinhKhanhTour
             {
                 imageGrid.Add(new Label
                 {
-                    Text = "🍜", FontSize = 64, Opacity = 0.1, HorizontalOptions = LayoutOptions.Center, VerticalOptions = LayoutOptions.Center, TextColor = Colors.White
+                    Text = "🍜",
+                    FontSize = 64,
+                    Opacity = 0.1,
+                    HorizontalOptions = LayoutOptions.Center,
+                    VerticalOptions = LayoutOptions.Center,
+                    TextColor = Colors.White
                 });
             }
 
@@ -269,7 +288,8 @@ namespace VinhKhanhTour
             {
                 Background = new LinearGradientBrush
                 {
-                    StartPoint = new Point(0, 0), EndPoint = new Point(0, 1),
+                    StartPoint = new Point(0, 0),
+                    EndPoint = new Point(0, 1),
                     GradientStops = new GradientStopCollection { new GradientStop(Colors.Transparent, 0.5f), new GradientStop(Color.FromArgb("#0D2137CC"), 1f) }
                 }
             });
@@ -285,11 +305,11 @@ namespace VinhKhanhTour
                 Margin = 12,
                 StrokeShape = new RoundRectangle { CornerRadius = 16 }
             };
-            var favLabel = new Label 
-            { 
-                Text = restaurant.IsFavorite ? "❤️" : "🤍", 
-                FontSize = 14, 
-                VerticalOptions = LayoutOptions.Center 
+            var favLabel = new Label
+            {
+                Text = restaurant.IsFavorite ? "❤️" : "🤍",
+                FontSize = 14,
+                VerticalOptions = LayoutOptions.Center
             };
             favBtn.Content = favLabel;
 
@@ -326,9 +346,9 @@ namespace VinhKhanhTour
             var info = new VerticalStackLayout { Padding = new Thickness(16, 12, 16, 16), Spacing = 8 };
             info.Add(new Label { Text = restaurant.Name, FontSize = 18, FontAttributes = FontAttributes.Bold, TextColor = Color.FromArgb("#0D2137") });
             info.Add(new Label { Text = restaurant.Description, FontSize = 13, TextColor = Color.FromArgb("#5A7A9A"), LineBreakMode = LineBreakMode.TailTruncation, MaxLines = 2 });
-            
+
             var timeStack = new HorizontalStackLayout { Spacing = 6 };
-            timeStack.Add(new Border { BackgroundColor = Color.FromArgb("#1565C030"), StrokeThickness = 0, StrokeShape = new RoundRectangle { CornerRadius = 6 }, Padding = new Thickness(6,3), Content = new Label { Text = "🕐", FontSize = 10 } });
+            timeStack.Add(new Border { BackgroundColor = Color.FromArgb("#1565C030"), StrokeThickness = 0, StrokeShape = new RoundRectangle { CornerRadius = 6 }, Padding = new Thickness(6, 3), Content = new Label { Text = "🕐", FontSize = 10 } });
             timeStack.Add(new Label { Text = restaurant.OpenHours, FontSize = 12, TextColor = Color.FromArgb("#64B5F6"), FontAttributes = FontAttributes.Bold, VerticalOptions = LayoutOptions.Center });
             info.Add(timeStack);
 
