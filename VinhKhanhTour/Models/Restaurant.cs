@@ -43,6 +43,12 @@ namespace VinhKhanhTour.Models
         /// </summary>
         public string TtsScriptZh { get; set; } = string.Empty;
 
+        /// <summary>
+        /// Chuỗi JSON chứa Tên & Bản thuyết minh của các ngôn ngữ tự định nghĩa (Nhật, Hàn, Pháp...).
+        /// Định dạng: {"ja":{"name":"...","tts":"..."},"ko":{"name":"...","tts":"..."}}
+        /// </summary>
+        public string Translations { get; set; } = "{}";
+
 
         // ── Helper ────────────────────────────────────────────────────────────
 
@@ -57,7 +63,24 @@ namespace VinhKhanhTour.Models
             if (currentLang == "zh" && !string.IsNullOrWhiteSpace(TtsScriptZh)) return TtsScriptZh;
             if (currentLang == "vi" && !string.IsNullOrWhiteSpace(TtsScript)) return TtsScript;
 
-            // Fallback (English / Any)
+            // Đọc ngôn ngữ động (Nhật, Hàn, Pháp...)
+            if (!string.IsNullOrWhiteSpace(Translations) && Translations != "{}")
+            {
+                try
+                {
+                    var extraLangs = System.Text.Json.JsonSerializer.Deserialize<System.Collections.Generic.Dictionary<string, System.Collections.Generic.Dictionary<string, string>>>(Translations);
+                    if (extraLangs != null && extraLangs.TryGetValue(currentLang, out var langData))
+                    {
+                        if (langData.TryGetValue("tts", out var dynamicTts) && !string.IsNullOrWhiteSpace(dynamicTts))
+                        {
+                            return dynamicTts;
+                        }
+                    }
+                }
+                catch { /* Ignore JSON parse errors */ }
+            }
+
+            // Fallback (Vietnamese / Any)
             if (!string.IsNullOrWhiteSpace(TtsScript))
                 return TtsScript;
 

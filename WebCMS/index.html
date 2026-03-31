@@ -1,4 +1,4 @@
-\<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="vi">
 <head>
 <meta charset="UTF-8">
@@ -18,19 +18,14 @@
   <div class="sidebar-header">
     <div class="sidebar-logo">
       <div class="sidebar-logo-icon"><i data-lucide="navigation" style="width:20px;height:20px;color:#fff"></i></div>
-      <div>
-        <h2>Vĩnh Khánh</h2>
-        <p>Admin Dashboard</p>
-      </div>
+      <div><h2>Vĩnh Khánh</h2><p>Admin Dashboard</p></div>
     </div>
   </div>
-
   <nav class="sidebar-menu">
     <div class="menu-label">Tổng quan</div>
     <div class="menu-item active" id="menu-dashboard" onclick="switchPage('page-dashboard', this)">
       <i data-lucide="layout-dashboard"></i> Tổng quan
     </div>
-
     <div class="menu-label">Quản lý nội dung</div>
     <div class="menu-item" id="menu-poi" onclick="switchPage('page-poi', this)">
       <i data-lucide="map-pin"></i> Quản lý địa điểm
@@ -39,26 +34,27 @@
     <div class="menu-item" id="menu-tour" onclick="switchPage('page-tour', this)">
       <i data-lucide="share-2"></i> Quản lý Tour
     </div>
+    <div class="menu-item" id="menu-users" onclick="switchPage('page-users', this)">
+      <i data-lucide="users"></i> Quản lý người dùng
+      <span class="menu-badge" id="user-badge">0</span>
+    </div>
+
+    <div class="menu-label">Cấu hình</div>
+    <div class="menu-item" id="menu-lang" onclick="switchPage('page-lang', this)">
+      <i data-lucide="globe"></i> Quản lý ngôn ngữ
+    </div>
     <div class="menu-item" id="menu-audio" onclick="switchPage('page-audio', this)">
       <i data-lucide="headphones"></i> Quản lý Audio
     </div>
-    <div class="menu-item" id="menu-trans" onclick="switchPage('page-trans', this)">
-      <i data-lucide="languages"></i> Bản dịch đa ngữ
-    </div>
-
     <div class="menu-label">Phân tích</div>
     <div class="menu-item" id="menu-history" onclick="switchPage('page-history', this)">
       <i data-lucide="history"></i> Lịch sử sử dụng
     </div>
   </nav>
-
   <div class="sidebar-footer">
     <div class="sidebar-user">
       <div class="sidebar-avatar">A</div>
-      <div class="sidebar-user-info">
-        <div class="name">Admin</div>
-        <div class="role">Super Admin</div>
-      </div>
+      <div class="sidebar-user-info"><div class="name">Admin</div><div class="role">Super Admin</div></div>
     </div>
     <button class="btn-logout" onclick="sessionStorage.removeItem('cms_logged_in'); window.location.href='login.html'">
       <i data-lucide="log-out"></i> Đăng xuất
@@ -69,14 +65,10 @@
 <!-- ══ MAIN ══ -->
 <div class="main-wrapper">
   <header class="header">
-    <div class="header-left">
-      <div class="header-title"><h1 id="current-page-title">Tổng quan hệ thống</h1></div>
-    </div>
+    <div class="header-left"><div class="header-title"><h1 id="current-page-title">Tổng quan hệ thống</h1></div></div>
     <div class="header-right">
       <div class="header-pill"><span></span> Hệ thống đang hoạt động</div>
-      <button class="btn btn-ghost" onclick="exportDataToCSharp()">
-        <i data-lucide="download"></i> Export Mobile Data
-      </button>
+
     </div>
   </header>
 
@@ -85,10 +77,7 @@
     <div class="stats-grid" id="dashboard-stats"></div>
     <div class="dashboard-grid">
       <div class="chart-card">
-        <div class="card-header">
-          <h3>Sự tương tác của du khách</h3>
-          <div class="header-pill"><span></span> Live</div>
-        </div>
+        <div class="card-header"><h3>Sự tương tác của du khách</h3><div class="header-pill"><span></span> Live</div></div>
         <div style="height:280px"><canvas id="mainChart"></canvas></div>
       </div>
       <div class="chart-card">
@@ -102,41 +91,105 @@
         <button class="btn btn-ghost btn-sm" onclick="loadAnalytics()"><i data-lucide="refresh-cw"></i> Làm mới</button>
       </div>
       <table class="cms-table">
-        <thead><tr><th>Quán</th><th>Sự kiện</th><th>Thời gian</th></tr></thead>
+        <thead><tr><th>Địa điểm</th><th>Hành động</th><th>Thời gian</th></tr></thead>
         <tbody id="dashboard-recent-tbody"></tbody>
       </table>
     </div>
   </main>
 
-  <!-- ════ POI MAP ════ -->
-  <main class="main-content" id="page-poi">
-    <div class="map-container">
-      <div id="google-map"></div>
-      <div class="map-detail-panel" id="map-detail-panel">
-        <button class="map-detail-close" onclick="closeMapDetail()"><i data-lucide="x"></i></button>
-        <img id="map-detail-img" src="" class="map-detail-img" onerror="this.src='https://via.placeholder.com/360x150/f1f5f9/94a3b8?text=No+Image'">
-        <div class="map-detail-body">
-          <h3 id="map-detail-title" style="font-size:17px;font-weight:700;margin-bottom:6px"></h3>
-          <p id="map-detail-addr" style="font-size:12px;color:var(--text-muted);margin-bottom:10px"></p>
-          <p id="map-detail-desc" style="font-size:13px;line-height:1.5;color:var(--text-main)"></p>
-          <div style="margin-top:16px;display:flex;gap:8px">
-            <button class="btn btn-primary" id="btn-edit-from-map" style="flex:1"><i data-lucide="edit-3"></i> Chỉnh sửa</button>
-            <button class="btn btn-ghost" onclick="closeMapDetail()"><i data-lucide="x"></i></button>
+  <!-- ════ POI PAGE ════ -->
+  <main class="main-content" id="page-poi" style="padding:0;overflow:hidden;height:calc(100vh - var(--header-height))">
+    <div style="display:grid;grid-template-columns:1fr 420px;height:100%;overflow:hidden">
+
+      <!-- ── CỘT TRÁI: BẢN ĐỒ ── -->
+      <div style="position:relative;overflow:hidden">
+        <div id="google-map" style="width:100%;height:100%"></div>
+
+        <!-- Toolbar nổi trên map -->
+        <div style="position:absolute;top:16px;left:16px;right:16px;z-index:10;display:flex;gap:10px;align-items:center">
+          <div style="background:#fff;border-radius:10px;box-shadow:0 2px 16px rgba(0,0,0,0.12);padding:6px 10px;display:flex;align-items:center;gap:6px;flex:1">
+            <i data-lucide="search" style="width:15px;height:15px;color:#94a3b8;flex-shrink:0"></i>
+            <input type="text" id="poi-search" placeholder="Tìm địa điểm..." oninput="renderPoiTable()"
+              style="border:none;outline:none;font-size:13px;width:100%;background:transparent;font-family:inherit">
+          </div>
+          <button class="btn btn-primary" onclick="openNewPoiForm()" style="box-shadow:0 4px 12px rgba(37,99,235,0.35);white-space:nowrap">
+            <i data-lucide="plus"></i> Thêm điểm mới
+          </button>
+        </div>
+
+        <!-- Filter chips nổi dưới toolbar -->
+        <div style="position:absolute;top:66px;left:16px;z-index:10;display:flex;gap:6px">
+          <button onclick="filterPoiCat('',this)" class="filter-chip active" style="box-shadow:0 2px 8px rgba(0,0,0,0.1)">Tất cả</button>
+          <button onclick="filterPoiCat('Quán ăn',this)" class="filter-chip" style="box-shadow:0 2px 8px rgba(0,0,0,0.1)">🍜 Quán ăn</button>
+          <button onclick="filterPoiCat('WC',this)" class="filter-chip" style="box-shadow:0 2px 8px rgba(0,0,0,0.1)">🚻 WC</button>
+          <button onclick="filterPoiCat('Gửi xe',this)" class="filter-chip" style="box-shadow:0 2px 8px rgba(0,0,0,0.1)">🅿️ Xe</button>
+        </div>
+
+        <!-- Map detail popup -->
+        <div class="map-detail-panel" id="map-detail-panel">
+          <button class="map-detail-close" onclick="closeMapDetail()"><i data-lucide="x"></i></button>
+          <img id="map-detail-img" src="" class="map-detail-img" onerror="this.src='https://via.placeholder.com/360x150/f1f5f9/94a3b8?text=No+Image'">
+          <div class="map-detail-body">
+            <h3 id="map-detail-title" style="font-size:15px;font-weight:700;margin-bottom:4px"></h3>
+            <p id="map-detail-addr" style="font-size:11px;color:var(--text-muted);margin-bottom:8px"></p>
+            <p id="map-detail-desc" style="font-size:12px;line-height:1.5"></p>
+            <div style="margin-top:12px;display:flex;gap:8px">
+              <button class="btn btn-primary btn-sm" id="btn-edit-from-map" style="flex:1"><i data-lucide="edit-3"></i> Chỉnh sửa</button>
+              <button class="btn btn-ghost btn-sm" onclick="closeMapDetail()"><i data-lucide="x"></i></button>
+            </div>
           </div>
         </div>
       </div>
-      <div class="map-controls">
-        <button class="btn btn-primary" onclick="openNewPoiForm()" style="box-shadow:var(--shadow-lg)">
-          <i data-lucide="plus-circle"></i> Thêm điểm mới
-        </button>
+
+      <!-- ── CỘT PHẢI: DANH SÁCH POI ── -->
+      <div style="border-left:1px solid var(--border);display:flex;flex-direction:column;background:#fff;overflow:hidden">
+        <!-- Header cột phải -->
+        <div style="padding:16px 16px 12px;border-bottom:1px solid var(--border);flex-shrink:0">
+          <div style="display:flex;align-items:center;justify-content:space-between">
+            <div style="font-size:14px;font-weight:700;color:var(--text-main)">Địa điểm</div>
+            <span id="poi-count-label" class="badge badge-info"></span>
+          </div>
+        </div>
+        <!-- Danh sách scroll -->
+        <div style="overflow-y:auto;flex:1" id="poi-table-body"></div>
       </div>
+
     </div>
-    <div style="margin-top:20px">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-        <h3 style="font-size:15px;font-weight:700">Tất cả địa điểm</h3>
-        <span id="poi-count-label" class="badge badge-info"></span>
+  </main>
+
+  <!-- ════ QUẢN LÝ NGƯỜI DÙNG ════ -->
+  <main class="main-content" id="page-users">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+      <p style="font-size:13px;color:var(--text-muted)">Quản lý tài khoản đăng nhập hệ thống</p>
+      <button class="btn btn-primary" onclick="openUserPanel()">
+        <i data-lucide="user-plus"></i> Thêm người dùng
+      </button>
+    </div>
+    <div class="table-wrap">
+      <div class="table-toolbar">
+        <div class="search-wrap" style="width:240px">
+          <i data-lucide="search"></i>
+          <input type="text" id="user-search" class="form-control" placeholder="Tìm theo tên, username..." oninput="renderUserTable()">
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-ghost btn-sm filter-chip active" onclick="filterUserRole('',this)">Tất cả</button>
+          <button class="btn btn-ghost btn-sm filter-chip" onclick="filterUserRole('admin',this)">👑 Admin</button>
+          <button class="btn btn-ghost btn-sm filter-chip" onclick="filterUserRole('user',this)">👤 User</button>
+        </div>
       </div>
-      <div class="horizontal-scroll" id="poi-carousel"></div>
+      <table class="cms-table">
+        <thead>
+          <tr>
+            <th>Người dùng</th>
+            <th>Username</th>
+            <th>Vai trò</th>
+            <th>Trạng thái</th>
+            <th>Ngày tạo</th>
+            <th>Thao tác</th>
+          </tr>
+        </thead>
+        <tbody id="user-tbody"></tbody>
+      </table>
     </div>
   </main>
 
@@ -148,8 +201,8 @@
           <h3>Nhật ký hành trình du khách</h3>
           <div class="filter-row" style="margin-top:12px;margin-bottom:0">
             <div class="filter-chip active" onclick="setFilter('all',this)">Tất cả</div>
-            <div class="filter-chip" onclick="setFilter('geofence_enter',this)">Ghé thăm</div>
-            <div class="filter-chip" onclick="setFilter('click',this)">Click</div>
+            <div class="filter-chip" onclick="setFilter('geofence_enter',this)">🚶‍♂️ Khách ghé thăm</div>
+            <div class="filter-chip" onclick="setFilter('click',this)">👆 Xem thông tin</div>
           </div>
         </div>
         <div class="search-wrap" style="width:240px">
@@ -160,11 +213,10 @@
       <table class="cms-table">
         <thead>
           <tr>
-            <th>Tên quán</th>
-            <th>Loại sự kiện</th>
-            <th>POI ID</th>
+            <th style="width:40px;text-align:center"></th>
+            <th>Hành động của du khách</th>
+            <th>Tại địa điểm (POI)</th>
             <th>Thời gian</th>
-            <th>Trạng thái</th>
           </tr>
         </thead>
         <tbody id="history-tbody"></tbody>
@@ -172,35 +224,60 @@
     </div>
   </main>
 
-  <!-- ════ AUDIO ════ -->
-  <main class="main-content" id="page-audio">
-    <div class="table-wrap" style="padding:20px">
-      <div class="table-toolbar" style="padding:0;margin-bottom:16px">
-        <h3>Quản lý âm thanh thuyết minh</h3>
-        <button class="btn btn-ghost btn-sm" onclick="renderAudio()"><i data-lucide="refresh-cw"></i> Làm mới</button>
+
+
+  <!-- ════ NGÔN NGỮ ════ -->
+  <main class="main-content" id="page-lang">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <div>
+        <p style="font-size:13px;color:var(--text-muted)">Mỗi ngôn ngữ thêm vào sẽ tự động xuất hiện trong form tạo địa điểm và trang Quản lý Audio</p>
       </div>
-      <div id="audio-list"></div>
+      <button class="btn btn-primary" onclick="openLangPanel()"><i data-lucide="plus"></i> Thêm ngôn ngữ</button>
+    </div>
+    <div class="table-wrap">
+      <div class="lang-manager" id="lang-list"></div>
+    </div>
+    <div style="margin-top:24px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;padding:16px;display:flex;align-items:center;gap:12px">
+      <i data-lucide="headphones" style="color:#2563eb;flex-shrink:0"></i>
+      <div>
+        <div style="font-size:13px;font-weight:600;color:#1e40af">Quản lý nội dung Audio &amp; TTS đã được tách riêng</div>
+        <div style="font-size:12px;color:#3b82f6;margin-top:2px">Vào <strong>Quản lý Audio</strong> trong sidebar để xem trạng thái và nghe thử từng ngôn ngữ cho mỗi địa điểm.</div>
+      </div>
+      <button class="btn btn-primary btn-sm" onclick="switchPage('page-audio', document.getElementById('menu-audio'))" style="margin-left:auto;white-space:nowrap"><i data-lucide="arrow-right"></i> Đến Audio</button>
     </div>
   </main>
 
-  <!-- ════ TRANSLATION ════ -->
-  <main class="main-content" id="page-trans">
-    <div class="table-wrap">
-      <div class="table-toolbar">
-        <h3>Quản lý nội dung đa ngữ TTS</h3>
-        <button class="btn btn-ghost btn-sm" onclick="renderTrans()"><i data-lucide="refresh-cw"></i> Làm mới</button>
+  <!-- ════ AUDIO MANAGER ════ -->
+  <main class="main-content" id="page-audio">
+    <div id="audio-stats-bar" style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px"></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;gap:12px;flex-wrap:wrap">
+      <div style="display:flex;gap:6px;flex-wrap:wrap" id="audio-lang-tabs"></div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <div style="position:relative">
+          <i data-lucide="search" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);width:14px;height:14px;color:#94a3b8"></i>
+          <input type="text" id="audio-search" class="form-control" placeholder="Tìm địa điểm..." style="padding-left:32px;width:220px;font-size:13px" oninput="renderAudioPage()">
+        </div>
+        <button class="btn btn-ghost btn-sm" onclick="stopCurrentAudio()" id="btn-stop-audio" style="display:none">
+          <i data-lucide="square"></i> Dừng
+        </button>
+        <button class="btn btn-primary btn-sm" id="btn-bulk-update" onclick="bulkUpdateScripts()" title="Cập nhật TTS scripts ~30 giây cho tất cả quán">
+          <i data-lucide="refresh-cw"></i> Cập nhật Scripts (30s)
+        </button>
       </div>
+    </div>
+    <div class="table-wrap">
       <table class="cms-table">
         <thead>
           <tr>
-            <th>Tên điểm</th>
-            <th>🇻🇳 Tiếng Việt</th>
-            <th>🇬🇧 English</th>
-            <th>🇨🇳 中文</th>
-            <th>Thao tác</th>
+            <th style="width:52px"></th>
+            <th>Địa điểm</th>
+            <th style="text-align:center">🇻🇳 Tiếng Việt</th>
+            <th style="text-align:center">🇺🇸 English</th>
+            <th style="text-align:center">🇨🇳 中文</th>
+            <th style="width:80px;text-align:right">Sửa</th>
           </tr>
         </thead>
-        <tbody id="trans-tbody"></tbody>
+        <tbody id="audio-tbody"></tbody>
       </table>
     </div>
   </main>
@@ -212,17 +289,15 @@
         <h2 style="font-size:18px;font-weight:700">Quản lý hành trình Tour</h2>
         <p style="font-size:13px;color:var(--text-muted);margin-top:4px">Tạo và quản lý các tuyến tham quan Vĩnh Khánh</p>
       </div>
-      <button class="btn btn-primary" onclick="showTourModal()">
-        <i data-lucide="plus"></i> Tạo Tour mới
-      </button>
+      <button class="btn btn-primary" onclick="showTourModal()"><i data-lucide="plus"></i> Tạo Tour mới</button>
     </div>
     <div class="tour-grid" id="tour-grid"></div>
   </main>
 </div>
 
-<!-- ══ PANEL POI ══ -->
+<!-- ══ PANEL POI (wide) ══ -->
 <div class="panel-overlay" id="panel-overlay-poi" style="display:none" onclick="closePoiForm()"></div>
-<div class="side-panel" id="poi-form-panel">
+<div class="side-panel wide" id="poi-form-panel">
   <div class="panel-header">
     <div class="panel-header-left">
       <div class="panel-icon" style="background:#f0fdf4;color:#16a34a"><i data-lucide="map-pin"></i></div>
@@ -230,74 +305,84 @@
     </div>
     <button class="btn btn-ghost btn-sm" onclick="closePoiForm()"><i data-lucide="x"></i></button>
   </div>
-
   <div class="panel-body">
     <input type="hidden" id="poi-id">
 
+    <!-- SECTION: VỊ TRÍ -->
     <div class="form-section">
-      <div class="section-title"><i data-lucide="navigation"></i> Vị trí GPS <i data-lucide="chevron-up" class="chevron"></i></div>
+      <div class="section-title"><i data-lucide="navigation"></i> Vị trí & Thông tin cơ bản <i data-lucide="chevron-up" class="chevron"></i></div>
       <div class="section-content">
-        <p style="font-size:12px;color:var(--text-muted);margin-bottom:12px">Click bản đồ để chọn vị trí tự động</p>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-          <div class="form-group" style="margin:0"><label>Latitude</label><input type="text" class="form-control" id="poi-lat" placeholder="10.7608"></div>
-          <div class="form-group" style="margin:0"><label>Longitude</label><input type="text" class="form-control" id="poi-lng" placeholder="106.7033"></div>
+        <div class="form-two-col">
+          <div class="form-group"><label>Latitude</label><input type="text" class="form-control" id="poi-lat" placeholder="10.7608"></div>
+          <div class="form-group"><label>Longitude</label><input type="text" class="form-control" id="poi-lng" placeholder="106.7033"></div>
         </div>
-        <div class="form-group" style="margin-top:12px"><label>Địa chỉ chi tiết</label><input type="text" class="form-control" id="poi-address" placeholder="Vĩnh Khánh, Phường 8, Quận 4"></div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-          <div class="form-group" style="margin:0"><label>Bán kính geofence (m)</label><input type="number" class="form-control" id="poi-radius" value="50"></div>
-          <div class="form-group" style="margin:0"><label>Rating ⭐</label><input type="number" step="0.1" min="1" max="5" class="form-control" id="poi-rating" value="4.0"></div>
+        <div class="form-group"><label>Địa chỉ chi tiết</label><input type="text" class="form-control" id="poi-address" placeholder="Vĩnh Khánh, Phường 8, Quận 4"></div>
+        <div class="form-two-col">
+          <div class="form-group"><label>Bán kính geofence (m)</label><input type="number" class="form-control" id="poi-radius" value="50"></div>
+          <div class="form-group"><label>Rating ⭐</label><input type="number" step="0.1" min="1" max="5" class="form-control" id="poi-rating" value="4.0"></div>
         </div>
-        <div class="form-group"><label>Giờ mở cửa</label><input type="text" class="form-control" id="poi-hours" placeholder="16:00 - 23:00"></div>
-        <div class="form-group"><label>Danh mục</label>
-          <select class="form-control" id="poi-category">
-            <option value="Quán ăn">Quán ăn</option>
-            <option value="WC">Nhà vệ sinh</option>
-            <option value="Gửi xe">Bãi gửi xe</option>
-            <option value="Bán vé">Quầy bán vé</option>
-          </select>
+        <div class="form-two-col">
+          <div class="form-group"><label>Giờ mở cửa</label><input type="text" class="form-control" id="poi-hours" placeholder="16:00 - 23:00"></div>
+          <div class="form-group"><label>Danh mục</label>
+            <select class="form-control" id="poi-category">
+              <option value="Quán ăn">🍜 Quán ăn</option>
+              <option value="WC">🚻 Nhà vệ sinh</option>
+              <option value="Gửi xe">🅿️ Bãi gửi xe</option>
+              <option value="Bán vé">🎫 Quầy bán vé</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group" style="margin-top:12px">
+          <label style="display:flex;justify-content:space-between;align-items:center">
+            <span>Ảnh đại diện</span>
+            <button type="button" class="btn btn-ghost btn-sm" onclick="clearPoiImage()" style="font-size:11px;padding:3px 8px">
+              <i data-lucide="x"></i> Xóa ảnh
+            </button>
+          </label>
+
+          <!-- Drop zone -->
+          <div id="poi-image-dropzone"
+            style="border:2px dashed #cbd5e1;border-radius:12px;background:#f8fafc;cursor:pointer;transition:.2s;overflow:hidden;position:relative"
+            onclick="document.getElementById('poi-image-file').click()"
+            ondragover="event.preventDefault();this.style.borderColor='#2563eb';this.style.background='#eff6ff'"
+            ondragleave="this.style.borderColor='#cbd5e1';this.style.background='#f8fafc'"
+            ondrop="handleImageDrop(event)"
+            onmouseover="this.style.borderColor='#94a3b8'"
+            onmouseout="this.style.borderColor='#cbd5e1'">
+
+            <input type="file" id="poi-image-file" accept="image/jpeg,image/png,image/webp" style="display:none" onchange="previewPoiImage(this)">
+
+            <!-- Preview khi có ảnh -->
+            <img id="poi-image-preview" src="" alt="Preview"
+              style="display:none;width:100%;max-height:200px;object-fit:cover;border-radius:10px">
+
+            <!-- Placeholder khi chưa có ảnh -->
+            <div id="poi-image-placeholder" style="padding:28px 20px;text-align:center">
+              <i data-lucide="image-plus" style="width:36px;height:36px;color:#94a3b8;display:block;margin:0 auto 10px"></i>
+              <div style="font-size:13px;font-weight:600;color:#475569">Nhấn hoặc kéo thả ảnh vào đây</div>
+              <div style="font-size:11px;color:#94a3b8;margin-top:4px">JPG, PNG, WebP · Tối đa 3MB</div>
+            </div>
+          </div>
+
+          <!-- Tên file + URL nhập tay -->
+          <div id="poi-image-filename" style="font-size:11px;color:#2563eb;margin-top:6px;font-weight:500"></div>
+          <div style="display:flex;align-items:center;gap:6px;margin-top:8px">
+            <input type="text" id="poi-image-url" class="form-control" placeholder="Hoặc nhập URL ảnh..."
+              style="font-size:12px" oninput="previewFromUrl(this.value)">
+          </div>
+          <div style="font-size:11px;color:#94a3b8;margin-top:4px">💡 Upload ảnh từ máy hoặc nhập link ảnh online</div>
         </div>
       </div>
     </div>
 
+    <!-- SECTION: NỘI DUNG ĐA NGỮ & AUDIO (động) -->
     <div class="form-section">
-      <div class="section-title"><i data-lucide="languages"></i> Nội dung đa ngôn ngữ <i data-lucide="chevron-up" class="chevron"></i></div>
-      <div class="section-content">
-        <div class="lang-block vi">
-          <div class="lang-block-header">
-            <div class="lang-label">🇻🇳 Tiếng Việt (mặc định)</div>
-          </div>
-          <div class="form-group"><label>Tên điểm</label><input type="text" class="form-control" id="poi-name-vi" placeholder="Ví dụ: Ốc Oanh"></div>
-          <div class="form-group" style="margin:0"><label>Kịch bản TTS</label><textarea class="form-control" id="poi-desc-vi" rows="2" placeholder="Chào mừng bạn đến với..."></textarea></div>
-        </div>
-
-        <div class="lang-block en">
-          <div class="lang-block-header">
-            <div class="lang-label">🇬🇧 English</div>
-            <button class="btn btn-ghost btn-sm" onclick="autoTranslate('en', this)"><i data-lucide="sparkles"></i> Dịch tự động</button>
-          </div>
-          <div class="form-group"><label>Point Name</label><input type="text" class="form-control" id="poi-name-en" placeholder="Example: Oanh Snail Restaurant"></div>
-          <div class="form-group" style="margin:0"><label>TTS Script</label><textarea class="form-control" id="poi-desc-en" rows="2" placeholder="Welcome to..."></textarea></div>
-        </div>
-
-        <div class="lang-block zh">
-          <div class="lang-block-header">
-            <div class="lang-label">🇨🇳 中文</div>
-            <button class="btn btn-ghost btn-sm" onclick="autoTranslate('zh', this)"><i data-lucide="sparkles"></i> Dịch tự động</button>
-          </div>
-          <div class="form-group"><label>点名</label><input type="text" class="form-control" id="poi-name-zh" placeholder="例如：蜗牛餐厅"></div>
-          <div class="form-group" style="margin:0"><label>TTS 脚本</label><textarea class="form-control" id="poi-desc-zh" rows="2" placeholder="欢迎来到..."></textarea></div>
-        </div>
-      </div>
-    </div>
-
-    <div class="form-section">
-      <div class="section-title"><i data-lucide="music"></i> Audio <i data-lucide="chevron-up" class="chevron"></i></div>
-      <div class="section-content">
-        <div class="form-group" style="margin:0"><label>File Audio / URL</label><input type="text" class="form-control" id="poi-audio-url" placeholder="oc_oanh.mp3 hoặc https://..."></div>
+      <div class="section-title"><i data-lucide="languages"></i> Nội dung đa ngữ & Audio thuyết minh <i data-lucide="chevron-up" class="chevron"></i></div>
+      <div class="section-content" id="poi-lang-blocks">
+        <!-- Sẽ được render động từ danh sách ngôn ngữ -->
       </div>
     </div>
   </div>
-
   <div class="panel-footer">
     <button class="btn btn-danger-outline" id="btn-delete-poi" onclick="deletePoiData()" style="display:none">
       <i data-lucide="trash-2"></i> Xóa
@@ -321,7 +406,6 @@
   </div>
   <div class="panel-body">
     <input type="hidden" id="tour-id">
-
     <div class="form-group">
       <label>Emoji đại diện</label>
       <div style="display:flex;gap:8px;align-items:center">
@@ -336,35 +420,16 @@
         </div>
       </div>
     </div>
-
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
       <div class="form-group"><label>Thời lượng</label><input type="text" class="form-control" id="tour-duration" placeholder="45 phút"></div>
       <div class="form-group"><label>Rating ⭐</label><input type="number" step="0.1" min="1" max="5" class="form-control" id="tour-rating" value="4.0"></div>
     </div>
-
     <div class="lang-block vi">
-      <div class="lang-block-header"><div class="lang-label">🇻🇳 Tiếng Việt</div></div>
       <div class="form-group"><label>Tên Tour</label><input type="text" class="form-control" id="tour-name" placeholder="Tour Ăn Ốc"></div>
-      <div class="form-group" style="margin:0"><label>Mô tả</label><textarea class="form-control" id="tour-desc" rows="2" placeholder="3 quán ốc ngon nổi tiếng..."></textarea></div>
+      <div class="form-group" style="margin:0"><label>Mô tả</label><textarea class="form-control" id="tour-desc" rows="2"></textarea></div>
     </div>
 
-    <div class="lang-block en">
-      <div class="lang-block-header"><div class="lang-label">🇬🇧 English</div></div>
-      <div class="form-group"><label>Tour Name</label><input type="text" class="form-control" id="tour-name-en" placeholder="Shellfish Tour"></div>
-      <div class="form-group" style="margin:0"><label>Description</label><textarea class="form-control" id="tour-desc-en" rows="2" placeholder="3 famous shellfish restaurants..."></textarea></div>
-    </div>
-
-    <div class="lang-block zh">
-      <div class="lang-block-header"><div class="lang-label">🇨🇳 中文</div></div>
-      <div class="form-group"><label>路线名称</label><input type="text" class="form-control" id="tour-name-zh" placeholder="贝类美食游"></div>
-      <div class="form-group" style="margin:0"><label>描述</label><textarea class="form-control" id="tour-desc-zh" rows="2" placeholder="3家知名贝类餐厅..."></textarea></div>
-    </div>
-
-    <div class="form-group">
-      <label>Ảnh bìa (URL)</label>
-      <input type="text" class="form-control" id="tour-img" placeholder="https://images.unsplash.com/...">
-    </div>
-
+    <div class="form-group"><label>Ảnh bìa (URL)</label><input type="text" class="form-control" id="tour-img"></div>
     <div class="form-group">
       <label style="display:flex;justify-content:space-between;align-items:center">
         <span>Chọn điểm trong hành trình</span>
@@ -379,6 +444,50 @@
   </div>
 </div>
 
+<!-- ══ PANEL NGÔN NGỮ ══ -->
+<div class="panel-overlay" id="panel-overlay-lang" style="display:none" onclick="closeLangPanel()"></div>
+<div class="side-panel" id="lang-form-panel" style="width:380px">
+  <div class="panel-header">
+    <div class="panel-header-left">
+      <div class="panel-icon" style="background:#eff6ff;color:#2563eb"><i data-lucide="globe"></i></div>
+      <h3>Thêm ngôn ngữ mới</h3>
+    </div>
+    <button class="btn btn-ghost btn-sm" onclick="closeLangPanel()"><i data-lucide="x"></i></button>
+  </div>
+  <div class="panel-body">
+    <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:12px;margin-bottom:16px;font-size:12px;color:#92400e;line-height:1.6">
+      💡 Sau khi thêm ngôn ngữ, form tạo địa điểm sẽ tự động có thêm ô nhập nội dung cho ngôn ngữ đó.
+    </div>
+    <div class="form-group">
+      <label>Mã ngôn ngữ (code)</label>
+      <input type="text" class="form-control" id="lang-code" placeholder="vd: vi, en, zh, ja, ko, fr..." style="font-family:monospace;letter-spacing:1px">
+      <div style="font-size:11px;color:var(--text-muted);margin-top:4px">Dùng mã chuẩn ISO 639-1 (2 ký tự)</div>
+    </div>
+    <div class="form-group">
+      <label>Tên ngôn ngữ</label>
+      <input type="text" class="form-control" id="lang-name" placeholder="vd: Tiếng Việt, English, 中文">
+    </div>
+    <div class="form-group">
+      <label>Flag emoji</label>
+      <input type="text" class="form-control" id="lang-flag" placeholder="🇻🇳" style="font-size:20px">
+    </div>
+    <div style="margin-bottom:16px">
+      <label style="font-size:12px;font-weight:600;color:var(--text-muted);display:block;margin-bottom:8px">Chọn nhanh:</label>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <button class="btn btn-ghost btn-sm" onclick="quickLang('ja','日本語','🇯🇵')">🇯🇵 Nhật</button>
+        <button class="btn btn-ghost btn-sm" onclick="quickLang('ko','한국어','🇰🇷')">🇰🇷 Hàn</button>
+        <button class="btn btn-ghost btn-sm" onclick="quickLang('fr','Français','🇫🇷')">🇫🇷 Pháp</button>
+        <button class="btn btn-ghost btn-sm" onclick="quickLang('de','Deutsch','🇩🇪')">🇩🇪 Đức</button>
+        <button class="btn btn-ghost btn-sm" onclick="quickLang('es','Español','🇪🇸')">🇪🇸 TBN</button>
+      </div>
+    </div>
+  </div>
+  <div class="panel-footer">
+    <button class="btn btn-ghost" onclick="closeLangPanel()" style="flex:1">Hủy</button>
+    <button class="btn btn-primary" onclick="saveLang()" style="flex:2"><i data-lucide="plus"></i> Thêm ngôn ngữ</button>
+  </div>
+</div>
+
 <!-- ══ EXPORT MODAL ══ -->
 <div class="central-modal" id="modal-export">
   <div class="modal-box">
@@ -387,16 +496,78 @@
       <button class="btn btn-ghost btn-sm" onclick="document.getElementById('modal-export').style.display='none'"><i data-lucide="x"></i></button>
     </div>
     <div class="modal-body">
-      <p style="font-size:13px;color:var(--text-muted);margin-bottom:14px">
-        Copy đoạn code này → paste đè vào <code style="background:#f1f5f9;padding:2px 6px;border-radius:4px;font-size:12px">App.xaml.cs</code>
-        hàm <code style="background:#f1f5f9;padding:2px 6px;border-radius:4px;font-size:12px">InitializeSampleData()</code>
-      </p>
+      <p style="font-size:13px;color:var(--text-muted);margin-bottom:14px">Copy đoạn code này → paste vào <code style="background:#f1f5f9;padding:2px 6px;border-radius:4px;font-size:12px">App.xaml.cs</code> hàm <code style="background:#f1f5f9;padding:2px 6px;border-radius:4px;font-size:12px">InitializeSampleData()</code></p>
       <pre id="export-code-area"></pre>
     </div>
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="document.getElementById('modal-export').style.display='none'">Đóng</button>
       <button class="btn btn-primary" onclick="copyExportCode()"><i data-lucide="copy"></i> Copy Code</button>
     </div>
+  </div>
+</div>
+
+<!-- ══ PANEL NGƯỜI DÙNG ══ -->
+<div class="panel-overlay" id="panel-overlay-user" style="display:none" onclick="closeUserPanel()"></div>
+<div class="side-panel" id="user-form-panel" style="width:400px;right:-400px">
+  <div class="panel-header">
+    <div class="panel-header-left">
+      <div class="panel-icon" style="background:#f0fdf4;color:#16a34a"><i data-lucide="user"></i></div>
+      <h3 id="user-panel-title">Thêm người dùng</h3>
+    </div>
+    <button class="btn btn-ghost btn-sm" onclick="closeUserPanel()"><i data-lucide="x"></i></button>
+  </div>
+  <div class="panel-body">
+    <input type="hidden" id="user-id">
+
+    <div class="form-group">
+      <label>Họ và tên</label>
+      <input type="text" class="form-control" id="user-fullname" placeholder="Nguyễn Văn A">
+    </div>
+    <div class="form-group">
+      <label>Username</label>
+      <input type="text" class="form-control" id="user-username" placeholder="nguyenvana" autocomplete="off">
+    </div>
+    <div class="form-group" id="user-pw-group">
+      <label>Mật khẩu</label>
+      <div style="position:relative">
+        <input type="password" class="form-control" id="user-password" placeholder="Tối thiểu 6 ký tự" autocomplete="new-password" style="padding-right:40px">
+        <button type="button" onclick="togglePw()" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--text-muted)">
+          <i data-lucide="eye" id="pw-eye" style="width:16px;height:16px"></i>
+        </button>
+      </div>
+    </div>
+    <div class="form-group" id="user-pw-hint" style="display:none">
+      <label style="color:var(--text-muted)">Mật khẩu mới (để trống nếu không đổi)</label>
+      <div style="position:relative">
+        <input type="password" class="form-control" id="user-password-edit" placeholder="Để trống nếu không thay đổi" style="padding-right:40px">
+        <button type="button" onclick="togglePwEdit()" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--text-muted)">
+          <i data-lucide="eye" id="pw-eye-edit" style="width:16px;height:16px"></i>
+        </button>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Vai trò</label>
+      <select class="form-control" id="user-role">
+        <option value="user">👤 User — Xem thông tin</option>
+        <option value="admin">👑 Admin — Toàn quyền</option>
+      </select>
+    </div>
+    <div style="background:#f8fafc;border:1px solid var(--border);border-radius:10px;padding:14px;margin-top:4px">
+      <div style="font-size:12px;font-weight:700;color:var(--text-muted);margin-bottom:8px">Phân quyền</div>
+      <div style="display:flex;flex-direction:column;gap:6px;font-size:12px;color:var(--text-muted)">
+        <div>👑 <strong>Admin:</strong> Tạo/sửa/xóa POI, Tour, xem Analytics, quản lý người dùng</div>
+        <div>👤 <strong>User:</strong> Chỉ xem Dashboard và Lịch sử</div>
+      </div>
+    </div>
+  </div>
+  <div class="panel-footer">
+    <button class="btn btn-danger-outline" id="btn-delete-user" onclick="deleteUser()" style="display:none">
+      <i data-lucide="trash-2"></i> Xóa
+    </button>
+    <button class="btn btn-ghost" onclick="closeUserPanel()" style="flex:1">Hủy</button>
+    <button class="btn btn-primary" onclick="saveUser()" style="flex:2">
+      <i data-lucide="save"></i> Lưu
+    </button>
   </div>
 </div>
 

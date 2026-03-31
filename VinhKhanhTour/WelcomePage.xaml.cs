@@ -1,6 +1,6 @@
 using VinhKhanhTour.Services;
 using VinhKhanhTour.Models;
-
+using Microsoft.Maui.Controls.Shapes;
 
 namespace VinhKhanhTour
 {
@@ -11,12 +11,19 @@ namespace VinhKhanhTour
         private string _currentLang = Preferences.Default.Get("app_lang", "vi");
         private List<ApiTour> _apiTours = new();
 
+        public WelcomePage()
+        {
+            InitializeComponent();
+            LoadMiniMap();
+        }
+
         protected override void OnAppearing()
         {
             base.OnAppearing();
             _ = LoadToursFromApiAsync();
         }
 
+        // ══ LOAD TOURS TỪ API ══
         private async Task LoadToursFromApiAsync()
         {
             try
@@ -25,8 +32,11 @@ namespace VinhKhanhTour
                 if (tours.Count > 0)
                 {
                     _apiTours = tours;
-                    // Update UI labels with API tour data
-                    MainThread.BeginInvokeOnMainThread(() => UpdateTourLabelsFromApi());
+                    MainThread.BeginInvokeOnMainThread(() =>
+                    {
+                        RenderTourCards();
+                        UpdateTourThemeLabel();
+                    });
                 }
             }
             catch (Exception ex)
@@ -35,25 +45,164 @@ namespace VinhKhanhTour
             }
         }
 
-        private void UpdateTourLabelsFromApi()
+        // ══ RENDER CARDS ĐỘNG ══
+        private void RenderTourCards()
         {
-            if (_apiTours.Count == 0) return;
-            try
+            TourCardsContainer.Children.Clear();
+
+            string[] coverImages = { "tour_oc.jpg", "tour_nuong.jpg", "tour_vat.jpg", "tour_dacssan.jpg" };
+            string[] accentColors = { "#CC1565C0", "#CC0D47A1", "#CC01579B", "#CC311B92" };
+            string[] shadowColors = { "#1565C0", "#1976D2", "#0288D1", "#4A148C" };
+
+            for (int i = 0; i < _apiTours.Count; i++)
             {
-                if (_apiTours.Count > 0) { LblTour1.Text = _apiTours[0].GetName(_currentLang); LblDesc1.Text = _apiTours[0].GetDescription(_currentLang); LblDur1.Text = "⏱ " + _apiTours[0].GetDuration(_currentLang); LblPts1.Text = _apiTours[0].GetRestaurantIds().Count + (_currentLang == "en" ? " spots" : _currentLang == "zh" ? "个景点" : " điểm"); }
-                if (_apiTours.Count > 1) { LblTour2.Text = _apiTours[1].GetName(_currentLang); LblDesc2.Text = _apiTours[1].GetDescription(_currentLang); LblDur2.Text = "⏱ " + _apiTours[1].GetDuration(_currentLang); LblPts2.Text = _apiTours[1].GetRestaurantIds().Count + (_currentLang == "en" ? " spots" : _currentLang == "zh" ? "个景点" : " điểm"); }
-                if (_apiTours.Count > 2) { LblTour3.Text = _apiTours[2].GetName(_currentLang); LblDesc3.Text = _apiTours[2].GetDescription(_currentLang); LblDur3.Text = "⏱ " + _apiTours[2].GetDuration(_currentLang); LblPts3.Text = _apiTours[2].GetRestaurantIds().Count + (_currentLang == "en" ? " spots" : _currentLang == "zh" ? "个景点" : " điểm"); }
-                if (_apiTours.Count > 3) { LblTour4.Text = _apiTours[3].GetName(_currentLang); LblDesc4.Text = _apiTours[3].GetDescription(_currentLang); LblDur4.Text = "⏱ " + _apiTours[3].GetDuration(_currentLang); LblPts4.Text = _apiTours[3].GetRestaurantIds().Count + (_currentLang == "en" ? " spots" : _currentLang == "zh" ? "个景点" : " điểm"); }
+                var tour = _apiTours[i];
+                int idx = i; // capture for closure
+                string coverImg = i < coverImages.Length ? coverImages[i] : "tour_oc.jpg";
+                string accent = i < accentColors.Length ? accentColors[i] : "#CC1565C0";
+                string shadow = i < shadowColors.Length ? shadowColors[i] : "#1565C0";
+                bool isLast = i == _apiTours.Count - 1;
+
+                var card = BuildTourCard(tour, coverImg, accent, shadow, isLast, idx);
+                TourCardsContainer.Children.Add(card);
             }
-            catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"[WelcomePage] UpdateLabels: {ex.Message}"); }
         }
 
-        public WelcomePage()
+        private Border BuildTourCard(ApiTour tour, string coverImg, string accent, string shadowColor, bool isLast, int idx)
         {
-            InitializeComponent();
-            LoadMiniMap();
+            var ptsCount = tour.GetRestaurantIds().Count;
+            var ptsText = _currentLang == "en" ? $"{ptsCount} spots" : _currentLang == "zh" ? $"{ptsCount}个景点" : $"{ptsCount} điểm";
+            var durText = "⏱ " + tour.GetDuration(_currentLang);
+            var ratingText = $"⭐ {tour.Rating:F1}";
+
+            // Image grid
+            var imageGrid = new Grid { HeightRequest = 160 };
+            imageGrid.Add(new Border
+            {
+                StrokeShape = new RoundRectangle { CornerRadius = new CornerRadius(20, 20, 0, 0) },
+                StrokeThickness = 0,
+                Content = new Image { Source = coverImg, Aspect = Aspect.AspectFill, HorizontalOptions = LayoutOptions.Fill, VerticalOptions = LayoutOptions.Fill }
+            });
+            imageGrid.Add(new BoxView
+            {
+                Background = new LinearGradientBrush
+                {
+                    StartPoint = new Point(0, 0),
+                    EndPoint = new Point(0, 1),
+                    GradientStops = new GradientStopCollection
+                    {
+                        new GradientStop(Colors.Transparent, 0.5f),
+                        new GradientStop(Color.FromArgb("#CC0D2137"), 1f)
+                    }
+                }
+            });
+
+            // Tag badge
+            imageGrid.Add(new Border
+            {
+                BackgroundColor = Color.FromArgb(accent),
+                StrokeShape = new RoundRectangle { CornerRadius = 8 },
+                StrokeThickness = 0,
+                Padding = new Thickness(10, 5),
+                HorizontalOptions = LayoutOptions.Start,
+                VerticalOptions = LayoutOptions.Start,
+                Margin = new Thickness(12, 12, 0, 0),
+                Content = new HorizontalStackLayout
+                {
+                    Spacing = 5,
+                    Children =
+                    {
+                        new Label { Text = tour.Emoji, FontSize = 13 },
+                        new Label { Text = tour.GetName(_currentLang).ToUpper(), FontSize = 10, FontAttributes = FontAttributes.Bold, TextColor = Color.FromArgb("#BBDEFB"), VerticalOptions = LayoutOptions.Center }
+                    }
+                }
+            });
+
+            // Arrow badge
+            imageGrid.Add(new Border
+            {
+                BackgroundColor = Color.FromArgb(accent),
+                StrokeShape = new RoundRectangle { CornerRadius = 20 },
+                StrokeThickness = 0,
+                Padding = new Thickness(10, 8),
+                HorizontalOptions = LayoutOptions.End,
+                VerticalOptions = LayoutOptions.End,
+                Margin = new Thickness(0, 0, 12, 10),
+                Content = new Label { Text = "›", FontSize = 20, TextColor = Colors.White, VerticalOptions = LayoutOptions.Center, HorizontalOptions = LayoutOptions.Center }
+            });
+
+            // Info section
+            var infoStack = new VerticalStackLayout
+            {
+                Padding = new Thickness(16, 12, 16, 14),
+                Spacing = 6,
+                Children =
+                {
+                    new Label { Text = tour.GetName(_currentLang), FontSize = 17, FontAttributes = FontAttributes.Bold, TextColor = Color.FromArgb("#0D2137") },
+                    new Label { Text = tour.GetDescription(_currentLang), FontSize = 12, TextColor = Color.FromArgb("#5A7A9A") },
+                    new HorizontalStackLayout
+                    {
+                        Spacing = 8, Margin = new Thickness(0, 2, 0, 0),
+                        Children =
+                        {
+                            new Border { BackgroundColor = Color.FromArgb("#301565C0"), StrokeShape = new RoundRectangle { CornerRadius = 8 }, StrokeThickness = 0, Padding = new Thickness(8, 4), Content = new Label { Text = ratingText, FontSize = 11, TextColor = Color.FromArgb("#64B5F6"), FontAttributes = FontAttributes.Bold } },
+                            new Border { BackgroundColor = Color.FromArgb("#EEF4FF"), StrokeShape = new RoundRectangle { CornerRadius = 8 }, StrokeThickness = 0, Padding = new Thickness(8, 4), Content = new Label { Text = durText, FontSize = 11, TextColor = Color.FromArgb("#5A7A9A") } },
+                            new Border { BackgroundColor = Color.FromArgb("#EEF4FF"), StrokeShape = new RoundRectangle { CornerRadius = 8 }, StrokeThickness = 0, Padding = new Thickness(8, 4), Content = new Label { Text = ptsText, FontSize = 11, TextColor = Color.FromArgb("#5A7A9A") } }
+                        }
+                    }
+                }
+            };
+
+            var card = new Border
+            {
+                StrokeShape = new RoundRectangle { CornerRadius = 20 },
+                Stroke = Color.FromArgb("#CCE0FF"),
+                StrokeThickness = 1,
+                BackgroundColor = Colors.White,
+                Margin = new Thickness(0, 0, 0, isLast ? 0 : 0),
+                Shadow = new Shadow { Brush = Color.FromArgb(shadowColor), Opacity = 0.25f, Radius = 14, Offset = new Point(0, 5) },
+                Content = new VerticalStackLayout
+                {
+                    Spacing = 0,
+                    Children = { imageGrid, infoStack }
+                }
+            };
+
+            var tgr = new TapGestureRecognizer();
+            tgr.Tapped += (s, e) => OnTourCardClicked(idx);
+            card.GestureRecognizers.Add(tgr);
+
+            return card;
         }
 
+        private void OnTourCardClicked(int idx)
+        {
+            if (idx >= _apiTours.Count) return;
+            var t = _apiTours[idx];
+            Navigation.PushAsync(new TourDetailPage(new Tour
+            {
+                Id = t.Id.ToString(),
+                Name = t.GetName(_currentLang),
+                Description = t.GetDescription(_currentLang),
+                Duration = t.GetDuration(_currentLang),
+                Rating = t.Rating,
+                RestaurantIds = t.GetRestaurantIds()
+            }));
+        }
+
+        private void UpdateTourThemeLabel()
+        {
+            var count = _apiTours.Count;
+            LblTourThemeSub.Text = _currentLang switch
+            {
+                "en" => $"{count} unique food journeys",
+                "zh" => $"{count}条独特的美食之旅",
+                _ => $"{count} hành trình ẩm thực độc đáo"
+            };
+            LblStats2Value.Text = count.ToString();
+        }
+
+        // ══ MINI MAP ══
         private void LoadMiniMap()
         {
             var html = $@"<!DOCTYPE html>
@@ -114,12 +263,9 @@ function initMap(){{
         {
             _dropdownOpen = false;
             LangDropdown.IsVisible = false;
-
             if (_currentLang == lang) return;
-
             Preferences.Default.Set("app_lang", lang);
             VinhKhanhTour.Services.AudioService.Instance.SetLanguage(lang);
-
             if (Application.Current?.MainPage is MainTabbedPage tabbedPage)
                 tabbedPage.UpdateLanguage(lang);
             else
@@ -129,9 +275,7 @@ function initMap(){{
         public void UpdateLanguage(string lang)
         {
             _currentLang = lang;
-
             LangFlag.Text = lang switch { "en" => "🇺🇸", "zh" => "🇨🇳", _ => "🇻🇳" };
-
             var activeColor = Color.FromArgb("#1565C0");
             var inactiveColor = Color.FromArgb("#F0F6FF");
             BtnVI.BackgroundColor = lang == "vi" ? activeColor : inactiveColor;
@@ -144,146 +288,46 @@ function initMap(){{
             switch (lang)
             {
                 case "en":
-                    LblNarration.Text = "Narration language";
-                    LblNarrationSub.Text = "Select audio tour language";
-                    LblChoTour.Text = "Vinh Khanh area";
-                    LblChoTourSub.Text = "Famous food street in District 4";
+                    LblNarration.Text = "Narration language"; LblNarrationSub.Text = "Select audio tour language";
+                    LblChoTour.Text = "Vinh Khanh area"; LblChoTourSub.Text = "Famous food street in District 4";
                     LblTapHint.Text = "👆 Tap to view detailed map";
                     LblTourTheme.Text = "Choose your Tour";
-                    LblTourThemeSub.Text = "4 unique food journeys";
-                    LblWelcome.Text = "Explore District 4 food street";
-                    LblLocation.Text = "District 4 · HCMC";
+                    LblWelcome.Text = "Explore District 4 food street"; LblLocation.Text = "District 4 · HCMC";
                     LblMainSubtitle.Text = "  FOOD TOUR GUIDE";
                     LblStats1Value.Text = "11"; LblStats1Text.Text = "Spots";
-                    LblStats2Value.Text = "4"; LblStats2Text.Text = "Themes";
                     LblStats3Value.Text = "4.5★"; LblStats3Text.Text = "Rating";
                     LblCTA.Text = "🗺️  Start Exploring";
-                    LblTour1.Text = "Shellfish Tour"; LblTag1.Text = "OC";
-                    LblTour2.Text = "BBQ Tour"; LblTag2.Text = "BBQ";
-                    LblTour3.Text = "Snack Tour"; LblTag3.Text = "SNACK";
-                    LblTour4.Text = "Specialty Tour"; LblTag4.Text = "SPECIAL";
-                    LblDesc1.Text = "3 famous shellfish restaurants";
-                    LblDesc2.Text = "BBQ, grilled beef in pepper leaves";
-                    LblDesc3.Text = "Crispy rice, grilled pork noodles";
-                    LblDesc4.Text = "Chau Doc fish noodle soup";
-                    LblDur1.Text = "⏱ 45 min"; LblPts1.Text = "3 spots";
-                    LblDur2.Text = "⏱ 60 min"; LblPts2.Text = "3 spots";
-                    LblDur3.Text = "⏱ 40 min"; LblPts3.Text = "2 spots";
-                    LblDur4.Text = "⏱ 50 min"; LblPts4.Text = "3 spots";
                     break;
                 case "zh":
-                    LblNarration.Text = "解说语言";
-                    LblNarrationSub.Text = "选择语音导览语言";
-                    LblChoTour.Text = "永庆地区";
-                    LblChoTourSub.Text = "第四郡著名美食街";
+                    LblNarration.Text = "解说语言"; LblNarrationSub.Text = "选择语音导览语言";
+                    LblChoTour.Text = "永庆地区"; LblChoTourSub.Text = "第四郡著名美食街";
                     LblTapHint.Text = "👆 点击查看详细地图";
                     LblTourTheme.Text = "选择您的路线";
-                    LblTourThemeSub.Text = "4条独特的美食之旅";
-                    LblWelcome.Text = "探索第四郡美食街";
-                    LblLocation.Text = "第四郡 · 胡志明市";
+                    LblWelcome.Text = "探索第四郡美食街"; LblLocation.Text = "第四郡 · 胡志明市";
                     LblMainSubtitle.Text = "  美食指南";
                     LblStats1Value.Text = "11"; LblStats1Text.Text = "餐厅";
-                    LblStats2Value.Text = "4"; LblStats2Text.Text = "主题游";
                     LblStats3Value.Text = "4.5★"; LblStats3Text.Text = "评分";
                     LblCTA.Text = "🗺️  开始探索";
-                    LblTour1.Text = "贝类美食游"; LblTag1.Text = "海鲜";
-                    LblTour2.Text = "烧烤美食游"; LblTag2.Text = "烧烤";
-                    LblTour3.Text = "小吃游"; LblTag3.Text = "小吃";
-                    LblTour4.Text = "特产美食游"; LblTag4.Text = "特产";
-                    LblDesc1.Text = "3家知名贝类餐厅";
-                    LblDesc2.Text = "烧烤，胡椒叶牛肉";
-                    LblDesc3.Text = "锅巴，烤猪肉米线";
-                    LblDesc4.Text = "朱笃鱼米线";
-                    LblDur1.Text = "⏱ 45分钟"; LblPts1.Text = "3个景点";
-                    LblDur2.Text = "⏱ 60分钟"; LblPts2.Text = "3个景点";
-                    LblDur3.Text = "⏱ 40分钟"; LblPts3.Text = "2个景点";
-                    LblDur4.Text = "⏱ 50分钟"; LblPts4.Text = "3个景点";
                     break;
                 default:
-                    LblNarration.Text = "Giọng thuyết minh";
-                    LblNarrationSub.Text = "Chọn ngôn ngữ audio tour";
-                    LblChoTour.Text = "Khu vực Vĩnh Khánh";
-                    LblChoTourSub.Text = "Phố ẩm thực nổi tiếng Quận 4";
+                    LblNarration.Text = "Giọng thuyết minh"; LblNarrationSub.Text = "Chọn ngôn ngữ audio tour";
+                    LblChoTour.Text = "Khu vực Vĩnh Khánh"; LblChoTourSub.Text = "Phố ẩm thực nổi tiếng Quận 4";
                     LblTapHint.Text = "👆 Nhấn để xem bản đồ chi tiết";
                     LblTourTheme.Text = "Chọn Tour của bạn";
-                    LblTourThemeSub.Text = "4 hành trình ẩm thực độc đáo";
-                    LblWelcome.Text = "Khám phá phố ẩm thực nổi tiếng nhất Quận 4";
-                    LblLocation.Text = "Quận 4 · TP.HCM";
+                    LblWelcome.Text = "Khám phá phố ẩm thực nổi tiếng nhất Quận 4"; LblLocation.Text = "Quận 4 · TP.HCM";
                     LblMainSubtitle.Text = "  CẨM NANG ẨM THỰC";
                     LblStats1Value.Text = "11"; LblStats1Text.Text = "Quán ăn";
-                    LblStats2Value.Text = "4"; LblStats2Text.Text = "Tour chủ đề";
                     LblStats3Value.Text = "4.5★"; LblStats3Text.Text = "Đánh giá";
                     LblCTA.Text = "🗺️  Bắt đầu khám phá";
-                    LblTour1.Text = "Tour Ăn Ốc"; LblTag1.Text = "ỐC";
-                    LblTour2.Text = "Tour Ăn Nướng"; LblTag2.Text = "NƯỚNG";
-                    LblTour3.Text = "Tour Ăn Vặt"; LblTag3.Text = "ĂN VẶT";
-                    LblTour4.Text = "Tour Đặc Sản"; LblTag4.Text = "ĐẶC SẢN";
-                    LblDesc1.Text = "3 quán ốc ngon nổi tiếng";
-                    LblDesc2.Text = "Lẩu nướng, bò lá lốt";
-                    LblDesc3.Text = "Cơm cháy, bún nướng";
-                    LblDesc4.Text = "Bún cá Châu Đốc";
-                    LblDur1.Text = "⏱ 45 phút"; LblPts1.Text = "3 điểm";
-                    LblDur2.Text = "⏱ 60 phút"; LblPts2.Text = "3 điểm";
-                    LblDur3.Text = "⏱ 40 phút"; LblPts3.Text = "2 điểm";
-                    LblDur4.Text = "⏱ 50 phút"; LblPts4.Text = "3 điểm";
                     break;
             }
-        }
 
-        private void OnTour1Clicked(object sender, EventArgs e)
-        {
-            var t = _apiTours.Count > 0 ? _apiTours[0] : null;
-            Navigation.PushAsync(new TourDetailPage(new Tour
+            // Re-render tour cards với ngôn ngữ mới
+            if (_apiTours.Count > 0)
             {
-                Id = t != null ? t.Id.ToString() : "1",
-                Name = t != null ? t.GetName(_currentLang) : _currentLang switch { "en" => "Shellfish Tour", "zh" => "贝类美食游", _ => "Tour Ăn Ốc" },
-                Description = t != null ? t.GetDescription(_currentLang) : _currentLang switch { "en" => "3 famous shellfish restaurants", "zh" => "3家知名贝类餐厅", _ => "3 quán ốc ngon nổi tiếng" },
-                Duration = t != null ? t.GetDuration(_currentLang) : _currentLang switch { "en" => "45 min", "zh" => "45分钟", _ => "45 phút" },
-                Rating = t != null ? t.Rating : 4.4,
-                RestaurantIds = t != null ? t.GetRestaurantIds() : new List<int> { 1, 2, 3 }
-            }));
-        }
-
-        private void OnTour2Clicked(object sender, EventArgs e)
-        {
-            var t = _apiTours.Count > 1 ? _apiTours[1] : null;
-            Navigation.PushAsync(new TourDetailPage(new Tour
-            {
-                Id = t != null ? t.Id.ToString() : "2",
-                Name = t != null ? t.GetName(_currentLang) : _currentLang switch { "en" => "BBQ Tour", "zh" => "烧烤美食游", _ => "Tour Ăn Nướng" },
-                Description = t != null ? t.GetDescription(_currentLang) : _currentLang switch { "en" => "BBQ, grilled beef in pepper leaves", "zh" => "烧烤，胡椒叶牛肉", _ => "Lẩu nướng, bò lá lốt" },
-                Duration = t != null ? t.GetDuration(_currentLang) : _currentLang switch { "en" => "60 min", "zh" => "60分钟", _ => "60 phút" },
-                Rating = t != null ? t.Rating : 4.5,
-                RestaurantIds = t != null ? t.GetRestaurantIds() : new List<int> { 2, 4, 1 }
-            }));
-        }
-
-        private void OnTour3Clicked(object sender, EventArgs e)
-        {
-            var t = _apiTours.Count > 2 ? _apiTours[2] : null;
-            Navigation.PushAsync(new TourDetailPage(new Tour
-            {
-                Id = t != null ? t.Id.ToString() : "3",
-                Name = t != null ? t.GetName(_currentLang) : _currentLang switch { "en" => "Snack Tour", "zh" => "小吃游", _ => "Tour Ăn Vặt" },
-                Description = t != null ? t.GetDescription(_currentLang) : _currentLang switch { "en" => "Crispy rice, grilled pork noodles", "zh" => "锅巴，烤猪肉米线", _ => "Cơm cháy, bún thịt nướng" },
-                Duration = t != null ? t.GetDuration(_currentLang) : _currentLang switch { "en" => "40 min", "zh" => "40分钟", _ => "40 phút" },
-                Rating = t != null ? t.Rating : 4.3,
-                RestaurantIds = t != null ? t.GetRestaurantIds() : new List<int> { 3, 5 }
-            }));
-        }
-
-        private void OnTour4Clicked(object sender, EventArgs e)
-        {
-            var t = _apiTours.Count > 3 ? _apiTours[3] : null;
-            Navigation.PushAsync(new TourDetailPage(new Tour
-            {
-                Id = t != null ? t.Id.ToString() : "4",
-                Name = t != null ? t.GetName(_currentLang) : _currentLang switch { "en" => "Specialty Tour", "zh" => "特产美食游", _ => "Tour Đặc Sản" },
-                Description = t != null ? t.GetDescription(_currentLang) : _currentLang switch { "en" => "Chau Doc fish noodle soup", "zh" => "朱笃鱼米线", _ => "Bún cá Châu Đốc" },
-                Duration = t != null ? t.GetDuration(_currentLang) : _currentLang switch { "en" => "50 min", "zh" => "50分钟", _ => "50 phút" },
-                Rating = t != null ? t.Rating : 4.6,
-                RestaurantIds = t != null ? t.GetRestaurantIds() : new List<int> { 1, 6 }
-            }));
+                UpdateTourThemeLabel();
+                RenderTourCards();
+            }
         }
     }
 }
