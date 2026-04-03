@@ -4,9 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Vĩnh Khánh CMS</title>
-<script>if(sessionStorage.getItem('cms_logged_in') !== 'true') window.location.href='login.html';</script>
+<script>
+if(sessionStorage.getItem('cms_logged_in') !== 'true') window.location.href='login.html';
+</script>
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="css/style.css?v=3">
 <script src="https://unpkg.com/lucide@latest"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAMX0XgjmNv2O4Twk_CBBmjzDwopqtuexE&libraries=places&callback=initMap"></script>
@@ -23,6 +25,9 @@
   </div>
   <nav class="sidebar-menu">
     <div class="menu-label">Tổng quan</div>
+    <div class="menu-item" id="menu-owner-dashboard" onclick="switchPage('page-owner-dashboard', this)" style="display:none">
+      <i data-lucide="home"></i> Quán của tôi
+    </div>
     <div class="menu-item active" id="menu-dashboard" onclick="switchPage('page-dashboard', this)">
       <i data-lucide="layout-dashboard"></i> Tổng quan
     </div>
@@ -37,6 +42,10 @@
     <div class="menu-item" id="menu-users" onclick="switchPage('page-users', this)">
       <i data-lucide="users"></i> Quản lý người dùng
       <span class="menu-badge" id="user-badge">0</span>
+    </div>
+    <div class="menu-item" id="menu-approvals" onclick="switchPage('page-approvals', this)">
+      <i data-lucide="check-square"></i> Phê duyệt
+      <span class="menu-badge" id="approval-badge" style="background:#ef4444;display:none">0</span>
     </div>
 
     <div class="menu-label">Cấu hình</div>
@@ -53,10 +62,10 @@
   </nav>
   <div class="sidebar-footer">
     <div class="sidebar-user">
-      <div class="sidebar-avatar">A</div>
-      <div class="sidebar-user-info"><div class="name">Admin</div><div class="role">Super Admin</div></div>
+      <div class="sidebar-avatar" id="sb-avatar">A</div>
+      <div class="sidebar-user-info"><div class="name" id="sb-name">Admin</div><div class="role" id="sb-role">Super Admin</div></div>
     </div>
-    <button class="btn-logout" onclick="sessionStorage.removeItem('cms_logged_in'); window.location.href='login.html'">
+    <button class="btn-logout" onclick="doLogout()">
       <i data-lucide="log-out"></i> Đăng xuất
     </button>
   </div>
@@ -71,6 +80,30 @@
 
     </div>
   </header>
+
+  <!-- ════ OWNER DASHBOARD ════ -->
+  <main class="main-content" id="page-owner-dashboard">
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:20px" id="owner-stats-grid"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">
+      <div class="chart-card">
+        <div class="card-header"><h3>Lượt ghé thăm quán của bạn</h3></div>
+        <div style="height:240px"><canvas id="ownerChart"></canvas></div>
+      </div>
+      <div class="chart-card" style="display:flex;flex-direction:column;gap:12px">
+        <div class="card-header" style="margin-bottom:0"><h3>Yêu cầu của bạn</h3></div>
+        <div id="owner-requests-list" style="flex:1;overflow-y:auto"></div>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <div class="table-toolbar">
+        <h3>Quán của tôi</h3>
+        <button class="btn btn-primary btn-sm" onclick="switchPage('page-poi', document.getElementById('menu-poi'))">
+          <i data-lucide="edit-3"></i> Quản lý địa điểm
+        </button>
+      </div>
+      <div id="owner-poi-list"></div>
+    </div>
+  </main>
 
   <!-- ════ DASHBOARD ════ -->
   <main class="main-content active" id="page-dashboard">
@@ -88,7 +121,7 @@
     <div class="table-wrap">
       <div class="table-toolbar">
         <h3>Hoạt động gần nhất</h3>
-        <button class="btn btn-ghost btn-sm" onclick="loadAnalytics()"><i data-lucide="refresh-cw"></i> Làm mới</button>
+        <button class="btn btn-ghost btn-sm" onclick="Promise.all([loadPois(), loadTours(), loadAnalytics()]).then(()=>{showToast('Đã làm mới dữ liệu','success')})"><i data-lucide="refresh-cw"></i> Làm mới</button>
       </div>
       <table class="cms-table">
         <thead><tr><th>Địa điểm</th><th>Hành động</th><th>Thời gian</th></tr></thead>
@@ -193,6 +226,20 @@
     </div>
   </main>
 
+  <!-- ════ PHÊ DUYỆT ════ -->
+  <main class="main-content" id="page-approvals">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <p style="font-size:13px;color:var(--text-muted)">Xem xét và phê duyệt các yêu cầu từ chủ quán</p>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-ghost btn-sm filter-chip active" onclick="filterApproval('',this)">Tất cả</button>
+        <button class="btn btn-ghost btn-sm filter-chip" onclick="filterApproval('pending',this)">⏳ Chờ duyệt</button>
+        <button class="btn btn-ghost btn-sm filter-chip" onclick="filterApproval('approved',this)">✅ Đã duyệt</button>
+        <button class="btn btn-ghost btn-sm filter-chip" onclick="filterApproval('rejected',this)">❌ Từ chối</button>
+      </div>
+    </div>
+    <div id="approval-list"></div>
+  </main>
+
   <!-- ════ LỊCH SỬ ════ -->
   <main class="main-content" id="page-history">
     <div class="table-wrap">
@@ -237,14 +284,6 @@
     <div class="table-wrap">
       <div class="lang-manager" id="lang-list"></div>
     </div>
-    <div style="margin-top:24px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;padding:16px;display:flex;align-items:center;gap:12px">
-      <i data-lucide="headphones" style="color:#2563eb;flex-shrink:0"></i>
-      <div>
-        <div style="font-size:13px;font-weight:600;color:#1e40af">Quản lý nội dung Audio &amp; TTS đã được tách riêng</div>
-        <div style="font-size:12px;color:#3b82f6;margin-top:2px">Vào <strong>Quản lý Audio</strong> trong sidebar để xem trạng thái và nghe thử từng ngôn ngữ cho mỗi địa điểm.</div>
-      </div>
-      <button class="btn btn-primary btn-sm" onclick="switchPage('page-audio', document.getElementById('menu-audio'))" style="margin-left:auto;white-space:nowrap"><i data-lucide="arrow-right"></i> Đến Audio</button>
-    </div>
   </main>
 
   <!-- ════ AUDIO MANAGER ════ -->
@@ -253,15 +292,12 @@
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;gap:12px;flex-wrap:wrap">
       <div style="display:flex;gap:6px;flex-wrap:wrap" id="audio-lang-tabs"></div>
       <div style="display:flex;gap:8px;align-items:center">
-        <div style="position:relative">
-          <i data-lucide="search" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);width:14px;height:14px;color:#94a3b8"></i>
-          <input type="text" id="audio-search" class="form-control" placeholder="Tìm địa điểm..." style="padding-left:32px;width:220px;font-size:13px" oninput="renderAudioPage()">
+        <div class="search-wrap" style="width:220px">
+          <i data-lucide="search"></i>
+          <input type="text" id="audio-search" class="form-control" placeholder="Tìm địa điểm..." style="font-size:13px" oninput="renderAudioPage()">
         </div>
         <button class="btn btn-ghost btn-sm" onclick="stopCurrentAudio()" id="btn-stop-audio" style="display:none">
           <i data-lucide="square"></i> Dừng
-        </button>
-        <button class="btn btn-primary btn-sm" id="btn-bulk-update" onclick="bulkUpdateScripts()" title="Cập nhật TTS scripts ~30 giây cho tất cả quán">
-          <i data-lucide="refresh-cw"></i> Cập nhật Scripts (30s)
         </button>
       </div>
     </div>
@@ -331,6 +367,10 @@
               <option value="Bán vé">🎫 Quầy bán vé</option>
             </select>
           </div>
+        </div>
+        <div class="form-group" style="margin-top:6px">
+          <label>Mô tả / Giới thiệu (hiển thị trên bản đồ)</label>
+          <textarea class="form-control" id="poi-description" rows="3" placeholder="Ngắn gọn vài câu giới thiệu về quán..."></textarea>
         </div>
         <div class="form-group" style="margin-top:12px">
           <label style="display:flex;justify-content:space-between;align-items:center">
@@ -429,7 +469,41 @@
       <div class="form-group" style="margin:0"><label>Mô tả</label><textarea class="form-control" id="tour-desc" rows="2"></textarea></div>
     </div>
 
-    <div class="form-group"><label>Ảnh bìa (URL)</label><input type="text" class="form-control" id="tour-img"></div>
+    <div class="form-group" style="margin-top:12px">
+      <label style="display:flex;justify-content:space-between;align-items:center">
+        <span>Ảnh bìa (URL hoặc tính năng Kéo thả)</span>
+        <button type="button" class="btn btn-ghost btn-sm" onclick="clearTourImage()" style="font-size:11px;padding:3px 8px">
+          <i data-lucide="x"></i> Xóa ảnh
+        </button>
+      </label>
+
+      <!-- Drop zone tour -->
+      <div id="tour-image-dropzone"
+        style="border:2px dashed #cbd5e1;border-radius:12px;background:#f8fafc;cursor:pointer;transition:.2s;overflow:hidden;position:relative;margin-bottom:8px"
+        onclick="document.getElementById('tour-image-file').click()"
+        ondragover="event.preventDefault();this.style.borderColor='#2563eb';this.style.background='#eff6ff'"
+        ondragleave="this.style.borderColor='#cbd5e1';this.style.background='#f8fafc'"
+        ondrop="handleTourImageDrop(event)"
+        onmouseover="this.style.borderColor='#94a3b8'"
+        onmouseout="this.style.borderColor='#cbd5e1'">
+
+        <input type="file" id="tour-image-file" accept="image/jpeg,image/png,image/webp" style="display:none" onchange="previewTourImage(this)">
+
+        <!-- Preview khi có ảnh -->
+        <img id="tour-image-preview" src="" alt="Preview"
+          style="display:none;width:100%;max-height:200px;object-fit:cover;border-radius:10px">
+
+        <!-- Placeholder khi chưa có ảnh -->
+        <div id="tour-image-placeholder" style="padding:28px 20px;text-align:center">
+          <i data-lucide="image-plus" style="width:36px;height:36px;color:#94a3b8;display:block;margin:0 auto 10px"></i>
+          <div style="font-size:13px;font-weight:600;color:#475569">Nhấn hoặc kéo thả ảnh bìa vào đây</div>
+          <div style="font-size:11px;color:#94a3b8;margin-top:4px">JPG, PNG, WebP · Tối đa 3MB</div>
+        </div>
+      </div>
+
+      <div id="tour-image-filename" style="font-size:11px;color:#2563eb;margin-top:6px;font-weight:500;margin-bottom:8px"></div>
+      <input type="text" class="form-control" id="tour-img" placeholder="Hoặc nhập URL ảnh..." oninput="previewTourUrl(this.value)">
+    </div>
     <div class="form-group">
       <label style="display:flex;justify-content:space-between;align-items:center">
         <span>Chọn điểm trong hành trình</span>
@@ -441,6 +515,45 @@
   <div class="panel-footer">
     <button class="btn btn-ghost" onclick="closeTourModal()" style="flex:1">Hủy</button>
     <button class="btn btn-primary" onclick="saveTourData()" style="flex:2"><i data-lucide="save"></i> Lưu Tour</button>
+  </div>
+</div>
+
+<!-- ══ PANEL NGƯỜI DÙNG ══ -->
+<div class="panel-overlay" id="panel-overlay-user" style="display:none" onclick="closeUserPanel()"></div>
+<div class="side-panel" id="user-form-panel" style="width:400px">
+  <div class="panel-header">
+    <div class="panel-header-left">
+      <div class="panel-icon" style="background:#fef2f2;color:#ef4444"><i data-lucide="user"></i></div>
+      <h3 id="user-form-title">Thêm người dùng</h3>
+    </div>
+    <button class="btn btn-ghost btn-sm" onclick="closeUserPanel()"><i data-lucide="x"></i></button>
+  </div>
+  <div class="panel-body">
+    <input type="hidden" id="user-id">
+    <div class="form-group">
+      <label>Tên đăng nhập (Username)</label>
+      <input type="text" class="form-control" id="user-username" placeholder="Nhập username...">
+    </div>
+    <div class="form-group">
+      <label>Họ và Tên</label>
+      <input type="text" class="form-control" id="user-fullname" placeholder="Vd: Nguyễn Văn A">
+    </div>
+    <div class="form-group">
+      <label>Vai trò</label>
+      <select class="form-control" id="user-role">
+        <option value="user">👤 User (Nhân viên)</option>
+        <option value="admin">👑 Admin (Quản lý)</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label id="user-password-label">Mật khẩu</label>
+      <input type="password" class="form-control" id="user-password" placeholder="Nhập mật khẩu...">
+      <div style="font-size:11px;color:#94a3b8;margin-top:4px" id="user-password-hint">Để trống nếu không muốn đổi mật khẩu (khi sửa)</div>
+    </div>
+  </div>
+  <div class="panel-footer">
+    <button class="btn btn-ghost" onclick="closeUserPanel()" style="flex:1">Hủy</button>
+    <button class="btn btn-primary" onclick="saveUserData()" style="flex:2"><i data-lucide="save"></i> Lưu tài khoản</button>
   </div>
 </div>
 
@@ -571,8 +684,39 @@
   </div>
 </div>
 
+<!-- ══ PANEL PHÊ DUYỆT ══ -->
+<div class="panel-overlay" id="panel-overlay-approval" style="display:none" onclick="closeApprovalPanel()"></div>
+<div class="side-panel wide" id="approval-panel">
+  <div class="panel-header">
+    <div class="panel-header-left">
+      <div class="panel-icon" style="background:#fff7ed;color:#ea580c"><i data-lucide="check-square"></i></div>
+      <h3 id="approval-panel-title">Chi tiết yêu cầu</h3>
+    </div>
+    <button class="btn btn-ghost btn-sm" onclick="closeApprovalPanel()"><i data-lucide="x"></i></button>
+  </div>
+  <div class="panel-body" id="approval-panel-body"></div>
+  <div class="panel-footer" id="approval-panel-footer"></div>
+</div>
+
 <div id="toast-container"></div>
-<script src="app.js"></script>
+
+<!-- Core & Helpers -->
+<script src="js/helpers/config.js"></script>
+<script src="js/helpers/utils.js"></script>
+<script src="js/helpers/layout.js"></script>
+
+<!-- Domain Pages -->
+<script src="js/pages/auth.js"></script>
+<script src="js/pages/language.js"></script>
+<script src="js/pages/users.js"></script>
+<script src="js/pages/poi.js"></script>
+<script src="js/pages/tour.js"></script>
+<script src="js/pages/audio.js"></script>
+<script src="js/pages/dashboard.js"></script>
+<script src="js/pages/approvals.js"></script>
+
+<!-- Main Entry -->
+<script src="js/app.js"></script>
 <script>lucide.createIcons();</script>
 </body>
 </html>

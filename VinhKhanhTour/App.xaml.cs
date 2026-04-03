@@ -1,5 +1,6 @@
 using VinhKhanhTour.Services;
 using VinhKhanhTour.Models;
+using VinhKhanhTour.Views;
 
 namespace VinhKhanhTour
 {

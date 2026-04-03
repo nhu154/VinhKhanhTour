@@ -1,4 +1,4 @@
-﻿using Microsoft.Maui.Media;
+using Microsoft.Maui.Media;
 using System.Text;
 using System.Text.Json;
 
@@ -114,37 +114,45 @@ namespace VinhKhanhTour.Services
             CurrentTrack = $"Google TTS ({_language.ToUpper()})";
             System.Diagnostics.Debug.WriteLine($"[AudioService] Google TTS [{_language}]: {script[..Math.Min(60, script.Length)]}...");
 
-            var requestBody = new
+            using var md5 = System.Security.Cryptography.MD5.Create();
+            var hashBytes = md5.ComputeHash(System.Text.Encoding.UTF8.GetBytes(script + _language));
+            var hashString = BitConverter.ToString(hashBytes).Replace("-", "").ToLowerInvariant();
+
+            var tempPath = Path.Combine(FileSystem.CacheDirectory, $"gtts_{_currentPoiId}_{_language}_{hashString}.mp3");
+
+            if (!File.Exists(tempPath))
             {
-                input = new { text = script },
-                voice = new
+                var requestBody = new
                 {
-                    languageCode = langCode,
-                    name = voiceName,
-                    ssmlGender = gender
-                },
-                audioConfig = new
-                {
-                    audioEncoding = "MP3",
-                    speakingRate = 0.95,
-                    pitch = 0.0
-                }
-            };
+                    input = new { text = script },
+                    voice = new
+                    {
+                        languageCode = langCode,
+                        name = voiceName,
+                        ssmlGender = gender
+                    },
+                    audioConfig = new
+                    {
+                        audioEncoding = "MP3",
+                        speakingRate = 0.95,
+                        pitch = 0.0
+                    }
+                };
 
-            using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(15) };
-            var json = JsonSerializer.Serialize(requestBody);
-            var content = new StringContent(json, Encoding.UTF8, "application/json");
-            var response = await http.PostAsync(GOOGLE_TTS_URL, content);
-            response.EnsureSuccessStatusCode();
+                using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(15) };
+                var json = JsonSerializer.Serialize(requestBody);
+                var content = new StringContent(json, Encoding.UTF8, "application/json");
+                var response = await http.PostAsync(GOOGLE_TTS_URL, content);
+                response.EnsureSuccessStatusCode();
 
-            var responseJson = await response.Content.ReadAsStringAsync();
-            using var doc = JsonDocument.Parse(responseJson);
-            var audioBase64 = doc.RootElement.GetProperty("audioContent").GetString()
-                ?? throw new Exception("audioContent trống");
+                var responseJson = await response.Content.ReadAsStringAsync();
+                using var doc = JsonDocument.Parse(responseJson);
+                var audioBase64 = doc.RootElement.GetProperty("audioContent").GetString()
+                    ?? throw new Exception("audioContent trống");
 
-            var audioBytes = Convert.FromBase64String(audioBase64);
-            var tempPath = Path.Combine(FileSystem.CacheDirectory, $"gtts_{_currentPoiId}_{_language}.mp3");
-            await File.WriteAllBytesAsync(tempPath, audioBytes);
+                var audioBytes = Convert.FromBase64String(audioBase64);
+                await File.WriteAllBytesAsync(tempPath, audioBytes);
+            }
 
             await PlayLocalFileAsync(tempPath);
         }

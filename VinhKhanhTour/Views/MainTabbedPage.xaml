@@ -1,0 +1,27 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<TabbedPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+            xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+            xmlns:local="clr-namespace:VinhKhanhTour.Views"
+            xmlns:android="clr-namespace:Microsoft.Maui.Controls.PlatformConfiguration.AndroidSpecific;assembly=Microsoft.Maui.Controls"
+            android:TabbedPage.IsSwipePagingEnabled="False"
+            x:Class="VinhKhanhTour.Views.MainTabbedPage"
+            BarBackgroundColor="#FFFFFF"
+            BarTextColor="#5A7A9A"
+            SelectedTabColor="#1565C0"
+            UnselectedTabColor="#9EBBCC">
+    <NavigationPage Title="Trang chá»§" IconImageSource="home.png">
+        <x:Arguments>
+            <local:WelcomePage/>
+        </x:Arguments>
+    </NavigationPage>
+    <NavigationPage Title="Báº£n Ä‘á»“" IconImageSource="map.png">
+        <x:Arguments>
+            <local:MapPage/>
+        </x:Arguments>
+    </NavigationPage>
+    <NavigationPage Title="CÃ¡ nhÃ¢n" IconImageSource="profile.png">
+        <x:Arguments>
+            <local:ProfilePage/>
+        </x:Arguments>
+    </NavigationPage>
+</TabbedPage>

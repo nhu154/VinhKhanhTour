@@ -1,4 +1,8 @@
-﻿using Microsoft.Extensions.Logging;
+global using VinhKhanhTour.Views;
+global using VinhKhanhTour.Controls;
+global using VinhKhanhTour.Helpers;
+
+using Microsoft.Extensions.Logging;
 
 namespace VinhKhanhTour
 {

@@ -125,19 +125,49 @@
   </div>
 
   <script>
-    if(sessionStorage.getItem('cms_logged_in') === 'true') {
-      window.location.href = 'index.html';
-    }
-    document.getElementById('login-form').addEventListener('submit', function(e) {
+    const API_BASE = 'http://localhost:5256/api';
+    if(sessionStorage.getItem('cms_logged_in') === 'true') window.location.href = 'index.html';
+
+    document.getElementById('login-form').addEventListener('submit', async function(e) {
       e.preventDefault();
-      const u = document.getElementById('username').value;
+      const u = document.getElementById('username').value.trim();
       const p = document.getElementById('password').value;
-      if(u === 'admin' && p === 'admin') {
-        sessionStorage.setItem('cms_logged_in', 'true');
-        window.location.href = 'index.html';
-      } else {
-        document.getElementById('error-msg').style.display = 'block';
-      }
+      const btn = document.querySelector('button[type="submit"]');
+      const errEl = document.getElementById('error-msg');
+      btn.textContent = 'Đang đăng nhập...'; btn.disabled = true; errEl.style.display = 'none';
+
+      try {
+        const res = await fetch(`${API_BASE}/auth/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ Username: u, Password: p })
+        });
+        if (res.ok) {
+          const data = await res.json();
+          sessionStorage.setItem('cms_logged_in', 'true');
+          sessionStorage.setItem('cms_role',     data.role     || 'user');
+          sessionStorage.setItem('cms_username',  u);
+          sessionStorage.setItem('cms_fullname',  data.fullName || u);
+          sessionStorage.setItem('cms_userid',    data.id       || '0');
+          window.location.href = 'index.html';
+        } else {
+          errEl.textContent = 'Sai tài khoản hoặc mật khẩu!';
+          errEl.style.display = 'block';
+        }
+      } catch(err) {
+        // Fallback offline
+        if (u === 'admin' && (p === 'admin123' || p === 'admin')) {
+          sessionStorage.setItem('cms_logged_in', 'true');
+          sessionStorage.setItem('cms_role',    'admin');
+          sessionStorage.setItem('cms_username', 'admin');
+          sessionStorage.setItem('cms_fullname', 'Administrator');
+          sessionStorage.setItem('cms_userid',   '1');
+          window.location.href = 'index.html';
+        } else {
+          errEl.textContent = 'Không kết nối được server!';
+          errEl.style.display = 'block';
+        }
+      } finally { btn.textContent = 'Sign in'; btn.disabled = false; }
     });
   </script>
 </body>
