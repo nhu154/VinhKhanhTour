@@ -10,6 +10,7 @@ namespace VinhKhanhTour.Views
         private bool _dropdownOpen = false;
         private string _currentLang = Preferences.Default.Get("app_lang", "vi");
         private List<ApiTour> _apiTours = new();
+        private List<AppLanguage> _availableLanguages = new();
 
         public WelcomePage()
         {
@@ -21,6 +22,7 @@ namespace VinhKhanhTour.Views
         {
             base.OnAppearing();
             _ = LoadToursFromApiAsync();
+            _ = LoadLanguagesFromApiAsync();
         }
 
         // ══ LOAD TOURS TỪ API ══
@@ -249,15 +251,120 @@ function initMap(){{
                 tabbedPage.CurrentPage = tabbedPage.Children[1];
         }
 
+        // ══ LOAD VÀ RENDER NGÔN NGỮ TỪ API ══
+        private async Task LoadLanguagesFromApiAsync()
+        {
+            try
+            {
+                var langs = await ApiService.Instance.GetLanguagesAsync();
+                if (langs.Count > 0)
+                {
+                    _availableLanguages = langs;
+                    MainThread.BeginInvokeOnMainThread(() =>
+                    {
+                        RenderLanguageButtons();
+                        RenderDropdownItems();
+                        UpdateLanguage(_currentLang);
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[WelcomePage] Languages load failed: {ex.Message}");
+                // Dùng default nếu API thất bại
+                _availableLanguages = new List<AppLanguage>
+                {
+                    new() { Code = "vi", Name = "Tiếng Việt", Flag = "🇻🇳", IsDefault = true },
+                    new() { Code = "en", Name = "English",     Flag = "🇺🇸" },
+                    new() { Code = "zh", Name = "中文",          Flag = "🇨🇳" },
+                };
+                MainThread.BeginInvokeOnMainThread(() => { RenderLanguageButtons(); RenderDropdownItems(); });
+            }
+        }
+
+        private void RenderLanguageButtons()
+        {
+            LangBtnContainer.Children.Clear();
+            var activeColor = Color.FromArgb("#1565C0");
+            var inactiveColor = Color.FromArgb("#F0F6FF");
+
+            foreach (var lang in _availableLanguages)
+            {
+                var code = lang.Code;
+                var isActive = code == _currentLang;
+
+                var flagLabel = new Label { Text = lang.Flag, FontSize = 22, HorizontalOptions = LayoutOptions.Center };
+                var nameLabel = new Label
+                {
+                    Text = lang.Name, // Hiện đầy đủ: "Tiếng Việt", "English", "中文"
+                    FontSize = 11,
+                    FontAttributes = isActive ? FontAttributes.Bold : FontAttributes.None,
+                    TextColor = isActive ? Colors.White : Color.FromArgb("#5A7A9A"),
+                    HorizontalOptions = LayoutOptions.Center
+                };
+
+                var frame = new Frame
+                {
+                    AutomationId = $"lang-btn-{code}",
+                    CornerRadius = 14,
+                    HasShadow = false,
+                    BackgroundColor = isActive ? activeColor : inactiveColor,
+                    BorderColor = isActive ? Colors.Transparent : Color.FromArgb("#CCE0FF"),
+                    Padding = new Thickness(0, 12),
+                    Margin = new Thickness(4, 0),
+                    WidthRequest = 100,
+                    Content = new VerticalStackLayout
+                    {
+                        Spacing = 4,
+                        Children = { flagLabel, nameLabel }
+                    }
+                };
+
+                var tgr = new TapGestureRecognizer();
+                tgr.Tapped += (_, _) => SetLanguage(code);
+                frame.GestureRecognizers.Add(tgr);
+
+                LangBtnContainer.Children.Add(frame);
+            }
+        }
+
+        private void RenderDropdownItems()
+        {
+            LangDropdownList.Children.Clear();
+            bool isFirst = true;
+            foreach (var lang in _availableLanguages)
+            {
+                var code = lang.Code;
+                if (!isFirst)
+                    LangDropdownList.Children.Add(new BoxView { HeightRequest = 1, Color = Color.FromArgb("#CCE0FF"), Margin = new Thickness(12, 0) });
+                isFirst = false;
+
+                var row = new Border
+                {
+                    Padding = new Thickness(16, 12),
+                    BackgroundColor = Colors.Transparent
+                };
+                var tgr = new TapGestureRecognizer();
+                tgr.Tapped += (_, _) => SetLanguage(code);
+                row.GestureRecognizers.Add(tgr);
+                row.Content = new HorizontalStackLayout
+                {
+                    Spacing = 10,
+                    Children =
+                    {
+                        new Label { Text = lang.Flag, FontSize = 18 },
+                        new Label { Text = lang.Name, FontSize = 13, TextColor = Color.FromArgb("#0D2137"), VerticalOptions = LayoutOptions.Center }
+                    }
+                };
+                LangDropdownList.Children.Add(row);
+            }
+        }
+
         private void OnLangBtnClicked(object sender, EventArgs e)
         {
             _dropdownOpen = !_dropdownOpen;
             LangDropdown.IsVisible = _dropdownOpen;
         }
-
-        private void OnLangVI(object sender, EventArgs e) => SetLanguage("vi");
-        private void OnLangEN(object sender, EventArgs e) => SetLanguage("en");
-        private void OnLangZH(object sender, EventArgs e) => SetLanguage("zh");
 
         private void SetLanguage(string lang)
         {
@@ -275,15 +382,27 @@ function initMap(){{
         public void UpdateLanguage(string lang)
         {
             _currentLang = lang;
-            LangFlag.Text = lang switch { "en" => "🇺🇸", "zh" => "🇨🇳", _ => "🇻🇳" };
+
+            // Cập nhật cờ hiển thị trên nút
+            var activeLang = _availableLanguages.FirstOrDefault(l => l.Code == lang);
+            LangFlag.Text = activeLang?.Flag ?? lang switch { "en" => "🇺🇸", "zh" => "🇨🇳", _ => "🇻🇳" };
+
+            // Cập nhật trạng thái nút ngôn ngữ động
             var activeColor = Color.FromArgb("#1565C0");
             var inactiveColor = Color.FromArgb("#F0F6FF");
-            BtnVI.BackgroundColor = lang == "vi" ? activeColor : inactiveColor;
-            LblLangVI.TextColor = lang == "vi" ? Colors.White : Color.FromArgb("#5A7A9A");
-            BtnEN.BackgroundColor = lang == "en" ? activeColor : inactiveColor;
-            LblLangEN.TextColor = lang == "en" ? Colors.White : Color.FromArgb("#5A7A9A");
-            BtnZH.BackgroundColor = lang == "zh" ? activeColor : inactiveColor;
-            LblLangZH.TextColor = lang == "zh" ? Colors.White : Color.FromArgb("#5A7A9A");
+            foreach (var child in LangBtnContainer.Children)
+            {
+                if (child is not Frame btn) continue;
+                var isActive = btn.AutomationId == $"lang-btn-{lang}";
+                btn.BackgroundColor = isActive ? activeColor : inactiveColor;
+                btn.BorderColor = isActive ? Colors.Transparent : Color.FromArgb("#CCE0FF");
+                if (btn.Content is VerticalStackLayout vsl && vsl.Children.Count >= 2
+                    && vsl.Children[1] is Label nameLabel)
+                {
+                    nameLabel.TextColor = isActive ? Colors.White : Color.FromArgb("#5A7A9A");
+                    nameLabel.FontAttributes = isActive ? FontAttributes.Bold : FontAttributes.None;
+                }
+            }
 
             switch (lang)
             {
@@ -308,6 +427,17 @@ function initMap(){{
                     LblStats1Value.Text = "11"; LblStats1Text.Text = "餐厅";
                     LblStats3Value.Text = "4.5★"; LblStats3Text.Text = "评分";
                     LblCTA.Text = "🗺️  开始探索";
+                    break;
+                case "ja":
+                    LblNarration.Text = "ガイド言語"; LblNarrationSub.Text = "音声ガイドの言語を選択";
+                    LblChoTour.Text = "ヴィンカンエリア"; LblChoTourSub.Text = "第4区の有名な飲食街";
+                    LblTapHint.Text = "👆 タップして地図を表示";
+                    LblTourTheme.Text = "ツアーを選択";
+                    LblWelcome.Text = "第4区の飲食街を探索しよう"; LblLocation.Text = "第4区 · ホーチミン市";
+                    LblMainSubtitle.Text = "  美食ガイド";
+                    LblStats1Value.Text = "11"; LblStats1Text.Text = "スポット";
+                    LblStats3Value.Text = "4.5★"; LblStats3Text.Text = "評価";
+                    LblCTA.Text = "🗺️  探索を始める";
                     break;
                 default:
                     LblNarration.Text = "Giọng thuyết minh"; LblNarrationSub.Text = "Chọn ngôn ngữ audio tour";

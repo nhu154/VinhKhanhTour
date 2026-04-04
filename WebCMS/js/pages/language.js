@@ -75,20 +75,59 @@ function saveLang() {
   if (langs.find(l => l.code === code)) { showToast(`Ngôn ngữ "${code}" đã tồn tại`, 'warning'); return; }
   langs.push({ code, name, flag, isDefault: false });
   saveLangs(langs);
-  showToast(`✅ Đã thêm ngôn ngữ ${flag} ${name}`, 'success');
+
+  // Đồng bộ lên server
+  fetch(`${API}/languages`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ code, name, flag })
+  }).catch(e => console.warn('[Lang] API sync thất bại:', e));
+
+  showToast(`Đã thêm ngôn ngữ ${flag} ${name}`, 'success');
   closeLangPanel();
   renderLangList();
   renderTransList();
+  renderAudioPage(); // Cập nhật Audio Manager ngay
 }
 
-function deleteLang(idx) {
+async function deleteLang(idx) {
   const langs = getLangs();
-  if (!confirm(`Xóa ngôn ngữ "${langs[idx].name}"?`)) return;
+  const lang = langs[idx];
+  if (!(await showConfirm('Xóa ngôn ngữ', `Bạn có chắc muốn xóa ngôn ngữ "${lang.name}"?`, 'warning'))) return;
   langs.splice(idx, 1);
   saveLangs(langs);
-  showToast('🗑️ Đã xóa ngôn ngữ', 'success');
+
+  // Đồng bộ lên server
+  fetch(`${API}/languages/${lang.code}`, { method: 'DELETE' })
+    .catch(e => console.warn('[Lang] API delete thất bại:', e));
+
+  showToast('Đã xóa ngôn ngữ', 'success');
   renderLangList();
   renderTransList();
+  renderAudioPage(); // Cập nhật Audio Manager ngay
+}
+
+// Load ngôn ngữ từ API khi vào trang (merge vào localStorage)
+async function loadLangsFromApi() {
+  try {
+    const res = await fetch(`${API}/languages`);
+    if (!res.ok) return;
+    const serverLangs = await res.json();
+    if (!Array.isArray(serverLangs) || serverLangs.length === 0) return;
+
+    const mapped = serverLangs.map(l => ({
+      code: (l.code || l.Code || '').toLowerCase(),
+      name: l.name || l.Name || '',
+      flag: l.flag || l.Flag || '🌐',
+      isDefault: !!(l.isDefault ?? l.IsDefault)
+    })).filter(l => l.code);
+
+    saveLangs(mapped);
+    renderLangList();
+    renderAudioPage();
+  } catch (e) {
+    console.warn('[Lang] Load từ API thất bại:', e);
+  }
 }
 
 // ══ BẢNG DỊCH (DƯỚI QUẢN LÝ NGÔN NGỮ) ══

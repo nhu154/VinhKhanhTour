@@ -83,17 +83,39 @@ if(sessionStorage.getItem('cms_logged_in') !== 'true') window.location.href='log
 
   <!-- ════ OWNER DASHBOARD ════ -->
   <main class="main-content" id="page-owner-dashboard">
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:20px" id="owner-stats-grid"></div>
+    <!-- Chào mừng chủ quán -->
+    <div id="owner-welcome" style="background:var(--card);border-radius:var(--radius-lg);padding:20px 24px;margin-bottom:20px;border:1px solid var(--border);box-shadow:var(--shadow)"></div>
+
+    <!-- Stats: 4 ô -->
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:20px" id="owner-stats-grid"></div>
+
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">
+      <!-- Biểu đồ lượt ghé thăm 7 ngày -->
       <div class="chart-card">
-        <div class="card-header"><h3>Lượt ghé thăm quán của bạn</h3></div>
+        <div class="card-header"><h3>Lượt ghé thăm 7 ngày qua</h3></div>
         <div style="height:240px"><canvas id="ownerChart"></canvas></div>
       </div>
-      <div class="chart-card" style="display:flex;flex-direction:column;gap:12px">
-        <div class="card-header" style="margin-bottom:0"><h3>Yêu cầu của bạn</h3></div>
-        <div id="owner-requests-list" style="flex:1;overflow-y:auto"></div>
+
+      <!-- Yêu cầu của chủ quán -->
+      <div class="chart-card" style="display:flex;flex-direction:column;gap:0">
+        <div class="card-header" style="margin-bottom:12px">
+          <h3>Yêu cầu của bạn</h3>
+          <button class="btn btn-ghost btn-sm" onclick="renderOwnerRequests()">
+            <i data-lucide="refresh-cw"></i>
+          </button>
+        </div>
+        <!-- Filter chips -->
+        <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap">
+          <button class="filter-chip owner-req-chip active" data-filter="all" onclick="setOwnerRequestFilter('all')">Tất cả</button>
+          <button class="filter-chip owner-req-chip" data-filter="pending" onclick="setOwnerRequestFilter('pending')">⏳ Chờ duyệt</button>
+          <button class="filter-chip owner-req-chip" data-filter="approved" onclick="setOwnerRequestFilter('approved')">✅ Đã duyệt</button>
+          <button class="filter-chip owner-req-chip" data-filter="rejected" onclick="setOwnerRequestFilter('rejected')">❌ Từ chối</button>
+        </div>
+        <div id="owner-requests-list" style="flex:1;overflow-y:auto;max-height:260px"></div>
       </div>
     </div>
+
+    <!-- Danh sách quán -->
     <div class="table-wrap">
       <div class="table-toolbar">
         <h3>Quán của tôi</h3>
@@ -121,7 +143,10 @@ if(sessionStorage.getItem('cms_logged_in') !== 'true') window.location.href='log
     <div class="table-wrap">
       <div class="table-toolbar">
         <h3>Hoạt động gần nhất</h3>
-        <button class="btn btn-ghost btn-sm" onclick="Promise.all([loadPois(), loadTours(), loadAnalytics()]).then(()=>{showToast('Đã làm mới dữ liệu','success')})"><i data-lucide="refresh-cw"></i> Làm mới</button>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-ghost btn-sm" onclick="refreshDashboard()"><i data-lucide="refresh-cw"></i> Tải lại</button>
+          <button class="btn btn-ghost btn-sm" style="color:var(--danger)" onclick="clearDashboardHistory()"><i data-lucide="trash-2"></i> Làm sạch (Reset)</button>
+        </div>
       </div>
       <table class="cms-table">
         <thead><tr><th>Địa điểm</th><th>Hành động</th><th>Thời gian</th></tr></thead>
@@ -231,10 +256,13 @@ if(sessionStorage.getItem('cms_logged_in') !== 'true') window.location.href='log
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
       <p style="font-size:13px;color:var(--text-muted)">Xem xét và phê duyệt các yêu cầu từ chủ quán</p>
       <div style="display:flex;gap:8px">
-        <button class="btn btn-ghost btn-sm filter-chip active" onclick="filterApproval('',this)">Tất cả</button>
-        <button class="btn btn-ghost btn-sm filter-chip" onclick="filterApproval('pending',this)">⏳ Chờ duyệt</button>
-        <button class="btn btn-ghost btn-sm filter-chip" onclick="filterApproval('approved',this)">✅ Đã duyệt</button>
-        <button class="btn btn-ghost btn-sm filter-chip" onclick="filterApproval('rejected',this)">❌ Từ chối</button>
+        <button class="btn btn-ghost btn-sm" style="color:var(--danger);margin-right:10px" onclick="clearApprovalsHistory()">
+          <i data-lucide="trash-2"></i> Làm sạch (Reset)
+        </button>
+        <button class="btn btn-ghost btn-sm filter-chip active" onclick="filterApproval('',this)"><i data-lucide="list"></i> Tất cả</button>
+        <button class="btn btn-ghost btn-sm filter-chip" onclick="filterApproval('pending',this)"><i data-lucide="clock"></i> Chờ duyệt</button>
+        <button class="btn btn-ghost btn-sm filter-chip" onclick="filterApproval('approved',this)"><i data-lucide="check-circle"></i> Đã duyệt</button>
+        <button class="btn btn-ghost btn-sm filter-chip" onclick="filterApproval('rejected',this)"><i data-lucide="x-circle"></i> Từ chối</button>
       </div>
     </div>
     <div id="approval-list"></div>
@@ -303,15 +331,7 @@ if(sessionStorage.getItem('cms_logged_in') !== 'true') window.location.href='log
     </div>
     <div class="table-wrap">
       <table class="cms-table">
-        <thead>
-          <tr>
-            <th style="width:52px"></th>
-            <th>Địa điểm</th>
-            <th style="text-align:center">🇻🇳 Tiếng Việt</th>
-            <th style="text-align:center">🇺🇸 English</th>
-            <th style="text-align:center">🇨🇳 中文</th>
-            <th style="width:80px;text-align:right">Sửa</th>
-          </tr>
+        <thead id="audio-thead">
         </thead>
         <tbody id="audio-tbody"></tbody>
       </table>
@@ -518,44 +538,6 @@ if(sessionStorage.getItem('cms_logged_in') !== 'true') window.location.href='log
   </div>
 </div>
 
-<!-- ══ PANEL NGƯỜI DÙNG ══ -->
-<div class="panel-overlay" id="panel-overlay-user" style="display:none" onclick="closeUserPanel()"></div>
-<div class="side-panel" id="user-form-panel" style="width:400px">
-  <div class="panel-header">
-    <div class="panel-header-left">
-      <div class="panel-icon" style="background:#fef2f2;color:#ef4444"><i data-lucide="user"></i></div>
-      <h3 id="user-form-title">Thêm người dùng</h3>
-    </div>
-    <button class="btn btn-ghost btn-sm" onclick="closeUserPanel()"><i data-lucide="x"></i></button>
-  </div>
-  <div class="panel-body">
-    <input type="hidden" id="user-id">
-    <div class="form-group">
-      <label>Tên đăng nhập (Username)</label>
-      <input type="text" class="form-control" id="user-username" placeholder="Nhập username...">
-    </div>
-    <div class="form-group">
-      <label>Họ và Tên</label>
-      <input type="text" class="form-control" id="user-fullname" placeholder="Vd: Nguyễn Văn A">
-    </div>
-    <div class="form-group">
-      <label>Vai trò</label>
-      <select class="form-control" id="user-role">
-        <option value="user">👤 User (Nhân viên)</option>
-        <option value="admin">👑 Admin (Quản lý)</option>
-      </select>
-    </div>
-    <div class="form-group">
-      <label id="user-password-label">Mật khẩu</label>
-      <input type="password" class="form-control" id="user-password" placeholder="Nhập mật khẩu...">
-      <div style="font-size:11px;color:#94a3b8;margin-top:4px" id="user-password-hint">Để trống nếu không muốn đổi mật khẩu (khi sửa)</div>
-    </div>
-  </div>
-  <div class="panel-footer">
-    <button class="btn btn-ghost" onclick="closeUserPanel()" style="flex:1">Hủy</button>
-    <button class="btn btn-primary" onclick="saveUserData()" style="flex:2"><i data-lucide="save"></i> Lưu tài khoản</button>
-  </div>
-</div>
 
 <!-- ══ PANEL NGÔN NGỮ ══ -->
 <div class="panel-overlay" id="panel-overlay-lang" style="display:none" onclick="closeLangPanel()"></div>
@@ -698,6 +680,7 @@ if(sessionStorage.getItem('cms_logged_in') !== 'true') window.location.href='log
   <div class="panel-footer" id="approval-panel-footer"></div>
 </div>
 
+<div id="dialog-container"></div>
 <div id="toast-container"></div>
 
 <!-- Core & Helpers -->

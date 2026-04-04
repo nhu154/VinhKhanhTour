@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using MySql.Data.MySqlClient;
 using Dapper;
 using System.Text.Json;
@@ -132,6 +132,15 @@ namespace VinhkhanhTour.API.Controllers
             using var db = new MySqlConnection(_conn);
             await db.ExecuteAsync("DELETE FROM approval_requests WHERE Id=@id", new { id });
             return Ok(new { message = "Đã xóa" });
+        }
+
+        // DELETE: api/approvals/clear — Xóa tất cả yêu cầu (admin reset)
+        [HttpDelete("clear")]
+        public async Task<IActionResult> ClearAll()
+        {
+            using var db = new MySqlConnection(_conn);
+            await db.ExecuteAsync("DELETE FROM approval_requests");
+            return Ok(new { message = "Đã dọn sạch toàn bộ danh sách phê duyệt" });
         }
 
         // GET: api/approvals/my-locations/{userId}

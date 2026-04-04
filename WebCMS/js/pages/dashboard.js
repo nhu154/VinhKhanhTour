@@ -1,6 +1,6 @@
 // ══ ANALYTICS ══
 async function loadAnalytics() {
-  try { const res=await fetch(`${API}/analytics`); historyData=await res.json(); renderStatsCards(); renderHistory(); renderDashboardRecent(); }
+  try { const res=await fetch(`${API}/analytics`, { cache: 'no-store' }); historyData=await res.json(); renderStatsCards(); renderHistory(); renderDashboardRecent(); }
   catch(e) { console.error('loadAnalytics:',e); }
 }
 
@@ -80,7 +80,7 @@ function renderDashboardRecent() {
 }
 
 async function loadStats() {
-  try { const res=await fetch(`${API}/analytics/stats`); statsData=await res.json(); } catch(e) { statsData=null; }
+  try { const res=await fetch(`${API}/analytics/stats`, { cache: 'no-store' }); statsData=await res.json(); } catch(e) { statsData=null; }
 }
 
 function initCharts() {
@@ -100,35 +100,94 @@ function initCharts() {
   pieChart=new Chart(ctxPie,{type:'doughnut',data:{labels:topLabels,datasets:[{data:topValues,backgroundColor:['#2563eb','#10b981','#f59e0b','#ef4444','#8b5cf6'],borderWidth:0,hoverOffset:4}]},options:{responsive:true,maintainAspectRatio:false,cutout:'65%',plugins:{legend:{position:'bottom',labels:{font:{size:11},padding:12}}}}});
 }
 
+async function refreshDashboard() {
+  const recentTbody = document.getElementById('dashboard-recent-tbody');
+  if (recentTbody) {
+    recentTbody.style.transition = 'none';
+    recentTbody.style.opacity = '0.4';
+  }
+  
+  // Ensure the browser renders the opacity change
+  await new Promise(r => setTimeout(r, 400));
+  
+  await Promise.all([loadStats(), loadAnalytics()]);
+  initCharts();
+  
+  if (recentTbody) {
+    recentTbody.style.transition = 'opacity 0.3s ease-in';
+    recentTbody.style.opacity = '1';
+  }
+  showToast('Đã làm mới dữ liệu', 'success');
+}
+
+async function clearDashboardHistory() {
+  if (!(await showConfirm('Xóa lịch sử', 'Bạn có chắc chắn muốn làm sạch (reset) toàn bộ dữ liệu hoạt động gần nhất?', 'danger'))) return;
+  try {
+    const res = await fetch(`${API}/analytics/clear`, { method: 'DELETE' });
+    if (!res.ok) throw new Error();
+    showToast('Đã reset toàn bộ lịch sử', 'success');
+    await refreshDashboard();
+  } catch (e) {
+    showToast('Lỗi khi xóa dữ liệu', 'danger');
+  }
+}
+
 // OWNER DASHBOARD — chỉ hiện data quán của mình
 // ══════════════════════════════════════════════════
 let ownerChart = null;
+let ownerRequestFilter = 'all'; // 'all' | 'pending' | 'approved' | 'rejected'
 
 async function renderOwnerDashboard() {
+  _renderOwnerWelcome();
   renderOwnerStats();
   renderOwnerPoiList();
   renderOwnerRequests();
   renderOwnerChart();
 }
 
+// ── Chào tên chủ quán ──
+function _renderOwnerWelcome() {
+  const el = document.getElementById('owner-welcome');
+  if (!el) return;
+  const name = sessionStorage.getItem('cms_fullname') || 'Chủ quán';
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? 'Chào buổi sáng' : hour < 18 ? 'Chào buổi chiều' : 'Chào buổi tối';
+  el.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+      <div>
+        <h2 style="font-size:20px;font-weight:700;color:var(--text-main);margin-bottom:2px">
+          ${greeting}, <span style="color:#2563eb">${name}</span> 👋
+        </h2>
+        <p style="font-size:13px;color:var(--text-muted)">Quản lý thông tin quán của bạn tại đây</p>
+      </div>
+      <button class="btn btn-primary" onclick="switchPage('page-poi', document.getElementById('menu-poi'))">
+        <i data-lucide="plus"></i> Gửi yêu cầu chỉnh sửa
+      </button>
+    </div>`;
+  lucide.createIcons();
+}
+
 function renderOwnerStats() {
   const grid = document.getElementById('owner-stats-grid');
   if (!grid) return;
   const myPois = allPois;
-  const myVisits = historyData.filter(h => {
-    const pid = h.RestaurantId || h.restaurantId;
-    return myPois.some(p => (p.id||p.Id) === pid);
-  });
+  const myPoisIds = myPois.map(p => p.id||p.Id);
+  const myVisits = historyData.filter(h => myPoisIds.includes(h.RestaurantId||h.restaurantId));
   const today = myVisits.filter(h =>
     new Date(h.Timestamp||h.timestamp).toDateString() === new Date().toDateString()
   ).length;
-
-  // Đếm TTS đã có
+  const week = myVisits.filter(h => {
+    const d = new Date(h.Timestamp||h.timestamp);
+    const now = new Date();
+    return (now - d) / 864e5 <= 7;
+  }).length;
   const hasAudio = myPois.filter(p => !!(p.ttsScript||p.TtsScript)).length;
+  const audioOk = myPois.length > 0 && hasAudio === myPois.length;
+  const userId = parseInt(sessionStorage.getItem('cms_userid') || '0');
 
   grid.innerHTML = `
     <div class="stat-card">
-      <div class="stat-icon blue"><i data-lucide="map-pin"></i></div>
+      <div class="stat-icon blue"><i data-lucide="store"></i></div>
       <div class="stat-info">
         <p class="text-muted">Quán của tôi</p>
         <h2 class="stat-val">${myPois.length}</h2>
@@ -140,17 +199,38 @@ function renderOwnerStats() {
       <div class="stat-info">
         <p class="text-muted">Lượt ghé thăm</p>
         <h2 class="stat-val">${myVisits.length}</h2>
-        <div class="stat-trend up">↑ ${today} hôm nay</div>
+        <div class="stat-trend up">↑ ${today} hôm nay &nbsp;·&nbsp; ${week} tuần này</div>
+      </div>
+    </div>
+    <div class="stat-card" style="cursor:pointer" onclick="setOwnerRequestFilter('pending',this)">
+      <div class="stat-icon" style="background:#fef3c7;color:#d97706"><i data-lucide="clock"></i></div>
+      <div class="stat-info">
+        <p class="text-muted">Yêu cầu đang chờ</p>
+        <h2 class="stat-val" id="owner-pending-count">—</h2>
+        <div class="stat-trend" style="color:#d97706">Nhấn để xem</div>
       </div>
     </div>
     <div class="stat-card">
       <div class="stat-icon green"><i data-lucide="mic"></i></div>
       <div class="stat-info">
         <p class="text-muted">Audio TTS</p>
-        <h2 class="stat-val">${hasAudio}/${myPois.length}</h2>
-        <div class="stat-trend ${hasAudio===myPois.length?'up':''}">${hasAudio===myPois.length?'✅ Đầy đủ':'⚠️ Chưa đủ'}</div>
+        <h2 class="stat-val">${hasAudio}<span style="font-size:14px;font-weight:500;color:var(--text-muted)">/${myPois.length}</span></h2>
+        <div class="stat-trend ${audioOk ? 'up' : ''}">${audioOk ? '✅ Đầy đủ 3 ngôn ngữ' : '⚠️ Còn thiếu script'}</div>
       </div>
     </div>`;
+
+  if (userId > 0) {
+    fetch(`${API}/approvals/user/${userId}`)
+      .then(r => r.json())
+      .then(list => {
+        const pending = list.filter(a => (a.Status||a.status) === 'pending').length;
+        const el = document.getElementById('owner-pending-count');
+        if (el) el.textContent = pending;
+      }).catch(() => {});
+  } else {
+    const el = document.getElementById('owner-pending-count');
+    if (el) el.textContent = '0';
+  }
   lucide.createIcons();
 }
 
@@ -158,9 +238,12 @@ function renderOwnerPoiList() {
   const container = document.getElementById('owner-poi-list');
   if (!container) return;
   if (!allPois.length) {
-    container.innerHTML = `<div style="text-align:center;padding:30px;color:var(--text-muted)">
-      Bạn chưa được gán quán nào. Liên hệ Admin để được gán!
-    </div>`;
+    container.innerHTML = `
+      <div style="text-align:center;padding:40px 20px;color:var(--text-muted)">
+        <div style="font-size:40px;margin-bottom:12px">🏪</div>
+        <div style="font-weight:600;margin-bottom:6px">Chưa được gán quán nào</div>
+        <div style="font-size:12px">Vui lòng liên hệ Admin để được gán địa điểm</div>
+      </div>`;
     return;
   }
   container.innerHTML = allPois.map(p => {
@@ -168,24 +251,25 @@ function renderOwnerPoiList() {
     const hasEn = !!(p.ttsScriptEn||p.TtsScriptEn);
     const hasZh = !!(p.ttsScriptZh||p.TtsScriptZh);
     const visits = historyData.filter(h => (h.RestaurantId||h.restaurantId) === (p.id||p.Id)).length;
+    const pJson = JSON.stringify(p).replace(/"/g,'&quot;');
     return `
-    <div style="display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid var(--border);cursor:pointer;transition:.15s"
+    <div style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:1px solid var(--border);cursor:pointer;transition:.15s"
          onmouseover="this.style.background='#f8faff'" onmouseout="this.style.background=''"
-         onclick="openEditPoiForm(${JSON.stringify(p).replace(/"/g,'&quot;')})">
-      <img src="${getImgUrl(p)}" onerror="this.src='https://via.placeholder.com/40?text=?'"
-           style="width:44px;height:44px;border-radius:8px;object-fit:cover;flex-shrink:0">
+         onclick="openEditPoiForm(${pJson})">
+      <img src="${getImgUrl(p)}" onerror="this.src='https://via.placeholder.com/44?text=?'"
+           style="width:48px;height:48px;border-radius:10px;object-fit:cover;flex-shrink:0;border:1px solid var(--border)">
       <div style="flex:1;min-width:0">
-        <div style="font-size:13px;font-weight:600">${p.name||p.Name}</div>
-        <div style="font-size:11px;color:var(--text-muted);margin-top:2px">
-          ⭐ ${(p.rating||p.Rating||0).toFixed(1)} &nbsp;·&nbsp; 🕒 ${p.openHours||p.OpenHours||'—'} &nbsp;·&nbsp; 👣 ${visits} lượt
+        <div style="font-size:13px;font-weight:700;margin-bottom:3px">${p.name||p.Name}</div>
+        <div style="font-size:11px;color:var(--text-muted)">
+          ⭐ ${(p.rating||p.Rating||0).toFixed(1)} &nbsp;·&nbsp; 🕒 ${p.openHours||p.OpenHours||'Chưa cập nhật'} &nbsp;·&nbsp; 👣 ${visits} lượt ghé
         </div>
       </div>
-      <div style="display:flex;gap:4px">
+      <div style="display:flex;gap:4px;margin-right:4px">
         <span title="VI" style="width:22px;height:22px;border-radius:50%;background:${hasVi?'#22c55e':'#e2e8f0'};display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:${hasVi?'#fff':'#94a3b8'}">VI</span>
         <span title="EN" style="width:22px;height:22px;border-radius:50%;background:${hasEn?'#22c55e':'#e2e8f0'};display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:${hasEn?'#fff':'#94a3b8'}">EN</span>
         <span title="ZH" style="width:22px;height:22px;border-radius:50%;background:${hasZh?'#22c55e':'#e2e8f0'};display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:${hasZh?'#fff':'#94a3b8'}">ZH</span>
       </div>
-      <button class="btn btn-primary btn-sm" onclick="event.stopPropagation();openEditPoiForm(${JSON.stringify(p).replace(/"/g,'&quot;')})">
+      <button class="btn btn-primary btn-sm" style="white-space:nowrap" onclick="event.stopPropagation();openEditPoiForm(${pJson})">
         <i data-lucide="edit-3"></i> Sửa
       </button>
     </div>`;
@@ -193,35 +277,71 @@ function renderOwnerPoiList() {
   lucide.createIcons();
 }
 
+function setOwnerRequestFilter(filter) {
+  ownerRequestFilter = filter;
+  document.querySelectorAll('.owner-req-chip').forEach(c => c.classList.remove('active'));
+  const chip = document.querySelector(`.owner-req-chip[data-filter="${filter}"]`);
+  if (chip) chip.classList.add('active');
+  renderOwnerRequests();
+}
+
 function renderOwnerRequests() {
   const container = document.getElementById('owner-requests-list');
   if (!container) return;
   const userId = parseInt(sessionStorage.getItem('cms_userid') || '0');
 
+  if (userId === 0) {
+    container.innerHTML = `<div style="text-align:center;padding:20px;color:var(--text-muted);font-size:13px">
+      ⚠️ Không xác định được tài khoản. Vui lòng đăng xuất và đăng nhập lại.
+    </div>`;
+    return;
+  }
+
+  container.innerHTML = `<div style="text-align:center;padding:20px;color:var(--text-muted);font-size:13px">Đang tải...</div>`;
+
   fetch(`${API}/approvals/user/${userId}`)
     .then(r => r.json())
     .then(list => {
-      if (!list.length) {
-        container.innerHTML = `<div style="text-align:center;padding:20px;color:var(--text-muted);font-size:13px">Chưa có yêu cầu nào</div>`;
+      const filtered = ownerRequestFilter === 'all'
+        ? list
+        : list.filter(a => (a.Status||a.status||'pending').toLowerCase() === ownerRequestFilter);
+
+      if (!filtered.length) {
+        container.innerHTML = `<div style="text-align:center;padding:24px;color:var(--text-muted);font-size:13px">
+          ${ownerRequestFilter === 'all' ? '📭 Chưa có yêu cầu nào' : 'Không có yêu cầu ở trạng thái này'}
+        </div>`;
         return;
       }
+
       const STATUS = { pending:'⏳ Chờ duyệt', approved:'✅ Đã duyệt', rejected:'❌ Từ chối' };
-      const BADGE  = { pending:'badge-warning', approved:'badge-success', rejected:'badge-danger' };
-      container.innerHTML = list.slice(0,5).map(a => {
-        const status = a.Status||a.status||'pending';
-        const created = new Date(a.CreatedAt||a.createdAt).toLocaleDateString('vi-VN');
-        return `<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)">
-          <div style="flex:1;min-width:0">
-            <div style="font-size:12px;font-weight:600">${a.LocationName||a.locationName||'POI mới'}</div>
-            <div style="font-size:11px;color:var(--text-muted)">${created}</div>
+      const COLORS = { pending:'#d97706', approved:'#10b981', rejected:'#ef4444' };
+      const BG     = { pending:'#fffbeb', approved:'#f0fdf4', rejected:'#fef2f2' };
+      const ACTION_LABELS = { create_poi:'➕ Thêm mới', update_info:'✏️ Cập nhật', update_audio:'🎙️ Audio' };
+
+      container.innerHTML = filtered.map(a => {
+        const status  = (a.Status||a.status||'pending').toLowerCase();
+        const created = new Date(a.CreatedAt||a.createdAt).toLocaleString('vi-VN',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
+        const actionLabel = ACTION_LABELS[a.Action||a.action] || '📝 Yêu cầu';
+        const note = a.AdminNote||a.adminNote;
+        return `
+        <div style="padding:12px 16px;border-bottom:1px solid var(--border)">
+          <div style="display:flex;align-items:flex-start;gap:10px">
+            <div style="flex:1;min-width:0">
+              <div style="font-size:13px;font-weight:700;margin-bottom:2px">${a.LocationName||a.locationName||'POI mới'}</div>
+              <div style="font-size:11px;color:var(--text-muted);margin-bottom:${note?'6px':'0'}">${actionLabel} &nbsp;·&nbsp; ${created}</div>
+              ${note ? `<div style="font-size:11px;background:#fef9ec;border:1px solid #fde68a;border-radius:6px;padding:5px 8px;color:#92400e">💬 ${note}</div>` : ''}
+            </div>
+            <span style="font-size:11px;font-weight:600;padding:3px 8px;border-radius:20px;white-space:nowrap;background:${BG[status]||'#f8fafc'};color:${COLORS[status]||'#64748b'};border:1px solid ${COLORS[status]||'#e2e8f0'}40">
+              ${STATUS[status]||status}
+            </span>
           </div>
-          <span class="badge ${BADGE[status]||'badge-neutral'}" style="font-size:10px;white-space:nowrap">${STATUS[status]||status}</span>
-          ${status==='rejected'&&(a.AdminNote||a.adminNote)?`<span title="${a.AdminNote||a.adminNote}" style="cursor:help;font-size:12px">💬</span>`:''}
         </div>`;
       }).join('');
     })
     .catch(() => {
-      container.innerHTML = `<div style="text-align:center;padding:20px;color:var(--text-muted);font-size:13px">Không tải được dữ liệu</div>`;
+      container.innerHTML = `<div style="text-align:center;padding:20px;color:#ef4444;font-size:13px">
+        ❌ Không tải được dữ liệu. Kiểm tra kết nối API.
+      </div>`;
     });
 }
 
@@ -231,51 +351,36 @@ function renderOwnerChart() {
   if (ownerChart) ownerChart.destroy();
   const myPoisIds = allPois.map(p => p.id||p.Id);
   const myVisits = historyData.filter(h => myPoisIds.includes(h.RestaurantId||h.restaurantId));
-  const counts = {};
-  myVisits.forEach(h => {
-    const d = new Date(h.Timestamp||h.timestamp).toLocaleDateString('vi-VN',{month:'short',day:'numeric'});
-    counts[d] = (counts[d]||0) + 1;
+
+  // 7 ngày gần nhất
+  const today = new Date();
+  const days = Array.from({length:7}, (_,i) => {
+    const d = new Date(today); d.setDate(d.getDate()-6+i);
+    return d.toLocaleDateString('vi-VN',{day:'2-digit',month:'2-digit'});
   });
-  const labels = Object.keys(counts);
-  const data   = Object.values(counts);
-  if (!labels.length) { labels.push('Chưa có data'); data.push(0); }
+  const counts = {};
+  days.forEach(d => counts[d] = 0);
+  myVisits.forEach(h => {
+    const d = new Date(h.Timestamp||h.timestamp).toLocaleDateString('vi-VN',{day:'2-digit',month:'2-digit'});
+    if (d in counts) counts[d]++;
+  });
+
   ownerChart = new Chart(ctx, {
     type: 'bar',
-    data: { labels, datasets: [{ label:'Lượt ghé thăm', data, backgroundColor:'rgba(16,185,129,0.8)', borderRadius:6 }] },
-    options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}},
-      scales: { y:{beginAtZero:true,grid:{color:'#f1f5f9'}}, x:{grid:{display:false}} } }
+    data: {
+      labels: days,
+      datasets: [{
+        label: 'Lượt ghé thăm',
+        data: days.map(d => counts[d]),
+        backgroundColor: days.map((_,i) => i===6 ? 'rgba(37,99,235,0.9)' : 'rgba(16,185,129,0.7)'),
+        borderRadius: 6,
+        borderSkipped: false
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend:{display:false}, tooltip:{callbacks:{title:t=>`Ngày ${t[0].label}`}} },
+      scales: { y:{beginAtZero:true,grid:{color:'#f1f5f9'},ticks:{stepSize:1}}, x:{grid:{display:false}} }
+    }
   });
 }
-
-function applyPagePermissions(role) {
-  // Các nút chỉ admin mới được dùng
-  const adminOnlyBtns = [
-    'btn-delete-poi',   // xóa địa điểm
-    'btn-delete-user',  // xóa user
-  ];
-  adminOnlyBtns.forEach(id => {
-    const el = document.getElementById(id);
-    if (el && role !== 'admin') el.style.display = 'none';
-  });
-}
-
-function updateSidebarUser() {
-  const role     = sessionStorage.getItem('cms_role') || 'user';
-  const fullname = sessionStorage.getItem('cms_fullname') || 'Admin';
-  const username = sessionStorage.getItem('cms_username') || 'admin';
-  const nameEl   = document.getElementById('sb-name');
-  const roleEl   = document.getElementById('sb-role');
-  const avatarEl = document.getElementById('sb-avatar');
-  if (nameEl) nameEl.textContent = fullname;
-  if (roleEl) {
-    const labels = { admin:'👑 Super Admin', owner:'🏪 Chủ quán', user:'👤 Người dùng' };
-    roleEl.textContent = labels[role] || role;
-  }
-  if (avatarEl) {
-    const initials = fullname.split(' ').map(w=>w[0]).slice(-2).join('').toUpperCase() || username[0].toUpperCase();
-    avatarEl.textContent = initials;
-    avatarEl.style.background = role==='admin' ? '#2563eb' : role==='owner' ? '#10b981' : '#64748b';
-  }
-}
-
-// ══════════════════════════════════════════════════

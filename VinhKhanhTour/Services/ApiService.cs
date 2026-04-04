@@ -16,11 +16,22 @@ namespace VinhKhanhTour.Services
             _http = new HttpClient { Timeout = TimeSpan.FromSeconds(30) };
         }
 
+        // Normalize ImageUrl: relative path -> full URL
+        private static string NormalizeImageUrl(string? imageUrl)
+        {
+            if (string.IsNullOrWhiteSpace(imageUrl)) return "";
+            if (imageUrl.StartsWith("http://") || imageUrl.StartsWith("https://")) return imageUrl;
+            return "http://10.0.2.2:5256/" + imageUrl.TrimStart('/');
+        }
+
         public async Task<List<Restaurant>> GetRestaurantsAsync()
         {
             try
             {
                 var list = await _http.GetFromJsonAsync<List<Restaurant>>($"{BASE}/restaurants");
+                if (list != null)
+                    foreach (var r in list)
+                        r.ImageUrl = NormalizeImageUrl(r.ImageUrl);
                 return list ?? new List<Restaurant>();
             }
             catch (Exception ex)
@@ -106,7 +117,61 @@ namespace VinhKhanhTour.Services
                 System.Diagnostics.Debug.WriteLine($"[ApiService] ClearAnalytics: {ex.Message}");
             }
         }
+
+        public async Task<List<AppLanguage>> GetLanguagesAsync()
+        {
+            try
+            {
+                var list = await _http.GetFromJsonAsync<List<AppLanguage>>($"{BASE}/languages");
+                return list ?? DefaultLanguages();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[ApiService] GetLanguages: {ex.Message}");
+                return DefaultLanguages();
+            }
+        }
+
+        private static List<AppLanguage> DefaultLanguages() => new()
+        {
+            new AppLanguage { Code = "vi", Name = "Tiếng Việt", Flag = "🇻🇳", IsDefault = true },
+            new AppLanguage { Code = "en", Name = "English",     Flag = "🇺🇸", IsDefault = false },
+            new AppLanguage { Code = "zh", Name = "中文",          Flag = "🇨🇳", IsDefault = false },
+        };
+
+        // ── Login with full details ─────────────────────────────────────────
+        public async Task<LoginResult?> LoginWithDetailsAsync(string username, string password)
+        {
+            try
+            {
+                var res = await _http.PostAsJsonAsync($"{BASE}/auth/login", new
+                {
+                    Username = username,
+                    Password = password
+                });
+                if (!res.IsSuccessStatusCode) return null;
+                var json = await res.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>();
+                return new LoginResult
+                {
+                    Success = true,
+                    FullName = json.TryGetProperty("fullName", out var fn) ? fn.GetString() ?? "" : "",
+                    Role = json.TryGetProperty("role", out var r) ? r.GetString() ?? "user" : "user",
+                    Id = json.TryGetProperty("id", out var id) ? id.GetInt32() : 0
+                };
+            }
+            catch { return null; }
+        }
     }
+
+    public class LoginResult
+    {
+        public bool Success { get; set; }
+        public string FullName { get; set; } = "";
+        public string Role { get; set; } = "user";
+        public int Id { get; set; }
+    }
+
+
 
     public class ApiTour
     {
@@ -126,12 +191,12 @@ namespace VinhKhanhTour.Services
         public List<int> GetRestaurantIds()
         {
             if (string.IsNullOrWhiteSpace(Pois) || Pois == "[]") return new List<int>();
-            try 
-            { 
+            try
+            {
                 // Xử lý cả trường hợp Pois là JSON array [1,2,3] hoặc chuỗi phân tách bởi dấu phẩy
                 if (Pois.Trim().StartsWith("["))
                 {
-                    return System.Text.Json.JsonSerializer.Deserialize<List<int>>(Pois) ?? new List<int>(); 
+                    return System.Text.Json.JsonSerializer.Deserialize<List<int>>(Pois) ?? new List<int>();
                 }
                 else
                 {
@@ -141,10 +206,10 @@ namespace VinhKhanhTour.Services
                                .ToList();
                 }
             }
-            catch (Exception ex) 
-            { 
+            catch (Exception ex)
+            {
                 System.Diagnostics.Debug.WriteLine($"[ApiTour] Parse Pois Error: {ex.Message} (Data: {Pois})");
-                return new List<int>(); 
+                return new List<int>();
             }
         }
 
@@ -168,5 +233,14 @@ namespace VinhKhanhTour.Services
             "zh" => Duration.Replace("phút", "分钟"),
             _ => Duration
         };
+    }
+
+    public class AppLanguage
+    {
+        public string Code { get; set; } = "";
+        public string Name { get; set; } = "";
+        public string Flag { get; set; } = "🌐";
+        public bool IsDefault { get; set; }
+        public int SortOrder { get; set; }
     }
 }

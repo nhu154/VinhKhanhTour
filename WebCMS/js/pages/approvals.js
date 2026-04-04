@@ -49,15 +49,15 @@ function renderApprovalList() {
   }
 
   const ACTION_LABEL = {
-    create_poi:   '🆕 Tạo POI mới',
-    update_info:  '✏️ Sửa thông tin',
-    update_audio: '🎵 Sửa Audio/TTS',
-    update_image: '🖼️ Đổi ảnh'
+    create_poi:   '<span style="display:flex;align-items:center;gap:4px"><i data-lucide="plus-circle" style="width:12px;height:12px"></i> Tạo POI mới</span>',
+    update_info:  '<span style="display:flex;align-items:center;gap:4px"><i data-lucide="edit-3" style="width:12px;height:12px"></i> Sửa thông tin</span>',
+    update_audio: '<span style="display:flex;align-items:center;gap:4px"><i data-lucide="mic" style="width:12px;height:12px"></i> Sửa Audio/TTS</span>',
+    update_image: '<span style="display:flex;align-items:center;gap:4px"><i data-lucide="image" style="width:12px;height:12px"></i> Đổi ảnh</span>'
   };
   const STATUS_BADGE = {
-    pending:  '<span class="badge badge-warning">⏳ Chờ duyệt</span>',
-    approved: '<span class="badge badge-success">✅ Đã duyệt</span>',
-    rejected: '<span class="badge badge-danger">❌ Từ chối</span>'
+    pending:  '<span class="badge badge-warning" style="display:inline-flex;align-items:center;gap:4px"><i data-lucide="clock" style="width:12px;height:12px"></i> Chờ duyệt</span>',
+    approved: '<span class="badge badge-success" style="display:inline-flex;align-items:center;gap:4px"><i data-lucide="check-circle" style="width:12px;height:12px"></i> Đã duyệt</span>',
+    rejected: '<span class="badge badge-danger" style="display:inline-flex;align-items:center;gap:4px"><i data-lucide="x-circle" style="width:12px;height:12px"></i> Từ chối</span>'
   };
 
   container.innerHTML = list.map(a => {
@@ -74,8 +74,8 @@ function renderApprovalList() {
     <div style="background:var(--card);border:1px solid var(--border);border-radius:var(--radius-lg);padding:18px;margin-bottom:12px;transition:.2s"
          onmouseover="this.style.borderColor='#bfdbfe'" onmouseout="this.style.borderColor='var(--border)'">
       <div style="display:flex;align-items:flex-start;gap:14px">
-        <div style="width:42px;height:42px;background:${isPending?'#fff7ed':'#f8fafc'};border:1px solid ${isPending?'#fed7aa':'var(--border)'};border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">
-          ${action.includes('audio')?'🎵':action.includes('create')?'🆕':action.includes('image')?'🖼️':'✏️'}
+        <div style="width:42px;height:42px;background:${isPending?'#fff7ed':'#f8fafc'};border:1px solid ${isPending?'#fed7aa':'var(--border)'};border-radius:10px;display:flex;align-items:center;justify-content:center;color:${isPending?'#f97316':'#64748b'};flex-shrink:0">
+          ${action.includes('audio')?'<i data-lucide="mic"></i>':action.includes('create')?'<i data-lucide="map-pin"></i>':action.includes('image')?'<i data-lucide="image"></i>':'<i data-lucide="edit-3"></i>'}
         </div>
         <div style="flex:1;min-width:0">
           <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px">
@@ -83,10 +83,12 @@ function renderApprovalList() {
             ${STATUS_BADGE[status] || ''}
             <span class="badge badge-neutral" style="font-size:10px">${ACTION_LABEL[action]||action}</span>
           </div>
-          <div style="font-size:12px;color:var(--text-muted)">
-            👤 <strong>${user}</strong> &nbsp;·&nbsp; 🕒 ${created}
+          <div style="font-size:12px;color:var(--text-muted);display:flex;align-items:center;gap:10px">
+            <span style="display:flex;align-items:center;gap:4px"><i data-lucide="user" style="width:13px;height:13px"></i> <strong>${user}</strong></span>
+            <span style="color:var(--border)">|</span>
+            <span style="display:flex;align-items:center;gap:4px"><i data-lucide="calendar" style="width:13px;height:13px"></i> ${created}</span>
           </div>
-          ${note ? `<div style="margin-top:6px;font-size:12px;background:#f8fafc;padding:6px 10px;border-radius:6px;color:var(--text-muted)">💬 ${note}</div>` : ''}
+          ${note ? `<div style="margin-top:8px;font-size:12px;background:#f8fafc;padding:8px 12px;border-radius:6px;color:var(--text-muted);display:flex;align-items:flex-start;gap:6px"><i data-lucide="message-square" style="width:14px;height:14px;margin-top:2px;color:#94a3b8"></i> <div>${note}</div></div>` : ''}
         </div>
         <div style="display:flex;gap:6px;flex-shrink:0">
           <button class="btn btn-ghost btn-sm" onclick="viewApprovalDetail(${id})">
@@ -156,8 +158,8 @@ async function viewApprovalDetail(id) {
   const footer = document.getElementById('approval-panel-footer');
   footer.innerHTML = isPending ? `
     <button class="btn btn-ghost" onclick="closeApprovalPanel()" style="flex:1">Đóng</button>
-    <button class="btn btn-danger-outline" onclick="rejectApproval(${id})" style="flex:1">❌ Từ chối</button>
-    <button class="btn btn-primary" onclick="approveApproval(${id})" style="flex:2">✅ Duyệt & Áp dụng</button>
+    <button class="btn btn-danger-outline" onclick="rejectApproval(${id})" style="flex:1"><i data-lucide="x"></i> Từ chối</button>
+    <button class="btn btn-primary" onclick="approveApproval(${id})" style="flex:2"><i data-lucide="check"></i> Duyệt & Áp dụng</button>
   ` : `<button class="btn btn-ghost" onclick="closeApprovalPanel()" style="width:100%">Đóng</button>`;
 
   document.getElementById('approval-panel-title').textContent = `Yêu cầu #${id}`;
@@ -182,7 +184,7 @@ async function rejectApproval(id) {
 }
 async function quickApprove(id) { await reviewApproval(id, 'approved', ''); }
 async function quickReject(id) {
-  const note = prompt('Lý do từ chối:');
+  const note = await showPrompt('Từ chối yêu cầu', 'Vui lòng nhập lý do từ chối:');
   if (note === null) return;
   await reviewApproval(id, 'rejected', note);
 }
@@ -233,21 +235,62 @@ async function submitForApproval(poiData, action, locationId, locationName) {
 
 // ── Load my locations cho chủ quán ──
 async function loadMyLocations() {
-  const userId = sessionStorage.getItem('cms_userid');
-  if (!userId) return;
+  let userId = parseInt(sessionStorage.getItem('cms_userid') || '0');
+
+  // Nếu userId = 0 (login cũ chưa có id), thử resolve từ username qua API
+  if (!userId || userId === 0) {
+    const username = sessionStorage.getItem('cms_username') || '';
+    if (username) {
+      try {
+        const res = await fetch(`${API}/auth/users`);
+        const users = await res.json();
+        const me = users.find(u =>
+          (u.username || u.Username || '').toLowerCase() === username.toLowerCase()
+        );
+        if (me) {
+          userId = me.id || me.Id || 0;
+          sessionStorage.setItem('cms_userid', String(userId));
+        }
+      } catch(e) { console.warn('loadMyLocations: không resolve được userId', e); }
+    }
+    if (!userId) {
+      console.warn('loadMyLocations: userId vẫn = 0, bỏ qua');
+      return;
+    }
+  }
+
   try {
     const res = await fetch(`${API}/approvals/my-locations/${userId}`);
     const myLocs = await res.json();
     // Override allPois với chỉ quán của mình
-    allPois = myLocs;
+    allPois = Array.isArray(myLocs) ? myLocs : [];
     renderMarkers();
     updatePOIBadge();
-  } catch(e) {}
+    // Trigger owner dashboard render if on that page
+    const activePage = document.querySelector('.main-content.active')?.id;
+    if (activePage === 'page-owner-dashboard') renderOwnerDashboard();
+  } catch(e) { console.error('loadMyLocations:', e); }
 }
 
-function doLogout() {
-  ['cms_logged_in','cms_role','cms_username','cms_fullname','cms_userid'].forEach(k => sessionStorage.removeItem(k));
-  window.location.href = 'login.html';
+async function clearApprovalsHistory() {
+  if (!(await showConfirm('Xóa lịch sử phê duyệt', 'Bạn có chắc muốn XÓA TẤT CẢ yêu cầu phê duyệt? Hành động này không thể hoàn tác.', 'danger'))) return;
+  
+  try {
+    const res = await fetch(`${API}/approvals/clear`, { method: 'DELETE' });
+    const data = await res.json();
+    showToast(data.message || 'Đã dọn sạch danh sách phê duyệt', 'success');
+    
+    // Reset local data and UI
+    allApprovals = [];
+    renderApprovalList();
+    
+    // Update badge (should be 0 now)
+    const badge = document.getElementById('approval-badge');
+    if (badge) {
+      badge.textContent = '0';
+      badge.style.display = 'none';
+    }
+  } catch (e) {
+    showToast('❌ Lỗi khi dọn dẹp dữ liệu', 'danger');
+  }
 }
-
-function logout() { doLogout(); }

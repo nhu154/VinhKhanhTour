@@ -84,6 +84,9 @@ namespace VinhKhanhTour.Services
                         .OrderByDescending(v => v.VisitedAt)
                         .ToListAsync();
 
+        public Task<int> ClearVisitHistoryAsync()
+            => _database.DeleteAllAsync<VisitHistory>();
+
         // ── Analytics ──────────────────────────────────────────────
 
         public Task<int> InsertAnalyticsEventAsync(AnalyticsEvent e)

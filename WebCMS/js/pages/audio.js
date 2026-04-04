@@ -124,14 +124,32 @@ function renderAudioPage() {
 }
 
 
+function getPoiTts(p, langCode) {
+  if (langCode === 'vi') return p.ttsScript || p.TtsScript || '';
+  if (langCode === 'en') return p.ttsScriptEn || p.TtsScriptEn || '';
+  if (langCode === 'zh') return p.ttsScriptZh || p.TtsScriptZh || '';
+  // Additional languages stored in Translations JSON
+  try {
+    const t = JSON.parse(p.translations || p.Translations || '{}');
+    return t[langCode]?.tts || '';
+  } catch { return ''; }
+}
+
+const LANG_PALETTE = [
+  { color: '#16a34a', bg: '#f0fdf4' },
+  { color: '#d97706', bg: '#fffbeb' },
+  { color: '#dc2626', bg: '#fef2f2' },
+  { color: '#7c3aed', bg: '#f5f3ff' },
+  { color: '#0891b2', bg: '#ecfeff' },
+  { color: '#db2777', bg: '#fdf2f8' },
+];
+
 function renderAudioStats() {
   const bar = document.getElementById('audio-stats-bar');
   if (!bar || !allPois.length) return;
   const total = allPois.length;
-  const viCount  = allPois.filter(p => !!(p.ttsScript  ||p.TtsScript )).length;
-  const enCount  = allPois.filter(p => !!(p.ttsScriptEn||p.TtsScriptEn)).length;
-  const zhCount  = allPois.filter(p => !!(p.ttsScriptZh||p.TtsScriptZh)).length;
-  const pct = n => Math.round(n/total*100);
+  const langs = getLangs();
+  const pct = n => Math.round(n / total * 100);
   const card = (icon, label, count, color, bg) => `
     <div style="background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:8px">
       <div style="display:flex;align-items:center;gap:8px;font-size:12px;font-weight:600;color:${color}">
@@ -144,82 +162,88 @@ function renderAudioStats() {
       </div>
       <div style="font-size:11px;color:#64748b">${pct(count)}% hoàn thành</div>
     </div>`;
-  bar.innerHTML =
-    card('📍','Tổng địa điểm', total, '#2563eb','#eff6ff') +
-    card('🇻🇳','Tiếng Việt',  viCount,  '#16a34a','#f0fdf4') +
-    card('🇺🇸','English',     enCount,  '#d97706','#fffbeb') +
-    card('🇨🇳','中文',         zhCount,  '#dc2626','#fef2f2');
+
+  const totalCard = card('📍', 'Tổng địa điểm', total, '#2563eb', '#eff6ff');
+  const langCards = langs.map((l, i) => {
+    const { color, bg } = LANG_PALETTE[i % LANG_PALETTE.length];
+    const count = allPois.filter(p => !!getPoiTts(p, l.code)).length;
+    return card(l.flag, l.name, count, color, bg);
+  }).join('');
+
+  // Responsive grid: 1 (total) + N langs
+  bar.style.gridTemplateColumns = `repeat(${1 + langs.length}, 1fr)`;
+  bar.innerHTML = totalCard + langCards;
 }
 
 function renderAudioLangTabs() {
   const el = document.getElementById('audio-lang-tabs');
   if (!el) return;
+  const langs = getLangs();
   const tabs = [
-    { code:'all', label:'🎵 Tất cả' },
-    { code:'vi',  label:'🇻🇳 VI' },
-    { code:'en',  label:'🇺🇸 EN' },
-    { code:'zh',  label:'🇨🇳 ZH' },
+    { code: 'all', label: 'Tất cả', icon: 'layers' },
+    ...langs.map(l => ({ code: l.code, label: `${l.flag} ${l.code.toUpperCase()}`, icon: null }))
   ];
   el.innerHTML = tabs.map(t => `
-    <button class="filter-chip ${_audioLangFilter===t.code?'active':''}"
+    <button class="filter-chip ${_audioLangFilter === t.code ? 'active' : ''}"
       onclick="_audioLangFilter='${t.code}';renderAudioLangTabs();renderAudioTable()">
-      ${t.label}
+      ${t.icon ? `<i data-lucide="${t.icon}" style="width:13px;height:13px"></i>` : ''} ${t.label}
     </button>`).join('');
+  lucide.createIcons();
 }
 
 function renderAudioTable() {
   const tbody = document.getElementById('audio-tbody');
+  const thead = document.getElementById('audio-thead');
   if (!tbody) return;
-  const q = (document.getElementById('audio-search')?.value||'').toLowerCase();
-  let list = allPois.filter(p => textMatch(p.name||p.Name, q));
+  const langs = getLangs();
+  const q = (document.getElementById('audio-search')?.value || '').toLowerCase();
+  let list = allPois.filter(p => textMatch(p.name || p.Name, q));
 
-  // filter: only show rows missing script for selected lang
-  if (_audioLangFilter === 'vi') list = list.filter(p => !(p.ttsScript||p.TtsScript));
-  if (_audioLangFilter === 'en') list = list.filter(p => !(p.ttsScriptEn||p.TtsScriptEn));
-  if (_audioLangFilter === 'zh') list = list.filter(p => !(p.ttsScriptZh||p.TtsScriptZh));
+  // Filter: show only rows missing script for selected lang
+  if (_audioLangFilter !== 'all') {
+    list = list.filter(p => !getPoiTts(p, _audioLangFilter));
+  }
+
+  // Render thead dynamically
+  if (thead) {
+    thead.innerHTML = `<tr>
+      <th style="width:52px"></th>
+      <th>Địa điểm</th>
+      ${langs.map(l => `<th style="text-align:center">${l.flag} ${l.name}</th>`).join('')}
+      <th style="width:80px;text-align:right">Sửa</th>
+    </tr>`;
+  }
 
   if (!list.length) {
-    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:40px;color:var(--text-muted)">
-      ${_audioLangFilter==='all' ? 'Không tìm thấy địa điểm' : '✅ Tất cả địa điểm đã có script cho ngôn ngữ này!'}
+    tbody.innerHTML = `<tr><td colspan="${3 + langs.length}" style="text-align:center;padding:40px;color:var(--text-muted)">
+      ${_audioLangFilter === 'all' ? 'Không tìm thấy địa điểm' : '✅ Tất cả địa điểm đã có script cho ngôn ngữ này!'}
     </td></tr>`;
     return;
   }
 
-  const audioCell = (text, langCode) => {
+  const audioCell = (text, langCode, id) => {
     if (!text) return `<td style="text-align:center"><span style="font-size:12px;color:#f87171;background:#fef2f2;padding:4px 10px;border-radius:20px;border:1px solid #fecaca">✗ Thiếu</span></td>`;
-    
-    // An toàn tuyệt đối chống gãy HTML attribute
-    const safe = (text||'')
-      .replace(/\\/g, '\\\\')
-      .replace(/'/g, "\\'")
-      .replace(/"/g, '&quot;')
-      .replace(/\n/g, ' ')
-      .replace(/\r/g, '');
-
+    const safe = escapeSq(text);
     return `<td style="text-align:center">
-      <button class="btn btn-ghost btn-sm" style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:20px;padding:4px 10px;font-size:12px;color:#16a34a;gap:4px"
-        onclick="playAudioCell('${safe}','${langCode}',this)" title="Nghe thử ${langCode.toUpperCase()}">
-        ✓ &nbsp;🔊
+      <button class="btn btn-sm" style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:20px;padding:4px 12px;font-size:12px;color:#16a34a;gap:6px;display:inline-flex;align-items:center;transition:all 0.15s ease;width:95px;justify-content:center;box-shadow:0 1px 2px rgba(0,0,0,0.05)"
+        onclick="toggleAudioCell('${safe}', '${langCode}', this)" title="Nghe thử ${langCode.toUpperCase()}">
+        <i data-lucide="play" style="width:14px;height:14px"></i> Nghe
       </button>
     </td>`;
   };
 
   tbody.innerHTML = list.map(p => {
-    const id   = p.id||p.Id;
-    const name = p.name||p.Name||'—';
-    const img  = p.imageUrl||p.ImageUrl||'';
-    const imgSrc = img ? (img.startsWith('http')||img.startsWith('data:') ? img : `${BASE_URL}/${img}`) : 'https://via.placeholder.com/44?text=?';
-    const vi   = p.ttsScript||p.TtsScript||'';
-    const en   = p.ttsScriptEn||p.TtsScriptEn||'';
-    const zh   = p.ttsScriptZh||p.TtsScriptZh||'';
+    const id   = p.id || p.Id;
+    const name = p.name || p.Name || '—';
+    const img  = p.imageUrl || p.ImageUrl || '';
+    const imgSrc = img ? (img.startsWith('http') || img.startsWith('data:') ? img : `${BASE_URL}/${img}`) : 'https://via.placeholder.com/44?text=?';
+    const langCells = langs.map(l => audioCell(getPoiTts(p, l.code), l.code, id)).join('');
     return `<tr>
       <td><img src="${imgSrc}" onerror="this.src='https://via.placeholder.com/44?text=?'"
         style="width:44px;height:44px;border-radius:8px;object-fit:cover;border:1px solid #e2e8f0"></td>
       <td><div style="font-weight:600;font-size:13px">${name}</div>
-          <div style="font-size:11px;color:#94a3b8">⭐ ${(p.rating||p.Rating||0).toFixed(1)} · ${p.openHours||p.OpenHours||'—'}</div></td>
-      ${audioCell(vi,'vi',id)}
-      ${audioCell(en,'en',id)}
-      ${audioCell(zh,'zh',id)}
+          <div style="font-size:11px;color:#94a3b8">⭐ ${(p.rating || p.Rating || 0).toFixed(1)} · ${p.openHours || p.OpenHours || '—'}</div></td>
+      ${langCells}
       <td style="text-align:right">
         <button class="btn btn-ghost btn-sm" onclick='openEditPoiForm(allPois.find(x=>(x.id||x.Id)==${id}))'><i data-lucide="edit-3"></i></button>
       </td>
@@ -228,28 +252,76 @@ function renderAudioTable() {
   lucide.createIcons();
 }
 
-async function playAudioCell(text, langCode, btn) {
-  const stopBtn = document.getElementById('btn-stop-audio');
-  const orig = btn.innerHTML;
-  btn.innerHTML = '⏳'; btn.disabled = true;
-  if (stopBtn) stopBtn.style.display = 'inline-flex';
+let _activeAudioBtn = null;
+let _isSpeechSynthesis = false;
+
+function setBtnState(btn, state) {
+  if (!btn) return;
+  const states = {
+    'idle': { html: '<i data-lucide="play" style="width:14px;height:14px"></i> Nghe', bg: '#f0fdf4', border: '#bbf7d0', color: '#16a34a' },
+    'loading': { html: '<i data-lucide="loader-2" class="spin" style="width:14px;height:14px"></i> Đang tải', bg: '#eff6ff', border: '#bfdbfe', color: '#2563eb' },
+    'playing': { html: '<i data-lucide="pause" style="width:14px;height:14px"></i> Dừng', bg: '#fef2f2', border: '#fecaca', color: '#dc2626' },
+    'paused': { html: '<i data-lucide="play" style="width:14px;height:14px"></i> Tiếp tục', bg: '#fffbeb', border: '#fde68a', color: '#d97706' }
+  };
+  const s = states[state];
+  btn.innerHTML = s.html;
+  btn.style.background = s.bg;
+  btn.style.borderColor = s.border;
+  btn.style.color = s.color;
+  lucide.createIcons();
+}
+
+async function toggleAudioCell(text, langCode, btn) {
+  // 1. Nếu đang click đúng vào nút đang Active (Pause/Resume)
+  if (_activeAudioBtn === btn) {
+    if (_isSpeechSynthesis) {
+      if (window.speechSynthesis.paused) {
+        window.speechSynthesis.resume(); setBtnState(btn, 'playing');
+      } else if (window.speechSynthesis.speaking) {
+        window.speechSynthesis.pause(); setBtnState(btn, 'paused');
+      }
+    } else if (_ttsAudio) {
+      if (_ttsAudio.paused) {
+        _ttsAudio.play(); setBtnState(btn, 'playing');
+      } else {
+        _ttsAudio.pause(); setBtnState(btn, 'paused');
+      }
+    }
+    return; // Đã xử lý toggle pause/play xong
+  }
+
+  // 2. Click sang nút khác -> Dừng audio hiện tại ngay
+  stopCurrentAudio();
+
+  // 3. Khởi tạo phát cho nút mới
+  _activeAudioBtn = btn;
+  setBtnState(btn, 'loading');
   try {
     await playTtsAudio(text, langCode);
-  } finally {
-    btn.innerHTML = orig; btn.disabled = false;
-    if (stopBtn) stopBtn.style.display = 'none';
+    setBtnState(btn, 'playing');
+  } catch (err) {
+    console.error(err);
+    stopCurrentAudio();
+    showToast('Lỗi phát âm thanh', 'danger');
   }
 }
 
 function stopCurrentAudio() {
   window.speechSynthesis.cancel();
-  if (_ttsAudio) { _ttsAudio.pause(); _ttsAudio = null; }
-  const stopBtn = document.getElementById('btn-stop-audio');
-  if (stopBtn) stopBtn.style.display = 'none';
+  if (_ttsAudio) {
+    _ttsAudio.pause();
+    _ttsAudio = null;
+  }
+  _isSpeechSynthesis = false;
+
+  if (_activeAudioBtn) {
+    setBtnState(_activeAudioBtn, 'idle');
+    _activeAudioBtn = null;
+  }
 }
 
 function escapeSq(s) {
-  return (s||'').replace(/'/g, "\\'").replace(/"/g, '&quot;').replace(/\n/g, ' ');
+  return (s||'').replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '&quot;').replace(/\n/g, ' ').replace(/\r/g, '');
 }
 
 // ══ GOOGLE CLOUD TTS (primary) + Web Speech API (fallback) ══
@@ -267,15 +339,14 @@ let _ttsAudio = null; // audio element hiện tại để có thể dừng
 
 async function playTtsAudio(text, langCode) {
   if (!text) return;
-
-  // Dừng audio đang phát (nếu có)
-  window.speechSynthesis.cancel();
-  if (_ttsAudio) { _ttsAudio.pause(); _ttsAudio = null; }
+  // Reset trạng thái flag
+  _isSpeechSynthesis = false;
 
   try {
     await playGoogleTts(text, langCode);
   } catch (err) {
     console.warn('[TTS] Google Cloud TTS thất bại, fallback Web Speech API:', err.message);
+    _isSpeechSynthesis = true;
     playWebSpeechTts(text, langCode);
   }
 }
@@ -311,8 +382,13 @@ async function playGoogleTts(text, langCode) {
   const blob = new Blob([byteArr], { type: 'audio/mpeg' });
   const url = URL.createObjectURL(blob);
 
+  // Quan trọng: Lưu url để revoke khi audio kết thúc
   _ttsAudio = new Audio(url);
-  _ttsAudio.onended = () => { URL.revokeObjectURL(url); _ttsAudio = null; };
+  _ttsAudio.onended = () => { 
+    URL.revokeObjectURL(url); 
+    _ttsAudio = null; 
+    if (_activeAudioBtn) { setBtnState(_activeAudioBtn, 'idle'); _activeAudioBtn = null; }
+  };
   await _ttsAudio.play();
   console.log(`[TTS] Google Cloud TTS [${langCode}]: OK`);
 }
@@ -331,6 +407,12 @@ function playWebSpeechTts(text, langCode) {
     }
     if (voice) utterance.voice = voice;
   }
+  
+  utterance.onend = () => {
+    _isSpeechSynthesis = false;
+    if (_activeAudioBtn) { setBtnState(_activeAudioBtn, 'idle'); _activeAudioBtn = null; }
+  };
+  
   window.speechSynthesis.speak(utterance);
 }
 

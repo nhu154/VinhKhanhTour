@@ -144,11 +144,23 @@
         });
         if (res.ok) {
           const data = await res.json();
+          const role = (data.role || 'user').toLowerCase().trim();
           sessionStorage.setItem('cms_logged_in', 'true');
-          sessionStorage.setItem('cms_role',     data.role     || 'user');
+          sessionStorage.setItem('cms_role',      role);
           sessionStorage.setItem('cms_username',  u);
           sessionStorage.setItem('cms_fullname',  data.fullName || u);
-          sessionStorage.setItem('cms_userid',    data.id       || '0');
+
+          // Nếu API trả id thì dùng luôn, không thì resolve từ /users
+          let userId = data.id || 0;
+          if (!userId) {
+            try {
+              const ur = await fetch(`${API_BASE}/auth/users`);
+              const users = await ur.json();
+              const me = users.find(x => (x.username||x.Username||'').toLowerCase() === u.toLowerCase());
+              if (me) userId = me.id || me.Id || 0;
+            } catch(_) {}
+          }
+          sessionStorage.setItem('cms_userid', String(userId));
           window.location.href = 'index.html';
         } else {
           errEl.textContent = 'Sai tài khoản hoặc mật khẩu!';

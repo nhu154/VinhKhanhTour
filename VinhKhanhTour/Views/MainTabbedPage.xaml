@@ -9,17 +9,17 @@
             BarTextColor="#5A7A9A"
             SelectedTabColor="#1565C0"
             UnselectedTabColor="#9EBBCC">
-    <NavigationPage Title="Trang chá»§" IconImageSource="home.png">
+    <NavigationPage Title="Trang chủ" IconImageSource="home.png">
         <x:Arguments>
             <local:WelcomePage/>
         </x:Arguments>
     </NavigationPage>
-    <NavigationPage Title="Báº£n Ä‘á»“" IconImageSource="map.png">
+    <NavigationPage Title="Bản đồ" IconImageSource="map.png">
         <x:Arguments>
             <local:MapPage/>
         </x:Arguments>
     </NavigationPage>
-    <NavigationPage Title="CÃ¡ nhÃ¢n" IconImageSource="profile.png">
+    <NavigationPage Title="Cá nhân" IconImageSource="profile.png">
         <x:Arguments>
             <local:ProfilePage/>
         </x:Arguments>

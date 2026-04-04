@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using MySql.Data.MySqlClient;
 using Dapper;
 
@@ -43,7 +43,7 @@ namespace VinhkhanhTour.API.Controllers
                 new { u = body.Username, p = body.Password });
 
             if (user == null) return Unauthorized(new { message = "Sai tài khoản hoặc mật khẩu" });
-            return Ok(new { success = true, role = user.Role, fullName = user.FullName });
+            return Ok(new { success = true, id = user.Id, role = (user.Role ?? "user").ToLower().Trim(), fullName = user.FullName });
         }
 
         // POST: api/auth/register

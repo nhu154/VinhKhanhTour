@@ -182,7 +182,7 @@ async function saveTourData() {
 }
 
 async function deleteTour(id) {
-  if (!confirm('Xóa tour này?')) return;
+  if (!(await showConfirm('Xóa Tour', 'Bạn có chắc chắn muốn xóa hành trình tour này không?', 'danger'))) return;
   try {
     await fetch(`${API}/tours/${id}`,{method:'DELETE'});
     showToast('🗑️ Đã xóa Tour','success'); await loadTours(); renderTours(); renderStatsCards();

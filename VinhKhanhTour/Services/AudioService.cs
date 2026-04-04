@@ -18,18 +18,26 @@ namespace VinhKhanhTour.Services
         // Giọng theo ngôn ngữ
         private static readonly Dictionary<string, (string voice, string lang, string gender)> VoiceMap = new()
         {
-            ["vi"] = ("vi-VN-Wavenet-A", "vi-VN", "FEMALE"),
-            ["en"] = ("en-US-Wavenet-F", "en-US", "FEMALE"),
+            ["vi"] = ("vi-VN-Wavenet-A",  "vi-VN",  "FEMALE"),
+            ["en"] = ("en-US-Wavenet-F",  "en-US",  "FEMALE"),
             ["zh"] = ("cmn-CN-Wavenet-A", "cmn-CN", "FEMALE"),
+            ["ja"] = ("ja-JP-Wavenet-D",  "ja-JP",  "FEMALE"),
+            ["ko"] = ("ko-KR-Wavenet-A",  "ko-KR",  "FEMALE"),
+            ["fr"] = ("fr-FR-Wavenet-C",  "fr-FR",  "FEMALE"),
+            ["th"] = ("th-TH-Neural2-C",  "th-TH",  "FEMALE"),
+            ["ru"] = ("ru-RU-Wavenet-C",  "ru-RU",  "FEMALE"),
+            ["de"] = ("de-DE-Wavenet-F",  "de-DE",  "FEMALE"),
+            ["es"] = ("es-ES-Wavenet-C",  "es-ES",  "FEMALE"),
         };
 
         // ── Ngôn ngữ hiện tại ─────────────────────────────────────────────────
         private string _language = "vi";
 
-        /// <summary>Đặt ngôn ngữ thuyết minh: "vi", "en", "zh"</summary>
+        /// <summary>Đặt ngôn ngữ thuyết minh: "vi", "en", "zh", "ja", "ko"...</summary>
         public void SetLanguage(string lang)
         {
-            _language = VoiceMap.ContainsKey(lang) ? lang : "vi";
+            // Chấp nhận bất kì mã ngôn ngữ hợp lệ; fallback vi nếu rỗng
+            _language = string.IsNullOrWhiteSpace(lang) ? "vi" : lang.Trim().ToLower();
             System.Diagnostics.Debug.WriteLine($"[AudioService] Language set to: {_language}");
         }
 
@@ -110,7 +118,16 @@ namespace VinhKhanhTour.Services
 
         private async Task PlayGoogleTtsAsync(string script)
         {
-            var (voiceName, langCode, gender) = VoiceMap.GetValueOrDefault(_language, VoiceMap["vi"]);
+            // Lấy voice config, fallback sang vi nếu không có mapping riêng
+            var (voiceName, langCode, gender) = VoiceMap.TryGetValue(_language, out var v)
+                ? v : ("vi-VN-Wavenet-A", "vi-VN", "FEMALE");
+
+            // Nếu là ngôn ngữ không có trong VoiceMap (e.g. 'th' mà chưa có), cố gắng đưa ra ISO code
+            if (!VoiceMap.ContainsKey(_language))
+            {
+                langCode = _language.Length == 2 ? $"{_language}-{_language.ToUpper()}" : _language;
+                voiceName = ""; // Dùng giọng mặc định của Google
+            }
             CurrentTrack = $"Google TTS ({_language.ToUpper()})";
             System.Diagnostics.Debug.WriteLine($"[AudioService] Google TTS [{_language}]: {script[..Math.Min(60, script.Length)]}...");
 

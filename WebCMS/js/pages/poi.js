@@ -88,7 +88,7 @@ function renderPoiTable() {
       style="display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid #f1f5f9;cursor:pointer;transition:.15s"
       onmouseover="this.style.background='#f8faff'" onmouseout="this.style.background=''"
     >
-      <img src="${getImgUrl(p)}" onerror="this.onerror=null; this.src='data:image/svg+xml;utf8,<svg xmlns=\\\'http://www.w3.org/2000/svg\\\' width=\\\'40\\\' height=\\\'40\\\'><rect width=\\\'100%\\\' height=\\\'100%\\\' fill=\\\'#f1f5f9\\\'/><text x=\\\'50%\\\' y=\\\'50%\\\' fill=\\\'#94a3b8\\\' font-size=\\\'14\\\' font-family=\\\'sans-serif\\\' text-anchor=\\\'middle\\\' dy=\\\'5\\\'>?</text></svg>'"
+      <img src="${getImgUrl(p)}" onerror="this.onerror=null; this.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent('<svg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'40\\' height=\\'40\\'><rect width=\\'100%\\' height=\\'100%\\' fill=\\'#f1f5f9\\'/><text x=\\'50%\\' y=\\'50%\\' fill=\\'#94a3b8\\' font-size=\\'14\\' font-family=\\'sans-serif\\' text-anchor=\\'middle\\' dy=\\'5\\'>?</text></svg>')"
         style="width:40px;height:40px;border-radius:8px;object-fit:cover;flex-shrink:0;border:1px solid #e2e8f0">
       <div style="flex:1;min-width:0">
         <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.name||p.Name}</div>
@@ -405,7 +405,7 @@ async function deletePoiData() {
   if (role !== 'admin') { showToast('⛔ Chỉ Admin mới có quyền xóa địa điểm', 'danger'); return; }
   const id = document.getElementById('poi-id').value;
   if (!id) return;
-  if (!confirm('⚠️ Xóa địa điểm này? Thao tác không thể hoàn tác.')) return;
+  if (!(await showConfirm('Xóa địa điểm', '⚠️ Bạn có chắc chắn muốn xóa địa điểm này? Thao tác không thể hoàn tác.', 'danger'))) return;
   try {
     const res = await fetch(`${API}/restaurants/${id}`, { method: 'DELETE' });
     if (res.ok) { showToast('🗑️ Đã xóa thành công', 'success'); closePoiForm(); await loadPois(); renderStatsCards(); }
