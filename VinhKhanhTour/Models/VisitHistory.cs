@@ -1,4 +1,4 @@
-﻿using SQLite;
+using SQLite;
 
 namespace VinhKhanhTour.Models
 {
@@ -10,5 +10,8 @@ namespace VinhKhanhTour.Models
 
         public int RestaurantId { get; set; }
         public DateTime VisitedAt { get; set; }
+
+        // User-scoped visits
+        public string Username { get; set; } = string.Empty;
     }
 }

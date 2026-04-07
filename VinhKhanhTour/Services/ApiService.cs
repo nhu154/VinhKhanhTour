@@ -16,10 +16,14 @@ namespace VinhKhanhTour.Services
             _http = new HttpClient { Timeout = TimeSpan.FromSeconds(30) };
         }
 
-        // Normalize ImageUrl: relative path -> full URL
         private static string NormalizeImageUrl(string? imageUrl)
         {
             if (string.IsNullOrWhiteSpace(imageUrl)) return "";
+            
+            // Xử lý trường hợp DB lưu sẵn localhost từ phiên bản WebCMS
+            imageUrl = imageUrl.Replace("localhost:5256", "10.0.2.2:5256")
+                               .Replace("127.0.0.1:5256", "10.0.2.2:5256");
+
             if (imageUrl.StartsWith("http://") || imageUrl.StartsWith("https://")) return imageUrl;
             return "http://10.0.2.2:5256/" + imageUrl.TrimStart('/');
         }
@@ -30,8 +34,12 @@ namespace VinhKhanhTour.Services
             {
                 var list = await _http.GetFromJsonAsync<List<Restaurant>>($"{BASE}/restaurants");
                 if (list != null)
+                {
                     foreach (var r in list)
+                    {
                         r.ImageUrl = NormalizeImageUrl(r.ImageUrl);
+                    }
+                }
                 return list ?? new List<Restaurant>();
             }
             catch (Exception ex)

@@ -13,127 +13,152 @@ namespace VinhKhanhTour.Views
         public LoginPage()
         {
             NavigationPage.SetHasNavigationBar(this, false);
-            BackgroundColor = Color.FromArgb("#0D1B2A");
+            BackgroundColor = Color.FromArgb("#121212");
             CreateUI();
         }
 
         private void CreateUI()
         {
-            var mainLayout = new VerticalStackLayout
+            var rootGrid = new Grid();
+            rootGrid.BackgroundColor = Color.FromArgb("#121212");
+
+            // Subtle background accent blobs
+            rootGrid.Add(new Ellipse
             {
-                Padding = new Thickness(30, 80, 30, 30),
-                Spacing = 20,
-                VerticalOptions = LayoutOptions.Center
+                Fill = Color.FromArgb("#1565C0"),
+                Opacity = 0.12,
+                WidthRequest = 500,
+                HeightRequest = 500,
+                HorizontalOptions = LayoutOptions.Start,
+                VerticalOptions = LayoutOptions.Start,
+                Margin = new Thickness(-200, -200, 0, 0)
+            });
+            rootGrid.Add(new Ellipse
+            {
+                Fill = Color.FromArgb("#0D47A1"),
+                Opacity = 0.08,
+                WidthRequest = 350,
+                HeightRequest = 350,
+                HorizontalOptions = LayoutOptions.End,
+                VerticalOptions = LayoutOptions.End,
+                Margin = new Thickness(0, 0, -150, -80)
+            });
+
+            // Foreground scroll content
+            var scroll = new ScrollView { VerticalScrollBarVisibility = ScrollBarVisibility.Never };
+            var main = new VerticalStackLayout
+            {
+                Padding = new Thickness(32, 64, 32, 40),
+                Spacing = 0
             };
 
-            // Header
-            var headerGroup = new VerticalStackLayout { Spacing = 8, HorizontalOptions = LayoutOptions.Center };
-            headerGroup.Add(new Label { Text = "Vinh Khanh Tour", FontSize = 34, FontAttributes = FontAttributes.Bold, TextColor = Colors.White, HorizontalOptions = LayoutOptions.Center });
-            headerGroup.Add(new Label { Text = "Kham pha thien duong am thuc Quan 4", FontSize = 14, TextColor = Color.FromArgb("#8ba0b2"), HorizontalOptions = LayoutOptions.Center });
-            mainLayout.Add(headerGroup);
-            mainLayout.Add(new BoxView { HeightRequest = 16, Color = Colors.Transparent });
+            // === Brand Header ===
+            var brandArea = new VerticalStackLayout { Spacing = 6, HorizontalOptions = LayoutOptions.Center, Margin = new Thickness(0, 0, 0, 40) };
+            brandArea.Add(new Label
+            {
+                Text = "VĨNH KHÁNH",
+                FontSize = 32,
+                FontAttributes = FontAttributes.Bold,
+                TextColor = Colors.White,
+                HorizontalOptions = LayoutOptions.Center,
+                CharacterSpacing = 4
+            });
+            brandArea.Add(new Label
+            {
+                Text = "Đăng nhập để tiếp tục",
+                FontSize = 14,
+                TextColor = Color.FromArgb("#B3B3B3"),
+                HorizontalOptions = LayoutOptions.Center
+            });
+            main.Add(brandArea);
 
-            // Input fields
-            _usernameEntry = CreateEntry("Ten dang nhap", false);
-            _passwordEntry = CreateEntry("Mat khau", true);
-            mainLayout.Add(_usernameEntry);
-            mainLayout.Add(_passwordEntry);
+            // === Form Card (dark glass style) ===
+            var cardBorder = new Border
+            {
+                BackgroundColor = Color.FromArgb("#1E1E1E"),
+                StrokeShape = new RoundRectangle { CornerRadius = 20 },
+                StrokeThickness = 1,
+                Stroke = Color.FromArgb("#2A2A2A"),
+                Padding = new Thickness(24, 28, 24, 28),
+                Shadow = new Shadow { Brush = Colors.Black, Opacity = 0.5f, Radius = 30, Offset = new Point(0, 16) }
+            };
 
-            _errorLabel = new Label { TextColor = Color.FromArgb("#FF5252"), FontSize = 13, IsVisible = false, HorizontalOptions = LayoutOptions.Center };
-            mainLayout.Add(_errorLabel);
+            var cardLayout = new VerticalStackLayout { Spacing = 16 };
+
+            cardLayout.Add(new Label
+            {
+                Text = "Đăng nhập",
+                FontSize = 22,
+                FontAttributes = FontAttributes.Bold,
+                TextColor = Colors.White,
+                Margin = new Thickness(0, 0, 0, 8)
+            });
+
+            // Username field
+            _usernameEntry = CreateEntry("Tên tài khoản", false);
+            cardLayout.Add(CreateDarkField("Tài khoản", _usernameEntry));
+
+            // Password field
+            _passwordEntry = CreateEntry("Mật khẩu", true);
+            cardLayout.Add(CreateDarkField("Mật khẩu", _passwordEntry));
+
+            // Error label
+            _errorLabel = new Label
+            {
+                TextColor = Color.FromArgb("#FF5252"),
+                FontSize = 13,
+                IsVisible = false,
+                HorizontalOptions = LayoutOptions.Center,
+                Margin = new Thickness(0, 4, 0, 0)
+            };
+            cardLayout.Add(_errorLabel);
 
             // Login button
             _btnLogin = new Button
             {
-                Text = "Dang nhap",
+                Text = "Đăng nhập",
                 FontSize = 16,
                 FontAttributes = FontAttributes.Bold,
                 TextColor = Colors.White,
                 HeightRequest = 56,
-                CornerRadius = 16,
-                BackgroundColor = Color.FromArgb("#1565C0"),
+                CornerRadius = 28,
                 Background = new LinearGradientBrush
                 {
                     StartPoint = new Point(0, 0),
                     EndPoint = new Point(1, 0),
-                    GradientStops = { new GradientStop(Color.FromArgb("#1565C0"), 0), new GradientStop(Color.FromArgb("#42A5F5"), 1) }
+                    GradientStops = {
+                        new GradientStop(Color.FromArgb("#1565C0"), 0),
+                        new GradientStop(Color.FromArgb("#1E88E5"), 1)
+                    }
                 },
-                Shadow = new Shadow { Brush = Color.FromArgb("#1565C0"), Opacity = 0.5f, Radius = 15, Offset = new Point(0, 6) },
+                Shadow = new Shadow { Brush = Color.FromArgb("#1565C0"), Opacity = 0.5f, Radius = 16, Offset = new Point(0, 8) },
                 Margin = new Thickness(0, 8, 0, 0)
             };
             _btnLogin.Clicked += OnLoginClicked;
-            mainLayout.Add(_btnLogin);
-
-            // Register link
-            var registerLabel = new Label
-            {
-                Text = "Chua co tai khoan? Dang ky ngay",
-                FontSize = 14,
-                TextColor = Color.FromArgb("#64B5F6"),
-                HorizontalOptions = LayoutOptions.Center,
-                Margin = new Thickness(0, 6, 0, 0),
-                TextDecorations = TextDecorations.Underline
-            };
-            registerLabel.GestureRecognizers.Add(new TapGestureRecognizer
-            {
-                Command = new Command(async () => await Navigation.PushAsync(new RegisterPage()))
-            });
-            mainLayout.Add(registerLabel);
+            cardLayout.Add(_btnLogin);
 
             // Divider
-            var divider = new Grid
+            var div = new Grid
             {
                 ColumnDefinitions = { new ColumnDefinition(GridLength.Star), new ColumnDefinition(GridLength.Auto), new ColumnDefinition(GridLength.Star) },
                 Margin = new Thickness(0, 16)
             };
-            divider.Add(new BoxView { HeightRequest = 1, BackgroundColor = Color.FromArgb("#152535"), VerticalOptions = LayoutOptions.Center }, 0, 0);
-            divider.Add(new Label { Text = " HOAC ", TextColor = Color.FromArgb("#8ba0b2"), FontSize = 12, VerticalOptions = LayoutOptions.Center }, 1, 0);
-            divider.Add(new BoxView { HeightRequest = 1, BackgroundColor = Color.FromArgb("#152535"), VerticalOptions = LayoutOptions.Center }, 2, 0);
-            mainLayout.Add(divider);
+            div.Add(new BoxView { HeightRequest = 1, BackgroundColor = Color.FromArgb("#2A2A2A"), VerticalOptions = LayoutOptions.Center }, 0, 0);
+            div.Add(new Label { Text = " hoặc ", TextColor = Color.FromArgb("#6B6B6B"), FontSize = 12, VerticalOptions = LayoutOptions.Center }, 1, 0);
+            div.Add(new BoxView { HeightRequest = 1, BackgroundColor = Color.FromArgb("#2A2A2A"), VerticalOptions = LayoutOptions.Center }, 2, 0);
+            cardLayout.Add(div);
 
-            // Guest info banner
-            var guestInfo = new Border
-            {
-                BackgroundColor = Color.FromArgb("#0F1F30"),
-                StrokeShape = new RoundRectangle { CornerRadius = 14 },
-                Stroke = Color.FromArgb("#152535"),
-                StrokeThickness = 1,
-                Padding = new Thickness(16, 14),
-                Margin = new Thickness(0, 0, 0, 12)
-            };
-            var guestInfoContent = new VerticalStackLayout { Spacing = 6 };
-            guestInfoContent.Add(new Label { Text = "Khi dang nhap ban co them:", FontSize = 13, FontAttributes = FontAttributes.Bold, TextColor = Colors.White });
-            foreach (var benefit in new[] {
-                "Luu lich su tham quan cua ban",
-                "Danh sach quan yeu thich rieng",
-                "Diem thuong moi lan ghe tham",
-                "Dong bo du lieu tren nhieu thiet bi"
-            })
-            {
-                guestInfoContent.Add(new HorizontalStackLayout
-                {
-                    Spacing = 8,
-                    Children =
-                    {
-                        new Label { Text = "ok", FontSize = 12, TextColor = Color.FromArgb("#42A5F5") },
-                        new Label { Text = benefit, FontSize = 12, TextColor = Color.FromArgb("#8ba0b2") }
-                    }
-                });
-            }
-            guestInfo.Content = guestInfoContent;
-            mainLayout.Add(guestInfo);
-
-            // Guest button
+            // Guest button (outlined dark style)
             var btnGuest = new Button
             {
-                Text = "Tham quan voi tu cach Khach",
+                Text = "Tham quan với quyền Khách",
                 FontSize = 15,
                 FontAttributes = FontAttributes.Bold,
-                TextColor = Color.FromArgb("#64B5F6"),
+                TextColor = Color.FromArgb("#B3B3B3"),
                 HeightRequest = 56,
-                CornerRadius = 16,
-                BackgroundColor = Color.FromArgb("#0D1B2A"),
-                BorderColor = Color.FromArgb("#1565C0"),
+                CornerRadius = 28,
+                BackgroundColor = Colors.Transparent,
+                BorderColor = Color.FromArgb("#3A3A3A"),
                 BorderWidth = 1.5
             };
             btnGuest.Clicked += (s, e) =>
@@ -141,19 +166,68 @@ namespace VinhKhanhTour.Views
                 UserSession.Instance.LoginAsGuest();
                 Application.Current!.MainPage = new MainTabbedPage();
             };
-            mainLayout.Add(btnGuest);
+            cardLayout.Add(btnGuest);
 
-            Content = new ScrollView { Content = mainLayout, VerticalScrollBarVisibility = ScrollBarVisibility.Never };
+            cardBorder.Content = cardLayout;
+            main.Add(cardBorder);
+
+            // Register link
+            var regRow = new HorizontalStackLayout
+            {
+                Spacing = 6,
+                HorizontalOptions = LayoutOptions.Center,
+                Margin = new Thickness(0, 24, 0, 0)
+            };
+            regRow.Add(new Label { Text = "Chưa có tài khoản?", FontSize = 14, TextColor = Color.FromArgb("#6B6B6B"), VerticalOptions = LayoutOptions.Center });
+            var regLink = new Label
+            {
+                Text = "Đăng ký",
+                FontSize = 14,
+                FontAttributes = FontAttributes.Bold,
+                TextColor = Color.FromArgb("#42A5F5"),
+                VerticalOptions = LayoutOptions.Center
+            };
+            regLink.GestureRecognizers.Add(new TapGestureRecognizer { Command = new Command(async () => await Navigation.PushAsync(new RegisterPage())) });
+            regRow.Add(regLink);
+            main.Add(regRow);
+
+            scroll.Content = main;
+            rootGrid.Add(scroll);
+            Content = rootGrid;
+        }
+
+        private static View CreateDarkField(string label, Entry entry)
+        {
+            var layout = new VerticalStackLayout { Spacing = 8 };
+            layout.Add(new Label
+            {
+                Text = label,
+                FontSize = 12,
+                FontAttributes = FontAttributes.Bold,
+                TextColor = Color.FromArgb("#B3B3B3"),
+                Margin = new Thickness(2, 0, 0, 0)
+            });
+            var border = new Border
+            {
+                StrokeShape = new RoundRectangle { CornerRadius = 8 },
+                Stroke = Color.FromArgb("#3A3A3A"),
+                BackgroundColor = Color.FromArgb("#2A2A2A"),
+                HeightRequest = 52,
+                Padding = new Thickness(14, 0),
+                Content = entry
+            };
+            layout.Add(border);
+            return layout;
         }
 
         private static Entry CreateEntry(string placeholder, bool isPassword) => new Entry
         {
             Placeholder = placeholder,
-            PlaceholderColor = Color.FromArgb("#8ba0b2"),
+            PlaceholderColor = Color.FromArgb("#6B6B6B"),
             TextColor = Colors.White,
             IsPassword = isPassword,
-            BackgroundColor = Color.FromArgb("#152535"),
-            HeightRequest = 56,
+            BackgroundColor = Colors.Transparent,
+            VerticalOptions = LayoutOptions.Center,
             FontSize = 15
         };
 
@@ -164,30 +238,24 @@ namespace VinhKhanhTour.Views
 
             if (string.IsNullOrEmpty(user) || string.IsNullOrEmpty(pass))
             {
-                ShowError("Vui long nhap tai khoan va mat khau");
+                ShowError("Vui lòng nhập tài khoản và mật khẩu");
                 return;
             }
 
-            _btnLogin.Text = "Dang xu ly...";
+            _btnLogin.Text = "Đang xử lý...";
             _btnLogin.IsEnabled = false;
 
             try
             {
-                // Try API login first
                 string? fullName = null;
                 bool apiLogin = false;
                 try
                 {
                     var res = await ApiService.Instance.LoginWithDetailsAsync(user, pass);
-                    if (res != null)
-                    {
-                        apiLogin = true;
-                        fullName = res.FullName;
-                    }
+                    if (res != null) { apiLogin = true; fullName = res.FullName; }
                 }
                 catch { }
 
-                // Fallback: local SQLite
                 bool localLogin = false;
                 if (!apiLogin)
                 {
@@ -204,12 +272,12 @@ namespace VinhKhanhTour.Views
                 }
                 else
                 {
-                    ShowError("Tai khoan hoac mat khau khong chinh xac");
+                    ShowError("Tài khoản hoặc mật khẩu không chính xác");
                 }
             }
             finally
             {
-                _btnLogin.Text = "Dang nhap";
+                _btnLogin.Text = "Đăng nhập";
                 _btnLogin.IsEnabled = true;
             }
         }

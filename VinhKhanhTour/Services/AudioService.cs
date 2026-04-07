@@ -64,18 +64,20 @@ namespace VinhKhanhTour.Services
             PlaybackStateChanged?.Invoke(true);
             _ = VinhKhanhTour.Services.AnalyticsService.Instance.RecordPoiVisitAsync(poiId);
 
+            _ttsCts = new CancellationTokenSource();
+
             try
             {
                 var hasInternet = Connectivity.Current.NetworkAccess == NetworkAccess.Internet;
                 if (hasInternet)
-                    await PlayGoogleTtsAsync(ttsScript);
+                    await PlayGoogleTtsAsync(ttsScript, _ttsCts.Token);
                 else
-                    await PlayMauiTtsAsync(ttsScript);
+                    await PlayMauiTtsAsync(ttsScript, _ttsCts.Token);
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"[AudioService] Google TTS lỗi: {ex.Message}, fallback MAUI");
-                try { await PlayMauiTtsAsync(ttsScript); }
+                try { await PlayMauiTtsAsync(ttsScript, _ttsCts?.Token ?? default); }
                 catch (Exception tex)
                 {
                     System.Diagnostics.Debug.WriteLine($"[AudioService] MAUI TTS lỗi: {tex.Message}");
@@ -104,6 +106,8 @@ namespace VinhKhanhTour.Services
             _isPlaying = false;
             _currentPoiId = -1;
             CurrentTrack = null;
+            PlaybackStateChanged?.Invoke(false);
+            await Task.Delay(100); // Give time for cancellation to propagate
         }
 
         public bool IsPlaying => _isPlaying;
@@ -116,7 +120,7 @@ namespace VinhKhanhTour.Services
 
         // ── Google Cloud TTS ───────────────────────────────────────────────────
 
-        private async Task PlayGoogleTtsAsync(string script)
+        private async Task PlayGoogleTtsAsync(string script, CancellationToken token)
         {
             // Lấy voice config, fallback sang vi nếu không có mapping riêng
             var (voiceName, langCode, gender) = VoiceMap.TryGetValue(_language, out var v)
@@ -159,36 +163,54 @@ namespace VinhKhanhTour.Services
                 using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(15) };
                 var json = JsonSerializer.Serialize(requestBody);
                 var content = new StringContent(json, Encoding.UTF8, "application/json");
-                var response = await http.PostAsync(GOOGLE_TTS_URL, content);
+                var response = await http.PostAsync(GOOGLE_TTS_URL, content, token);
                 response.EnsureSuccessStatusCode();
 
-                var responseJson = await response.Content.ReadAsStringAsync();
+                var responseJson = await response.Content.ReadAsStringAsync(token);
                 using var doc = JsonDocument.Parse(responseJson);
                 var audioBase64 = doc.RootElement.GetProperty("audioContent").GetString()
                     ?? throw new Exception("audioContent trống");
 
                 var audioBytes = Convert.FromBase64String(audioBase64);
-                await File.WriteAllBytesAsync(tempPath, audioBytes);
+                await File.WriteAllBytesAsync(tempPath, audioBytes, token);
             }
 
-            await PlayLocalFileAsync(tempPath);
+            if (!token.IsCancellationRequested)
+            {
+                await PlayLocalFileAsync(tempPath, token);
+            }
         }
 
         // ── Phát file MP3 local ────────────────────────────────────────────────
 
-        private static Task PlayLocalFileAsync(string filePath)
+        private static Task PlayLocalFileAsync(string filePath, CancellationToken token)
         {
 #if ANDROID
             return Task.Run(() =>
             {
                 var player = new Android.Media.MediaPlayer();
-                player.SetDataSource(filePath);
-                player.Prepare();
-                player.Start();
+                try
+                {
+                    player.SetDataSource(filePath);
+                    player.Prepare();
+                    player.Start();
 
-                var done = new System.Threading.ManualResetEventSlim(false);
-                player.Completion += (s, e) => { done.Set(); player.Release(); };
-                done.Wait(TimeSpan.FromMinutes(5));
+                    var done = new System.Threading.ManualResetEventSlim(false);
+                    player.Completion += (s, e) => { done.Set(); };
+                    
+                    using var reg = token.Register(() => 
+                    {
+                        try { if (player.IsPlaying) player.Stop(); } catch {}
+                        done.Set();
+                    });
+
+                    done.Wait(TimeSpan.FromMinutes(5));
+                }
+                catch { }
+                finally
+                {
+                    try { player.Release(); } catch {}
+                }
             });
 #elif IOS
             return Task.Run(() =>
@@ -202,9 +224,20 @@ namespace VinhKhanhTour.Services
                 if (player == null) return;
                 player.PrepareToPlay();
                 player.Play();
-                System.Threading.Thread.Sleep((int)(player.Duration * 1000) + 500);
-                player.Stop();
-                player.Dispose();
+                
+                var done = new System.Threading.ManualResetEventSlim(false);
+                using var reg = token.Register(() => 
+                {
+                    try { player.Stop(); } catch {}
+                    done.Set();
+                });
+                
+                while (player.Playing && !token.IsCancellationRequested)
+                {
+                    System.Threading.Thread.Sleep(100);
+                }
+                
+                try { player.Stop(); player.Dispose(); } catch {}
             });
 #else
             throw new PlatformNotSupportedException();
@@ -213,7 +246,7 @@ namespace VinhKhanhTour.Services
 
         // ── MAUI TTS fallback (offline) ────────────────────────────────────────
 
-        private async Task PlayMauiTtsAsync(string script)
+        private async Task PlayMauiTtsAsync(string script, CancellationToken token)
         {
             if (string.IsNullOrWhiteSpace(script)) return;
 
@@ -221,9 +254,10 @@ namespace VinhKhanhTour.Services
             System.Diagnostics.Debug.WriteLine($"[AudioService] MAUI TTS [{_language}]: {script[..Math.Min(60, script.Length)]}...");
 
             var locale = await GetLocaleAsync(_language);
-            await Task.Delay(600);
+            await Task.Delay(600, token);
 
-            _ttsCts = new CancellationTokenSource();
+            if (token.IsCancellationRequested) return;
+
             var opts = new SpeechOptions
             {
                 Volume = 1.0f,
@@ -233,7 +267,7 @@ namespace VinhKhanhTour.Services
 
             await MainThread.InvokeOnMainThreadAsync(async () =>
             {
-                await TextToSpeech.Default.SpeakAsync(script, opts, _ttsCts.Token);
+                await TextToSpeech.Default.SpeakAsync(script, opts, token);
             });
         }
 

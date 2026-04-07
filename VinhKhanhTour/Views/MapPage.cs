@@ -25,14 +25,18 @@ namespace VinhKhanhTour.Views
         private List<Restaurant> _restaurants = new();
         private readonly Dictionary<int, DateTime> _lastNotified = new();
         private bool _htmlLoaded = false;
+        private readonly Dictionary<int, string> _imgCache = new(); // cache base64 anh
         private const int COOLDOWN = 5;
         private const string KEY = Config.GoogleMapsApiKey;
 
         private static string GetImg(Restaurant r)
         {
-            if (!string.IsNullOrWhiteSpace(r.ImageUrl))
-                return "file:///android_asset/" + r.ImageUrl;
-            return "";
+            if (string.IsNullOrWhiteSpace(r.ImageUrl)) return "";
+            // URL đầy đủ từ API → dùng thẳng
+            if (r.ImageUrl.StartsWith("http://") || r.ImageUrl.StartsWith("https://"))
+                return r.ImageUrl;
+            // File local trong assets
+            return "file:///android_asset/" + r.ImageUrl;
         }
 
         private string? _tourName = null;
@@ -150,19 +154,40 @@ namespace VinhKhanhTour.Views
             try
             {
                 var apiList = await ApiService.Instance.GetRestaurantsAsync();
-                if (apiList.Count > 0 && apiList.Count != _restaurants.Count)
+                if (apiList.Count > 0)
                 {
-                    _restaurants = apiList;
-                    // Cập nhật SQLite local
-                    var oldList = await App.Database.GetRestaurantsAsync();
-                    foreach (var old in oldList)
-                        await App.Database.DeleteRestaurantAsync(old.Id);
-                    foreach (var r in apiList)
-                        await App.Database.SaveRestaurantAsync(r);
-                    // Reload map với POI mới
-                    _htmlLoaded = false;
-                    await InitAsync();
-                    System.Diagnostics.Debug.WriteLine($"[MapPage] ✅ Refreshed {apiList.Count} POIs from API");
+                    // So sánh nội dung để phát hiện thay đổi (thêm/xóa/sửa)
+                    bool hasChanged = apiList.Count != _restaurants.Count ||
+                        apiList.Any(a =>
+                        {
+                            var old = _restaurants.FirstOrDefault(o => o.Id == a.Id);
+                            return old == null ||
+                                   old.Name != a.Name ||
+                                   old.Description != a.Description ||
+                                   old.Address != a.Address ||
+                                   old.OpenHours != a.OpenHours ||
+                                   Math.Abs(old.Rating - a.Rating) > 0.001 ||
+                                   old.ImageUrl != a.ImageUrl;
+                        });
+
+                    if (hasChanged)
+                    {
+                        _restaurants = apiList;
+                        // Cập nhật SQLite local
+                        var oldList = await App.Database.GetRestaurantsAsync();
+                        foreach (var old in oldList)
+                            await App.Database.DeleteRestaurantAsync(old.Id);
+                        foreach (var r in apiList)
+                            await App.Database.SaveRestaurantAsync(r);
+                        // Reload map với POI mới
+                        _htmlLoaded = false;
+                        await InitAsync();
+                        System.Diagnostics.Debug.WriteLine($"[MapPage] ✅ Refreshed {apiList.Count} POIs from API (data changed)");
+                    }
+                    else
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[MapPage] ℹ️ POI data unchanged, skip reload");
+                    }
                 }
             }
             catch (Exception ex)
@@ -222,6 +247,7 @@ namespace VinhKhanhTour.Views
 
                 if (!_htmlLoaded)
                 {
+                    await FetchImagesAsync();
                     _htmlLoaded = true;
                     var data = BuildJson();
                     var html = GetHtml(data);
@@ -235,6 +261,7 @@ namespace VinhKhanhTour.Views
         {
             if (!e.Url.StartsWith("maui://")) return;
             e.Cancel = true;
+            System.Diagnostics.Debug.WriteLine($"[MapPage] OnNavigating: {e.Url.Substring(0, Math.Min(e.Url.Length, 80))}");
             var uri = new Uri(e.Url);
             var q = System.Web.HttpUtility.ParseQueryString(uri.Query);
             var ic = System.Globalization.CultureInfo.InvariantCulture;
@@ -261,6 +288,7 @@ namespace VinhKhanhTour.Views
                     break;
                 case "routerequested":
                     var d = Uri.UnescapeDataString(q["data"] ?? "");
+                    System.Diagnostics.Debug.WriteLine($"[MapPage] routerequested data={d.Substring(0, Math.Min(d.Length, 60))}");
                     MainThread.BeginInvokeOnMainThread(() => _ = DrawRouteAsync(d));
                     break;
                 case "statusupdate":
@@ -336,6 +364,27 @@ namespace VinhKhanhTour.Views
             });
         }
 
+
+        // Tải ảnh về C# và cache dưới dạng base64 để WebView hiện được
+        private async Task FetchImagesAsync()
+        {
+            using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(8) };
+            foreach (var r in _restaurants)
+            {
+                if (_imgCache.ContainsKey(r.Id)) continue;
+                if (string.IsNullOrWhiteSpace(r.ImageUrl)) continue;
+                try
+                {
+                    var url = r.ImageUrl.StartsWith("http") ? r.ImageUrl
+                        : "http://10.0.2.2:5256/" + r.ImageUrl.TrimStart('/');
+                    var bytes = await http.GetByteArrayAsync(url);
+                    var ext = url.EndsWith(".png") ? "png" : "jpeg";
+                    _imgCache[r.Id] = $"data:image/{ext};base64," + Convert.ToBase64String(bytes);
+                }
+                catch { _imgCache[r.Id] = ""; }
+            }
+        }
+
         private string BuildJson()
         {
             var ic = System.Globalization.CultureInfo.InvariantCulture;
@@ -347,7 +396,7 @@ namespace VinhKhanhTour.Views
                 var de = r.Description.Replace("\"", "\\\"").Replace("'", "\\'");
                 var a = r.Address.Replace("\"", "\\\"").Replace("'", "\\'");
                 var h = r.OpenHours.Replace("\"", "\\\"").Replace("'", "\\'");
-                var img = GetImg(r);
+                var img = _imgCache.TryGetValue(r.Id, out var b64) && !string.IsNullOrEmpty(b64) ? b64 : GetImg(r);
                 if (i > 0) sb.Append(',');
                 sb.Append("{\"id\":" + r.Id);
                 sb.Append(",\"lat\":" + r.Latitude.ToString(ic));
@@ -385,7 +434,7 @@ namespace VinhKhanhTour.Views
 
             // Language Toggle
             lines.Add("#langBtn{width:48px;height:48px;border-radius:24px;background:rgba(255,255,255,0.95);backdrop-filter:blur(12px);border:1px solid rgba(21,101,192,0.3);display:flex;align-items:center;justify-content:center;font-size:20px;box-shadow:0 4px 20px rgba(21,101,192,0.15);color:#0D2137;cursor:pointer;}");
-            lines.Add("#langDropdown{position:absolute;top:56px;right:0;background:rgba(255,255,255,0.97);border:1px solid rgba(21,101,192,0.3);border-radius:16px;box-shadow:0 10px 40px rgba(21,101,192,0.2);display:none;flex-direction:column;overflow:hidden;backdrop-filter:blur(10px);}");
+            lines.Add("#langDropdown{position:fixed;top:76px;right:16px;z-index:2000;background:rgba(255,255,255,0.97);border:1px solid rgba(21,101,192,0.3);border-radius:16px;box-shadow:0 10px 40px rgba(21,101,192,0.2);display:none;flex-direction:column;overflow:hidden;backdrop-filter:blur(10px);min-width:160px;}");
             lines.Add(".ldItem{padding:14px 20px;color:#0D2137;font-size:14px;font-weight:600;display:flex;gap:10px;align-items:center;border-bottom:1px solid rgba(21,101,192,0.1);white-space:nowrap;}");
             lines.Add(".ldItem:active{background:rgba(21,101,192,0.1);}");
 
@@ -400,8 +449,8 @@ namespace VinhKhanhTour.Views
             // Floating Buttons
             lines.Add(".fBtn{width:52px;height:52px;border-radius:50%;background:rgba(13,27,42,0.9);backdrop-filter:blur(8px);border:1px solid rgba(66,165,245,0.4);color:#64B5F6;box-shadow:0 8px 24px rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;font-size:22px;transition:all 0.2s;}");
             lines.Add(".fBtn:active{transform:scale(0.9);background:rgba(30,136,229,0.9);border-color:#bbdefb;color:white;box-shadow:0 4px 12px rgba(33,150,243,0.6);}");
-            lines.Add("#btnMenu{position:fixed;right:16px;bottom:260px;z-index:1000;}");
-            lines.Add("#btnG{position:fixed;right:16px;bottom:326px;z-index:1000;color:#fff;background:linear-gradient(135deg,#1565C0,#42A5F5);border:none;}");
+            lines.Add("#btnMenu{position:fixed;right:16px;bottom:326px;z-index:1000;}");
+            lines.Add("#btnG{position:fixed;right:16px;bottom:260px;z-index:1000;background:rgba(255,255,255,0.95);border:1px solid rgba(21,101,192,0.3);color:#1565C0;box-shadow:0 4px 20px rgba(21,101,192,0.2);}");
             lines.Add("#btnStop{position:fixed;right:16px;bottom:392px;z-index:1000;background:linear-gradient(135deg,#d32f2f,#E91E63);color:white;border:none;display:none;}");
 
             // Bottom Sheets
@@ -426,15 +475,16 @@ namespace VinhKhanhTour.Views
             lines.Add(".mbtnAudio{background:rgba(21,101,192,0.1);color:#1565C0;}");
 
             // Detail Sheet
-            lines.Add("#sheet{z-index:9000;max-height:75vh;overflow-y:auto;padding-bottom:32px}");
-            lines.Add(".siw{margin:0 20px 16px;height:180px;border-radius:20px;overflow:hidden;position:relative;background:#152535;}");
+            lines.Add("#sheet{z-index:9600;max-height:75vh;overflow-y:auto;padding-bottom:32px}");
+            lines.Add(".siw{margin:0;height:240px;border-radius:0;overflow:hidden;position:relative;background:#152535;}");
             lines.Add(".simg{width:100%;height:100%;object-fit:cover}");
             lines.Add(".sph{width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:80px;}");
-            lines.Add(".sOvl{position:absolute;bottom:0;left:0;right:0;height:80px;background:linear-gradient(0deg,rgba(15,30,46,1) 0%,rgba(15,30,46,0) 100%);}");
-            lines.Add(".sin{padding:0 24px}");
-            lines.Add(".sbg{display:inline-block;background:rgba(33,150,243,0.12);color:#1565C0;font-size:11px;font-weight:700;padding:6px 12px;border-radius:24px;margin-bottom:8px;letter-spacing:0.5px}");
-            lines.Add(".snm{font-size:22px;font-weight:700;color:#0D2137;margin-bottom:6px}");
-            lines.Add(".srt{font-size:14px;color:#FFCA28;font-weight:700;margin-bottom:16px}");
+            lines.Add(".sOvl{position:absolute;bottom:0;left:0;right:0;height:120px;background:linear-gradient(0deg,rgba(5,15,30,0.95) 0%,rgba(5,15,30,0) 100%);}");
+            lines.Add(".sOvlInfo{position:absolute;bottom:0;left:0;right:0;padding:16px 20px 14px;}");
+            lines.Add(".sin{padding:0 20px;margin-top:4px}");
+            lines.Add(".sbg{display:inline-block;background:rgba(21,101,192,0.85);color:#fff;font-size:10px;font-weight:700;padding:4px 10px;border-radius:20px;margin-bottom:6px;letter-spacing:0.5px}");
+            lines.Add(".snm{font-size:22px;font-weight:800;color:#FFFFFF;margin-bottom:4px}");
+            lines.Add(".srt{font-size:15px;color:#FFCA28;font-weight:700;margin-bottom:0}");
             lines.Add(".sdv{height:1px;background:rgba(21,101,192,0.1);margin:16px 24px}");
             lines.Add(".sac{display:flex;gap:12px;padding:0 24px;margin-top:16px}");
             lines.Add(".bcl{width:56px;height:56px;background:rgba(21,101,192,0.1);color:#1565C0;border:none;border-radius:18px;font-size:20px;}");
@@ -458,11 +508,26 @@ namespace VinhKhanhTour.Views
             lines.Add(".rll{font-size:12px;color:#5A7A9A;margin-top:4px;text-transform:uppercase;letter-spacing:1px}");
             lines.Add(".ben{width:100%;height:56px;background:rgba(233,30,99,0.15);color:#F06292;border:1px solid rgba(233,30,99,0.3);border-radius:18px;font-size:16px;font-weight:700;}");
 
+            // Custom proximity notification overlay (replaces system alert)
+            lines.Add("#proximityAlert{position:fixed;top:0;left:0;right:0;bottom:0;z-index:99999;display:none;align-items:flex-end;justify-content:center;padding:0 0 120px 0;pointer-events:none;}");
+            lines.Add("#proximityCard{background:rgba(255,255,255,0.98);backdrop-filter:blur(20px);border-radius:24px;margin:0 16px;box-shadow:0 20px 60px rgba(13,33,55,0.3);overflow:hidden;pointer-events:all;width:calc(100% - 32px);max-width:480px;transform:translateY(120px);opacity:0;transition:all 0.45s cubic-bezier(0.2,0.8,0.2,1);}");
+            lines.Add("#proximityCard.show{transform:translateY(0);opacity:1;}");
+            lines.Add(".pcBanner{height:5px;background:linear-gradient(90deg,#1565C0,#42A5F5);}");
+            lines.Add(".pcBody{padding:20px 22px 22px;display:flex;gap:16px;align-items:flex-start;}");
+            lines.Add(".pcIcon{width:56px;height:56px;border-radius:16px;background:linear-gradient(135deg,#E3F2FD,#BBDEFB);display:flex;align-items:center;justify-content:center;font-size:28px;flex-shrink:0;}");
+            lines.Add(".pcInfo{flex:1;min-width:0;}");
+            lines.Add(".pcBadge{display:inline-block;background:rgba(21,101,192,0.12);color:#1565C0;font-size:10px;font-weight:700;padding:3px 10px;border-radius:20px;letter-spacing:0.5px;margin-bottom:6px;}");
+            lines.Add(".pcName{font-size:17px;font-weight:700;color:#0D2137;margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}");
+            lines.Add(".pcDesc{font-size:12px;color:#5A7A9A;line-height:1.5;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}");
+            lines.Add(".pcActions{display:flex;gap:10px;padding:0 22px 20px;}");
+            lines.Add(".pcDismiss{flex:1;height:44px;background:rgba(21,101,192,0.08);color:#1565C0;border:none;border-radius:14px;font-size:14px;font-weight:600;}");
+            lines.Add(".pcNav{flex:1;height:44px;background:linear-gradient(90deg,#1565C0,#42A5F5);color:white;border:none;border-radius:14px;font-size:14px;font-weight:700;}");
             lines.Add("#tst{position:fixed;top:80px;left:50%;transform:translateX(-50%);background:rgba(21,101,192,0.95);color:white;padding:10px 24px;border-radius:30px;font-size:14px;font-weight:600;display:none;z-index:9999;box-shadow:0 8px 30px rgba(21,101,192,0.4);}");
             lines.Add("</style></head><body>");
 
             lines.Add("<div id='map'></div>");
             lines.Add("<div id='tst'></div>");
+            lines.Add("<div id='proximityAlert'><div id='proximityCard'><div class='pcBanner'></div><div class='pcBody'><div class='pcIcon' id='pcIconEl'>📍</div><div class='pcInfo'><div class='pcBadge' id='pcBadgeEl'>GẦN BẠN</div><div class='pcName' id='pcNameEl'></div><div class='pcDesc' id='pcDescEl'></div></div></div><div class='pcActions'><button class='pcDismiss' onclick='closeProximity()'>Đóng</button><button class='pcNav' onclick='navFromProximity()'>Chỉ đường</button></div></div></div>");
 
             lines.Add("<div id='headerRow'>");
             string initialFlag = _currentLang == "en" ? "🇺🇸" : (_currentLang == "zh" ? "🇨🇳" : "🇻🇳");
@@ -484,8 +549,8 @@ namespace VinhKhanhTour.Views
             lines.Add("<div class='botSheet' id='menuSheet'><div class='dragBar'></div><div class='mhd' id='txPList'>Danh sách điểm đến</div><div class='mlist' id='menuList'></div></div>");
             lines.Add("<div class='botSheet' id='sheet'>");
             lines.Add("  <div class='dragBar'></div>");
-            lines.Add("  <div class='siw'><img id='simg' class='simg' src='' onerror=\"this.style.display='none';document.getElementById('sph').style.display='flex'\"><div id='sph' class='sph' style='display:none'></div><div class='sOvl'></div></div>");
-            lines.Add("  <div class='sin'><div class='sbg' id='txCat'>QUÁN ĂN - VĨNH KHÁNH</div><div class='snm' id='snm'></div><div class='srt' id='srt'></div></div>");
+            lines.Add("  <div class='siw'><img id='simg' class='simg' src='' onerror=\"this.style.display='none';document.getElementById('sph').style.display='flex'\"><div id='sph' class='sph' style='display:none'></div><div class='sOvl'></div><div class='sOvlInfo'><div class='sbg' id='txCat'>QUÁN ĂN - VĨNH KHÁNH</div><div class='snm' id='snm'></div><div class='srt' id='srt'></div></div></div>");
+            // tên + rating đã chuyển vào overlay trên ảnh
             lines.Add("  <div class='sac'><button class='bcl' onclick='closeS()'>✕</button><button class='bfav' onclick='if(cur) toggleFav(cur.id,event)' id='txFavBtn'>🤍</button><button class='bau' onclick='if(cur) speakPoi(cur.id,event)' id='txAud'><svg width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M3 18v-6a9 9 0 0 1 18 0v6'></path><path d='M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z'></path></svg></button><button class='bdr' onclick='reqR()' id='txDir'><svg width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' style='vertical-align:text-bottom;margin-right:6px;margin-bottom:1px'><polygon points='3 11 22 2 13 21 11 13 3 11'></polygon></svg> <span id='txDirText'>Chỉ đường</span></button></div>");
             lines.Add("  <div class='sdv'></div>");
             lines.Add("  <div class='sdt'><div class='sro'><span class='sic'>💬</span><span id='sde'></span></div><div class='sro'><span class='sic'>📍</span><span id='sad'></span></div><div class='sro'><span class='sic'>⏰</span><span id='shr'></span></div></div>");
@@ -499,7 +564,7 @@ namespace VinhKhanhTour.Views
             lines.Add("</div>");
 
             lines.Add("<script>");
-            lines.Add("var map,uMk,uCir,rLn,poi={},uP=null,cur=null,cL='" + _currentLang + "';");
+            lines.Add("var map,uMk,uCir,rLn,rLnBg,rtMks=[],rtWin,poi={},uP=null,cur=null,cL='" + _currentLang + "';");
             lines.Add("var ALL=" + data + ";");
             lines.Add("var CTR={lat:10.7615,lng:106.7045};");
             lines.Add("var L={");
@@ -521,15 +586,27 @@ namespace VinhKhanhTour.Views
             lines.Add("function closeS(){document.getElementById('sheet').classList.remove('open');document.getElementById('menuSheet').classList.remove('open');cur=null;}");
             lines.Add("function reqR(){if(!cur){return;}if(!uP){toast('Đang lấy vị trí trung tâm do không có GPS');}window.location.href='maui://routerequested?data='+encodeURIComponent(JSON.stringify({lat:cur.lat,lng:cur.lng,name:cur.name,img:cur.img||''}))}");
             lines.Add("function shwR(n,d,t,img){document.getElementById('rnm').textContent=n;document.getElementById('rdst').textContent=d;document.getElementById('rtim').textContent=t;var ric=document.getElementById('ricImg');ric.innerHTML=img?'<img src=\"'+img+'\">':'📍';document.getElementById('rs').classList.add('open');document.getElementById('sheet').classList.remove('open');}");
-            lines.Add("function endR(){if(rLn){rLn.setMap(null);rLn=null;}document.getElementById('rs').classList.remove('open');}");
-            lines.Add("function dec(enc){var pts=[],i=0,len=enc.length,lat=0,lng=0;while(i<len){var b,s=0,r=0;do{b=enc.charCodeAt(i++)-63;r|=(b&0x1f)<<s;s+=5;}while(b>=0x20);lat+=((r&1)?~(r>>1):(r>>1));s=0;r=0;do{b=enc.charCodeAt(i++)-63;r|=(b&0x1f)<<s;s+=5;}while(b>=0x20);lng+=((r&1)?~(r>>1):(r>>1));pts.push({lat:lat/1e5,lng:lng/1e5});}return pts;}");
-            lines.Add("function drR(enc,n,d,t,img){if(rLn){rLn.setMap(null);rLn=null;}var path=dec(enc);rLn=new google.maps.Polyline({path:path,geodesic:true,strokeColor:'#42A5F5',strokeWeight:6,strokeOpacity:1});rLn.setMap(map);var b=new google.maps.LatLngBounds();path.forEach(function(p){b.extend(p);});map.fitBounds(b,{padding:100});shwR(n,d,t,img);}");
+            lines.Add("var _segs=[],_rb=null,_rn='',_rd='',_rt='',_ri='';");
+            lines.Add("function endR(){_segs.forEach(function(p){p.setMap(null);});_segs=[];if(rLn){rLn.setMap(null);rLn=null;}if(rLnBg){rLnBg.setMap(null);rLnBg=null;}if(rtMks){rtMks.forEach(function(m){m.setMap(null);});rtMks=[];}if(rtWin){rtWin.close();}document.getElementById('rs').classList.remove('open');}");
+            lines.Add("function startR(n,d,t,img){endR();_rb=new google.maps.LatLngBounds();if(uP)_rb.extend(uP);_rn=n;_rd=d;_rt=t;_ri=img;}");
+            lines.Add("var _curPts=[],_curAlley=false;");
+            lines.Add("function newSeg(idx,alley){if(idx>0&&_curPts.length>0)_flushSeg();_curPts=[];_curAlley=alley===1;}");
+            lines.Add("function addPt(lat,lng){_curPts.push({lat:lat,lng:lng});if(lat)_rb.extend({lat:lat,lng:lng});}");
+            lines.Add("function _flushSeg(){if(!_curPts.length)return;var isAlley=_curAlley;"
+                + "var sh=new google.maps.Polyline({path:_curPts,geodesic:true,strokeColor:isAlley?'#90A4AE':'#1565C0',strokeWeight:isAlley?5:10,strokeOpacity:isAlley?0.45:0.9,zIndex:2});sh.setMap(map);_segs.push(sh);"
+                + "var ln=new google.maps.Polyline({path:_curPts,geodesic:true,strokeColor:isAlley?'#B0BEC5':'#64B5F6',strokeWeight:isAlley?3:6,strokeOpacity:isAlley?0.55:1.0,zIndex:3,icons:isAlley?[{icon:{path:'M 0,-1 0,1',strokeOpacity:1,scale:2},offset:'0',repeat:'10px'}]:[]});ln.setMap(map);_segs.push(ln);}");
+            lines.Add("function finishR(){_flushSeg();map.fitBounds(_rb,{padding:80});var L2=google.maps.event.addListener(map,'idle',function(){if(map.getZoom()>18)map.setZoom(18);google.maps.event.removeListener(L2);});shwR(_rn,_rd,_rt,_ri);}");
             lines.Add("function sPos(lat,lng){uP={lat:lat,lng:lng};if(uMk){uMk.setPosition(uP);uCir.setCenter(uP);}else{uMk=new google.maps.Marker({position:uP,map:map,zIndex:1000,icon:{path:google.maps.SymbolPath.CIRCLE,scale:12,fillColor:'#42A5F5',fillOpacity:1,strokeColor:'white',strokeWeight:3}});uCir=new google.maps.Circle({center:uP,radius:35,map:map,fillColor:'#42A5F5',fillOpacity:0.25,strokeColor:'#42A5F5',strokeOpacity:0,strokeWeight:0});map.panTo(uP);}window.location.href='maui://locationupdated?lat='+lat+'&lng='+lng;}");
             lines.Add("function gps(){if(navigator.geolocation){navigator.geolocation.watchPosition(function(p){sPos(p.coords.latitude,p.coords.longitude);},function(err){},{enableHighAccuracy:true,timeout:10000,maximumAge:3000});}}");
             lines.Add("function stopAudio(){window.location.href='maui://stopaudio';}");
             lines.Add("function speakPoi(id,ev){ev.stopPropagation(); window.location.href='maui://speakpoi?id='+id;}");
             lines.Add("function setTourMode(on,name){}");
             lines.Add("function setAudioPlaying(on){document.getElementById('btnStop').style.display=on?'flex':'none';}");
+            // Proximity notification overlay functions
+            lines.Add("var _proxCur=null;");
+            lines.Add("function showProximity(id,name,desc,img){_proxCur=ALL.find(function(r){return r.id===id;});document.getElementById('pcNameEl').textContent=name;document.getElementById('pcDescEl').textContent=desc;var ic=document.getElementById('pcIconEl');ic.innerHTML=img?'<img src=\"'+img+'\" style=\"width:100%;height:100%;object-fit:cover;border-radius:12px;\">':'🍽️';document.getElementById('proximityAlert').style.display='flex';setTimeout(function(){document.getElementById('proximityCard').classList.add('show');},10);setTimeout(function(){closeProximity();},8000);}");
+            lines.Add("function closeProximity(){document.getElementById('proximityCard').classList.remove('show');setTimeout(function(){document.getElementById('proximityAlert').style.display='none';},450);}");
+            lines.Add("function navFromProximity(){if(_proxCur){cur=_proxCur;closeProximity();reqR();}}");
             lines.Add("function unAccent(str){str=str.toLowerCase();str=str.replace(/à|á|ạ|ả|ã|â|ầ|ấ|ậ|ẩ|ẫ|ă|ằ|ắ|ặ|ẳ|ẵ/g,'a');str=str.replace(/è|é|ẹ|ẻ|ẽ|ê|ề|ế|ệ|ể|ễ/g,'e');str=str.replace(/ì|í|ị|ỉ|ĩ/g,'i');str=str.replace(/ò|ó|ọ|ỏ|õ|ô|ồ|ố|ộ|ổ|ỗ|ơ|ờ|ớ|ợ|ở|ỡ/g,'o');str=str.replace(/ù|ú|ụ|ủ|ũ|ư|ừ|ứ|ự|ử|ữ/g,'u');str=str.replace(/ỳ|ý|ỵ|ỷ|ỹ/g,'y');str=str.replace(/đ/g,'d');return str;}");
             lines.Add("function onSearch(v){var inp=document.getElementById('btnClearSearch');inp.style.display=v?'block':'none';if(!v){document.getElementById('searchResults').style.display='none';return;}var q=unAccent(v.trim());var res=ALL.filter(function(r){return (' '+unAccent(r.name)).indexOf(' '+q)!==-1;});renderSearchResults(res);}");
             lines.Add("function renderSearchResults(res){var d=document.getElementById('searchResults');if(!res.length){d.innerHTML='<div style=\"padding:16px;text-align:center;color:#8ba0b2\">'+L[cL].nodata+'</div>';d.style.display='block';return;}var h='';res.forEach(function(r){var imgHtml=r.img?'<img src=\"'+r.img+'\">':'<div>🍜</div>';h+='<div class=\"srItem\" onclick=\"selectSearchResult('+r.id+')\"><div class=\"srImg\">'+imgHtml+'</div><div><div class=\"srName\">'+r.name+'</div><div class=\"srAddr\">'+r.addr+'</div></div></div>';});d.innerHTML=h;d.style.display='block';}");
@@ -542,7 +619,7 @@ namespace VinhKhanhTour.Views
             lines.Add("function menuNav(id,ev){ev.stopPropagation();var r=ALL.find(function(x){return x.id===id;});if(!r)return;cur=r;document.getElementById('menuSheet').classList.remove('open');reqR();}");
 
             lines.Add("document.addEventListener('click',function(e){var sr=document.getElementById('searchResults');if(sr&&!sr.contains(e.target)&&e.target.id!=='searchInput')sr.style.display='none';var lb=document.getElementById('langBtn');var ld=document.getElementById('langDropdown');if(ld&&!lb.contains(e.target))ld.style.display='none';});");
-            lines.Add("function initMap(){try{var mapDiv=document.getElementById('map');if(!mapDiv)return;var mapOptions={center:CTR,zoom:16,mapTypeControl:false,streetViewControl:false,fullscreenControl:false,mapTypeId:'roadmap'};map=new google.maps.Map(mapDiv,mapOptions);if(ALL&&ALL.length>0){ALL.forEach(function(r){var mk=new google.maps.Marker({position:{lat:r.lat,lng:r.lng},map:map,title:r.name});mk.addListener('click',function(){pick(r);});});}map.addListener('click',function(){closeS();});google.maps.event.trigger(map, 'resize');setTimeout(gps,1000); applyLang(); }catch(e){console.error(e);}}");
+            lines.Add("function initMap(){try{var mapDiv=document.getElementById('map');if(!mapDiv)return;var mapOptions={center:CTR,zoom:16,mapTypeControl:false,streetViewControl:false,fullscreenControl:false,zoomControl:true,zoomControlOptions:{position:google.maps.ControlPosition.LEFT_CENTER},scrollwheel:true,gestureHandling:'greedy',clickableIcons:false,mapTypeId:'roadmap'};map=new google.maps.Map(mapDiv,mapOptions);if(ALL&&ALL.length>0){ALL.forEach(function(r){var mk=new google.maps.Marker({position:{lat:r.lat,lng:r.lng},map:map,title:r.name});mk.addListener('click',function(){pick(r);});});}map.addListener('click',function(){closeS();});google.maps.event.trigger(map, 'resize');setTimeout(gps,1000); applyLang(); }catch(e){console.error(e);}}");
             lines.Add("</script>");
             lines.Add("<script src='https://maps.googleapis.com/maps/api/js?key=" + KEY + "'></script>");
             lines.Add("<script>window.addEventListener('load',function(){setTimeout(initMap,100);});</script>");
@@ -572,9 +649,20 @@ namespace VinhKhanhTour.Views
                 (DateTime.Now - last).TotalMinutes < COOLDOWN) return;
             _lastNotified[nearest.Id] = DateTime.Now;
             await SpeakAsync(nearest);
+
+            // Show custom in-map overlay notification instead of system alert
+            var imgJs = (_imgCache.TryGetValue(nearest.Id, out var nb64) && !string.IsNullOrEmpty(nb64) ? nb64 : (nearest.ImageUrl ?? "")).Replace("'", "\\'");
+            var nameJs = nearest.Name.Replace("'", "\\'");
+            var descJs = (!string.IsNullOrWhiteSpace(nearest.TtsScript) ? nearest.TtsScript : nearest.Description).Replace("'", "\\'").Replace("\n", " ").Replace("\r", "");
             await MainThread.InvokeOnMainThreadAsync(async () =>
-                await DisplayAlert("Location Alert!", $"{nearest.Name}\n{nearest.Description}", "OK"));
-            await App.Database.SaveVisitAsync(new VisitHistory { RestaurantId = nearest.Id, VisitedAt = DateTime.Now });
+                await _webView.EvaluateJavaScriptAsync($"showProximity({nearest.Id},'{nameJs}','{descJs}','{imgJs}');"));
+
+            await App.Database.SaveVisitAsync(new VisitHistory
+            {
+                RestaurantId = nearest.Id,
+                VisitedAt = DateTime.Now,
+                Username = VinhKhanhTour.Services.UserSession.Instance.Username ?? string.Empty
+            });
             _ = ApiService.Instance.PostAnalyticAsync(nearest.Id, "geofence_enter");
         }
 
@@ -636,37 +724,149 @@ namespace VinhKhanhTour.Views
         private async Task DrawRouteAsync(string json)
         {
             var loc = _userLocation ?? new Location(10.7615, 106.7045); // Fallback to Vinh Khanh Center
+            bool usingFallback = _userLocation == null;
             try
             {
                 var opts = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
                 var info = JsonSerializer.Deserialize<RouteRequest>(json, opts);
                 if (info == null) return;
+                System.Diagnostics.Debug.WriteLine($"[MapPage] DrawRouteAsync called → dest={info?.Lat},{info?.Lng} usingFallback={usingFallback}");
                 var ic = System.Globalization.CultureInfo.InvariantCulture;
                 var origin = $"{loc.Latitude.ToString(ic)},{loc.Longitude.ToString(ic)}";
                 var dest = $"{info.Lat.ToString(ic)},{info.Lng.ToString(ic)}";
-                var url = $"https://maps.googleapis.com/maps/api/directions/json?origin={origin}&destination={dest}&mode=walking&language={_currentLang}&key={KEY}";
+
+                // mode=walking + avoid=ferries → đường đi bộ thực tế, không qua sông/phà
+                // alternatives=false → chỉ lấy 1 đường tốt nhất
+                var url = $"https://maps.googleapis.com/maps/api/directions/json?origin={origin}&destination={dest}&mode=walking&avoid=ferries&alternatives=false&language={_currentLang}&key={KEY}";
+
+                // Cảnh báo nếu đang dùng vị trí trung tâm thay GPS thật
+                if (usingFallback)
+                {
+                    var warnMsg = _currentLang switch
+                    {
+                        "en" => "⚠️ GPS unavailable – routing from area center",
+                        "zh" => "⚠️ GPS 不可用，从区域中心导航",
+                        _ => "⚠️ Chưa có GPS – chỉ đường từ trung tâm khu vực"
+                    };
+                    await MainThread.InvokeOnMainThreadAsync(() => _statusLabel.Text = warnMsg);
+                }
 
                 using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(10) };
                 var resp = await http.GetStringAsync(url);
                 using var doc = JsonDocument.Parse(resp);
                 var root = doc.RootElement;
-                if (root.GetProperty("status").GetString() != "OK") return;
+                var status = root.GetProperty("status").GetString();
+                System.Diagnostics.Debug.WriteLine($"[MapPage] Directions API status={status}");
+                if (status != "OK")
+                {
+                    System.Diagnostics.Debug.WriteLine($"[MapPage] ⚠️ Directions API status: {status}");
+                    var errMsg = _currentLang switch
+                    {
+                        "en" => "Could not find a walking route",
+                        "zh" => "无法找到步行路线",
+                        _ => "Không tìm được đường đi bộ"
+                    };
+                    await MainThread.InvokeOnMainThreadAsync(() => _statusLabel.Text = errMsg);
+                    return;
+                }
 
                 var route = root.GetProperty("routes")[0];
                 var leg = route.GetProperty("legs")[0];
-                var poly = route.GetProperty("overview_polyline").GetProperty("points").GetString() ?? "";
                 var dTxt = leg.GetProperty("distance").GetProperty("text").GetString() ?? "";
                 var tTxt = leg.GetProperty("duration").GetProperty("text").GetString() ?? "";
 
-                var esc = poly.Replace("\\", "\\\\").Replace("'", "\\'");
-                var name = info.Name.Replace("'", "\\'");
-                var img = (info.Img ?? string.Empty).Replace("'", "\\'");
-                await MainThread.InvokeOnMainThreadAsync(async () => await _webView.EvaluateJavaScriptAsync($"drR('{esc}','{name}','{dTxt}','{tTxt}','{img}');"));
+                // Parse tung step de phan biet duong lon vs hem
+                var steps = leg.GetProperty("steps");
+                var segments = new System.Text.StringBuilder("[");
+                bool firstSeg = true;
+                foreach (var step in steps.EnumerateArray())
+                {
+                    var stepPoly = step.GetProperty("polyline").GetProperty("points").GetString() ?? "";
+                    var stepDist = step.GetProperty("distance").GetProperty("value").GetDouble();
+                    var stepDur = step.GetProperty("duration").GetProperty("value").GetDouble();
+                    // Hem/duong nho: toc do < 0.85 m/s hoac doan < 30m
+                    double speed = stepDur > 0 ? stepDist / stepDur : 1.2;
+                    bool isAlley = speed < 0.85 || stepDist < 20;
+                    var pts = DecodePolyline(stepPoly);
+                    var ptsJson = System.Text.Json.JsonSerializer.Serialize(pts);
+                    if (!firstSeg) segments.Append(",");
+                    firstSeg = false;
+                    segments.Append($"{{\"pts\":{ptsJson},\"alley\":{(isAlley ? "true" : "false")}}}");
+                }
+                segments.Append("]");
+
+                var name = info.Name.Replace("'", "\'");
+                var img = (info.Img ?? string.Empty).Replace("'", "\'");
+                var dTxtEsc = dTxt.Replace("'", "\'");
+                var tTxtEsc = tTxt.Replace("'", "\'");
+                // === Inject route qua tung diem rieng le - tranh CORS va JSON size limit ===
+                var ic2 = System.Globalization.CultureInfo.InvariantCulture;
+                await MainThread.InvokeOnMainThreadAsync(async () =>
+                    await _webView.EvaluateJavaScriptAsync(
+                        "startR('" + name + "','" + dTxtEsc + "','" + tTxtEsc + "','" + img + "');"));
+
+                int segIdx2 = 0;
+                foreach (var step in steps.EnumerateArray())
+                {
+                    var stepPoly2 = step.GetProperty("polyline").GetProperty("points").GetString() ?? "";
+                    var stepDist2 = step.GetProperty("distance").GetProperty("value").GetDouble();
+                    var stepDur2 = step.GetProperty("duration").GetProperty("value").GetDouble();
+                    double speed2 = stepDur2 > 0 ? stepDist2 / stepDur2 : 1.2;
+                    bool isAlley2 = speed2 < 0.85 || stepDist2 < 20;
+                    int alleyInt = isAlley2 ? 1 : 0;
+                    var pts2 = DecodePolyline(stepPoly2);
+
+                    // newSeg(segIdx, isAlley) - bat dau segment moi
+                    var segJs = $"newSeg({segIdx2},{alleyInt});";
+                    await MainThread.InvokeOnMainThreadAsync(async () =>
+                        await _webView.EvaluateJavaScriptAsync(segJs));
+
+                    // addPt(lat, lng) - them tung diem
+                    foreach (var pt in pts2)
+                    {
+                        // Lay lat/lng tu anonymous object
+                        var ptJson = System.Text.Json.JsonSerializer.Serialize(pt);
+                        using var ptDoc = System.Text.Json.JsonDocument.Parse(ptJson);
+                        var ptLat = ptDoc.RootElement.GetProperty("lat").GetDouble().ToString(ic2);
+                        var ptLng = ptDoc.RootElement.GetProperty("lng").GetDouble().ToString(ic2);
+                        var ptJs = $"addPt({ptLat},{ptLng});";
+                        await MainThread.InvokeOnMainThreadAsync(async () =>
+                            await _webView.EvaluateJavaScriptAsync(ptJs));
+                    }
+                    segIdx2++;
+                }
+
+                await MainThread.InvokeOnMainThreadAsync(async () =>
+                {
+                    await _webView.EvaluateJavaScriptAsync("finishR();");
+                    System.Diagnostics.Debug.WriteLine("[MapPage] Route drawn OK");
+                });
             }
-            catch { }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[MapPage] ❌ DrawRouteAsync error: {ex.Message}");
+            }
+        }
+
+
+        // Decode Google Maps encoded polyline ở C# - tránh JS 32-bit bitwise overflow
+        private static List<object> DecodePolyline(string encoded)
+        {
+            var result = new List<object>();
+            int index = 0, lat = 0, lng = 0;
+            while (index < encoded.Length)
+            {
+                int b, shift = 0, result_val = 0;
+                do { b = encoded[index++] - 63; result_val |= (b & 0x1f) << shift; shift += 5; } while (b >= 0x20);
+                lat += ((result_val & 1) != 0 ? ~(result_val >> 1) : (result_val >> 1));
+                shift = 0; result_val = 0;
+                do { b = encoded[index++] - 63; result_val |= (b & 0x1f) << shift; shift += 5; } while (b >= 0x20);
+                lng += ((result_val & 1) != 0 ? ~(result_val >> 1) : (result_val >> 1));
+                result.Add(new { lat = lat / 1e5, lng = lng / 1e5 });
+            }
+            return result;
         }
     }
-
     public class RouteRequest
     {
         public double Lat { get; set; }

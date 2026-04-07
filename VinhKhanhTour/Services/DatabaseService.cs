@@ -7,7 +7,7 @@ namespace VinhKhanhTour.Services
     {
         private readonly SQLiteAsyncConnection _database;
 
-        private const int DB_VERSION = 6;
+        private const int DB_VERSION = 7;
         private const string VERSION_KEY = "db_version";
 
         public DatabaseService()
@@ -28,6 +28,7 @@ namespace VinhKhanhTour.Services
             if (currentVersion < DB_VERSION)
             {
                 try { await _database.DropTableAsync<Restaurant>(); } catch { }
+                try { await _database.DropTableAsync<VisitHistory>(); } catch { }
 
                 if (meta == null)
                     await _database.InsertAsync(new DbMeta { Key = VERSION_KEY, Value = DB_VERSION.ToString() });
@@ -81,6 +82,12 @@ namespace VinhKhanhTour.Services
 
         public Task<List<VisitHistory>> GetVisitHistoryAsync()
             => _database.Table<VisitHistory>()
+                        .OrderByDescending(v => v.VisitedAt)
+                        .ToListAsync();
+
+        public Task<List<VisitHistory>> GetVisitHistoryByUserAsync(string username)
+            => _database.Table<VisitHistory>()
+                        .Where(v => v.Username == username)
                         .OrderByDescending(v => v.VisitedAt)
                         .ToListAsync();
 

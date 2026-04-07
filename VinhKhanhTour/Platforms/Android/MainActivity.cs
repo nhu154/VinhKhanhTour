@@ -15,27 +15,40 @@ namespace VinhKhanhTour
         {
             base.OnCreate(savedInstanceState);
 
-            // ✅ Cấp quyền geolocation cho WebView
             Microsoft.Maui.Handlers.WebViewHandler.Mapper.AppendToMapping(
                 "WebViewGeoPermission", (handler, view) =>
                 {
+                    var settings = handler.PlatformView.Settings;
+
+                    // Geolocation
                     handler.PlatformView.SetWebChromeClient(new GeoWebChromeClient());
-                    handler.PlatformView.Settings.JavaScriptEnabled = true;
-                    handler.PlatformView.Settings.SetGeolocationEnabled(true);
-                    handler.PlatformView.Settings.SetGeolocationDatabasePath(
-                        handler.PlatformView.Context?.GetExternalFilesDir(null)?.AbsolutePath);
+                    settings.JavaScriptEnabled = true;
+                    settings.SetGeolocationEnabled(true);
+                    var geoPath = handler.PlatformView.Context?.GetExternalFilesDir(null)?.AbsolutePath;
+                    if (geoPath != null) settings.SetGeolocationDatabasePath(geoPath);
+
+                    // ✅ Cho phép load ảnh HTTP từ file:// context (fix ảnh bị đen)
+                    settings.MixedContentMode = MixedContentHandling.AlwaysAllow;
+
+                    // ✅ Cho phép load resource từ file URL
+                    settings.AllowFileAccessFromFileURLs = true;
+                    settings.AllowUniversalAccessFromFileURLs = true;
+
+                    // ✅ Cho phép load ảnh
+                    settings.LoadsImagesAutomatically = true;
+
+                    // ✅ Tắt cache để ảnh mới nhất luôn được load
+                    settings.CacheMode = CacheModes.NoCache;
                 });
         }
     }
 
-    // Chrome client xử lý permission request từ JS
     public class GeoWebChromeClient : Android.Webkit.WebChromeClient
     {
         public override void OnGeolocationPermissionsShowPrompt(
             string? origin,
             GeolocationPermissions.ICallback? callback)
         {
-            // Tự động cấp quyền cho tất cả origin
             callback?.Invoke(origin, true, false);
         }
     }

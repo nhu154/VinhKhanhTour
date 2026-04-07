@@ -66,8 +66,12 @@ public partial class ProfilePage : ContentPage
         if (_lblLang != null) _lblLang.Text = lang switch { "en" => "System Language", "zh" => "\u7CFB\u7EDF\u8BED\u8A00", _ => "Ngôn ngữ hệ thống" };
         if (_lblStats != null) _lblStats.Text = lang switch { "en" => "Analytics", "zh" => "\u7EDF\u8BA1\u5206\u6790", _ => "Thống kê phân tích" };
         if (_lblSettings != null) _lblSettings.Text = lang switch { "en" => "Settings & Privacy", "zh" => "\u8BBE\u7F6E\u4E0E\u9690\u79C1", _ => "Cài đặt & Quyền riêng tư" };
-        if (_lblUserName != null) _lblUserName.Text = lang switch { "en" => "Vinh Khanh Tourist", "zh" => "\u6C38\u5E86\u6E38\u5BA2", _ => "Du khách Vĩnh Khánh" };
-        if (_lblUserRole != null) _lblUserRole.Text = lang switch { "en" => "✨ Food Expert", "zh" => "✨ \u7F8E\u98DF\u4E13\u5BB6", _ => "✨ Chuyên gia ẩm thực" };
+        // Only update name/role for language if user is NOT authenticated (guest default text)
+        var session = VinhKhanhTour.Services.UserSession.Instance;
+        if (_lblUserName != null && !session.IsAuthenticatedUser)
+            _lblUserName.Text = lang switch { "en" => "Vinh Khanh Tourist", "zh" => "\u6c38\u5e86\u6e38\u5ba2", _ => "Du kh\u00e1ch V\u0129nh Kh\u00e1nh" };
+        if (_lblUserRole != null && !session.IsAuthenticatedUser)
+            _lblUserRole.Text = lang switch { "en" => "\u2728 Guest Explorer", "zh" => "\u2728 \u6e38\u5ba2", _ => "Kh\u00e1ch tham quan" };
         if (_lblEditBtn != null) _lblEditBtn.Text = lang switch { "en" => "✏\uFE0F Edit", "zh" => "✏\uFE0F \u7F16\u8F91", _ => "Sửa" };
         if (_lblLoading != null && _lblLoading.Text != null && _lblLoading.Text.EndsWith("..."))
             _lblLoading.Text = lang switch { "en" => "Loading data...", "zh" => "\u52A0\u8F7D\u6570\u636E...", _ => "Đang tải dữ liệu..." };
@@ -286,7 +290,14 @@ public partial class ProfilePage : ContentPage
     {
         try
         {
-            var visits = await App.Database.GetVisitHistoryAsync();
+            var currentUser = VinhKhanhTour.Services.UserSession.Instance.Username;
+            bool isAuth = VinhKhanhTour.Services.UserSession.Instance.IsAuthenticatedUser;
+
+            // Load visits scoped to current user only
+            var visits = isAuth
+                ? await App.Database.GetVisitHistoryByUserAsync(currentUser)
+                : new System.Collections.Generic.List<VinhKhanhTour.Models.VisitHistory>();
+
             var restaurants = await App.Database.GetRestaurantsAsync();
 
             var uniqueIds = visits.Select(v => v.RestaurantId).Distinct().ToList();
