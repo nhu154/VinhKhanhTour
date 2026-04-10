@@ -17,6 +17,7 @@ function switchPage(pageId, navEl) {
     'page-approvals':       'Phê duyệt yêu cầu',
     'page-users':           'Quản lý người dùng',
     'page-audio':           'Quản lý Audio & Thuyết minh',
+    'page-analytics':       'Phân tích chuyên sâu',
   };
   document.getElementById('current-page-title').textContent = titleMap[pageId] || 'Dashboard';
 
@@ -54,4 +55,12 @@ function switchPage(pageId, navEl) {
   if (pageId === 'page-tour')            renderTours();
   if (pageId === 'page-dashboard')       loadStats().then(() => { renderStatsCards(); initCharts(); renderDashboardRecent(); });
   if (pageId === 'page-owner-dashboard') renderOwnerDashboard();
+
+  // Trigger Google Maps resize khi switch sang trang heatmap
+  if (pageId === 'page-analytics') {
+    setTimeout(() => {
+      if (typeof _gHeatMap !== 'undefined' && _gHeatMap)
+        google.maps.event.trigger(_gHeatMap, 'resize');
+    }, 250);
+  }
 }

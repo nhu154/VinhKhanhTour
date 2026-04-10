@@ -39,8 +39,8 @@ function renderHistory(filter='') {
     const name=h.RestaurantName||h.restaurantName||'—';
     const time=new Date(h.Timestamp||h.timestamp).toLocaleString('vi-VN');
     
-    let icon = 'activity', action = 'Tương tác ẩn', color = '#64748b', bg = '#f8fafc';
-    if(evt.includes('enter')) {
+    let icon = 'activity', action = 'Chưa xác định', color = '#64748b', bg = '#f8fafc';
+    if(evt.includes('enter') || evt.includes('visit')) {
         icon = 'navigation'; action = 'Vừa đi ngang qua / Ghé thăm'; color = '#10b981'; bg = '#f0fdf4';
     } else if(evt.includes('click')) {
         icon = 'mouse-pointer'; action = 'Bấm xem chi tiết'; color = '#3b82f6'; bg = '#eff6ff';
@@ -72,7 +72,7 @@ function renderDashboardRecent() {
   tbody.innerHTML=historyData.slice(0,5).map(h=>{
     const evt=(h.EventType||h.eventType||'visit').toLowerCase();
     let action = 'Tương tác';
-    if(evt.includes('enter')) action = 'Ghé thăm';
+    if(evt.includes('enter') || evt.includes('visit')) action = 'Ghé thăm';
     else if(evt.includes('click')) action = 'Xem thông tin';
     else if(evt.includes('exit')) action = 'Rời khỏi';
     return `<tr><td><strong>${h.RestaurantName||h.restaurantName||'POI'}</strong></td><td><span class="badge badge-info" style="font-size:11px;background:#f8fafc;color:#475569;border:1px solid #e2e8f0;font-weight:500">${action}</span></td><td style="color:var(--text-muted);font-size:12px">${new Date(h.Timestamp||h.timestamp).toLocaleTimeString('vi-VN')}</td></tr>`

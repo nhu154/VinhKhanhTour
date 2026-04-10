@@ -1,5 +1,4 @@
 // ══ AUDIO MANAGEMENT PAGE ══
-let _audioLangFilter = 'all';
 
 // Script ~30 giây (Google TTS Wavenet ~130-150 tiếng mỗi phút ở 0.95x speed)
 const RICH_SCRIPTS = {
@@ -60,62 +59,9 @@ const RICH_SCRIPTS = {
   }
 };
 
-async function bulkUpdateScripts() {
-  if (!allPois.length) { showToast('Chưa load dữ liệu POI', 'warning'); return; }
-  const btn = document.getElementById('btn-bulk-update');
-  if (btn) { btn.disabled = true; btn.innerHTML = '<i data-lucide="loader-2" class="spin"></i> Đang cập nhật...'; lucide.createIcons(); }
+// ══ STATE & RENDER ════════════════════════════════════════════════════════
 
-  // Map theo ID để tránh lỗi tên không khớp
-  const ID_SCRIPT_MAP = {
-    1: RICH_SCRIPTS["Ốc Oanh"],
-    2: RICH_SCRIPTS["Ốc Sáu Nở"],
-    3: RICH_SCRIPTS["Ốc Thảo"],
-    4: RICH_SCRIPTS["Lãng Quán"],
-    5: RICH_SCRIPTS["Ớt Xiêm Quán"],
-    6: RICH_SCRIPTS["Bún Cá Châu Đốc - Dì Tư"],
-    7: RICH_SCRIPTS["Chilli Lẩu Nướng Quán"],
-    8: RICH_SCRIPTS["Thế Giới Bò"],
-    9: RICH_SCRIPTS["Cơm Cháy Kho Quet"],
-    10: RICH_SCRIPTS["Bò Lá Lốt Cô Út"],
-    11: RICH_SCRIPTS["Bún Thịt Nướng Cô Nga"],
-  };
-
-  let ok = 0, fail = 0;
-  for (const p of allPois) {
-    const id = p.id || p.Id;
-    const name = p.name || p.Name;
-    // Ưu tiên match theo ID, fallback theo tên
-    const script = ID_SCRIPT_MAP[id] || RICH_SCRIPTS[name];
-    if (!script) { console.warn(`[Bulk] Không tìm thấy script cho ID=${id} Name="${name}"`); fail++; continue; }
-    const body = {
-      ...p,
-      Name:         name,
-      TtsScript:    script.vi,
-      TtsScriptEn:  script.en,
-      TtsScriptZh:  script.zh,
-      Translations: p.Translations || p.translations || '{}',
-      IsFavorite:   p.IsFavorite ?? p.isFavorite ?? false,
-      IsAdsPopup:   p.IsAdsPopup ?? p.isAdsPopup ?? false,
-      AudioFile:    p.AudioFile || p.audioFile || '',
-      AudioUrl:     p.AudioUrl  || p.audioUrl  || '',
-      Radius:       p.Radius    || p.radius     || 50,
-    };
-    try {
-      const res = await fetch(`${API}/restaurants/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body)
-      });
-      if (res.ok) ok++; else { console.error(`[Bulk] PUT lỗi ID=${id}:`, await res.text()); fail++; }
-    } catch(e) { console.error(`[Bulk] Exception ID=${id}:`, e); fail++; }
-  }
-
-  if (btn) { btn.disabled = false; btn.innerHTML = '<i data-lucide="refresh-cw"></i> Cập nhật Scripts (30s)'; lucide.createIcons(); }
-  showToast(`✅ Đã cập nhật ${ok} quán${fail ? ` | ❌ ${fail} lỗi` : ''}`, ok > 0 ? 'success' : 'danger');
-  if (ok > 0) { await loadPois(); renderAudioPage(); }
-}
-
-
+let _audioLangFilter = 'all';
 
 function renderAudioPage() {
   renderAudioStats();
@@ -123,25 +69,18 @@ function renderAudioPage() {
   renderAudioTable();
 }
 
-
 function getPoiTts(p, langCode) {
   if (langCode === 'vi') return p.ttsScript || p.TtsScript || '';
   if (langCode === 'en') return p.ttsScriptEn || p.TtsScriptEn || '';
   if (langCode === 'zh') return p.ttsScriptZh || p.TtsScriptZh || '';
-  // Additional languages stored in Translations JSON
-  try {
-    const t = JSON.parse(p.translations || p.Translations || '{}');
-    return t[langCode]?.tts || '';
-  } catch { return ''; }
+  try { const t = JSON.parse(p.translations || p.Translations || '{}'); return t[langCode]?.tts || ''; }
+  catch { return ''; }
 }
 
 const LANG_PALETTE = [
-  { color: '#16a34a', bg: '#f0fdf4' },
-  { color: '#d97706', bg: '#fffbeb' },
-  { color: '#dc2626', bg: '#fef2f2' },
-  { color: '#7c3aed', bg: '#f5f3ff' },
-  { color: '#0891b2', bg: '#ecfeff' },
-  { color: '#db2777', bg: '#fdf2f8' },
+  { color: '#16a34a', bg: '#f0fdf4' }, { color: '#d97706', bg: '#fffbeb' },
+  { color: '#dc2626', bg: '#fef2f2' }, { color: '#7c3aed', bg: '#f5f3ff' },
+  { color: '#0891b2', bg: '#ecfeff' }, { color: '#db2777', bg: '#fdf2f8' },
 ];
 
 function renderAudioStats() {
@@ -151,28 +90,27 @@ function renderAudioStats() {
   const langs = getLangs();
   const pct = n => Math.round(n / total * 100);
   const card = (icon, label, count, color, bg) => `
-    <div style="background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:8px">
+    <div style="background:var(--card,#fff);border:1px solid var(--border,#e2e8f0);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:8px">
       <div style="display:flex;align-items:center;gap:8px;font-size:12px;font-weight:600;color:${color}">
         <div style="width:32px;height:32px;background:${bg};border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px">${icon}</div>
         ${label}
       </div>
-      <div style="font-size:26px;font-weight:800;color:#0f172a">${count}<span style="font-size:13px;font-weight:500;color:#94a3b8">/${total}</span></div>
-      <div style="background:#f1f5f9;border-radius:99px;height:6px;overflow:hidden">
+      <div style="font-size:26px;font-weight:800;color:var(--text-main,#0f172a)">${count}<span style="font-size:13px;font-weight:500;color:var(--text-muted,#94a3b8)">/${total}</span></div>
+      <div style="background:var(--bg-secondary,#f1f5f9);border-radius:99px;height:6px;overflow:hidden">
         <div style="height:100%;background:${color};border-radius:99px;width:${pct(count)}%;transition:.5s"></div>
       </div>
-      <div style="font-size:11px;color:#64748b">${pct(count)}% hoàn thành</div>
+      <div style="font-size:11px;color:var(--text-muted,#94a3b8)">${pct(count)}% hoàn thành</div>
     </div>`;
-
-  const totalCard = card('📍', 'Tổng địa điểm', total, '#2563eb', '#eff6ff');
-  const langCards = langs.map((l, i) => {
-    const { color, bg } = LANG_PALETTE[i % LANG_PALETTE.length];
-    const count = allPois.filter(p => !!getPoiTts(p, l.code)).length;
-    return card(l.flag, l.name, count, color, bg);
-  }).join('');
-
-  // Responsive grid: 1 (total) + N langs
-  bar.style.gridTemplateColumns = `repeat(${1 + langs.length}, 1fr)`;
-  bar.innerHTML = totalCard + langCards;
+  const audioFileCount = allPois.filter(p => !!(p.audioUrl || p.AudioUrl)).length;
+  bar.style.gridTemplateColumns = `repeat(${2 + langs.length}, 1fr)`;
+  bar.innerHTML =
+    card('📍', 'Tổng địa điểm', total, '#2563eb', '#eff6ff') +
+    card('🎵', 'File Audio', audioFileCount, '#7c3aed', '#f5f3ff') +
+    langs.map((l, i) => {
+      const { color, bg } = LANG_PALETTE[i % LANG_PALETTE.length];
+      const count = allPois.filter(p => !!getPoiTts(p, l.code)).length;
+      return card(l.flag, l.name, count, color, bg);
+    }).join('');
 }
 
 function renderAudioLangTabs() {
@@ -180,7 +118,8 @@ function renderAudioLangTabs() {
   if (!el) return;
   const langs = getLangs();
   const tabs = [
-    { code: 'all', label: 'Tất cả', icon: 'layers' },
+    { code: 'all',  label: 'Tất cả', icon: 'layers' },
+    { code: 'file', label: '🎵 File', icon: null },
     ...langs.map(l => ({ code: l.code, label: `${l.flag} ${l.code.toUpperCase()}`, icon: null }))
   ];
   el.innerHTML = tabs.map(t => `
@@ -197,131 +136,241 @@ function renderAudioTable() {
   if (!tbody) return;
   const langs = getLangs();
   const q = (document.getElementById('audio-search')?.value || '').toLowerCase();
-  let list = allPois.filter(p => textMatch(p.name || p.Name, q));
+  const list = allPois.filter(p => textMatch(p.name || p.Name, q));
 
-  // Filter: show only rows missing script for selected lang
-  if (_audioLangFilter !== 'all') {
-    list = list.filter(p => !getPoiTts(p, _audioLangFilter));
-  }
+  // Tab ngôn ngữ cụ thể → chỉ hiện cột đó; tab all/file → hiện tất cả
+  const isLangTab    = _audioLangFilter !== 'all' && _audioLangFilter !== 'file';
+  const showFile     = !isLangTab;
+  const visibleLangs = isLangTab ? langs.filter(l => l.code === _audioLangFilter) : langs;
 
-  // Render thead dynamically
   if (thead) {
     thead.innerHTML = `<tr>
       <th style="width:52px"></th>
       <th>Địa điểm</th>
-      ${langs.map(l => `<th style="text-align:center">${l.flag} ${l.name}</th>`).join('')}
-      <th style="width:80px;text-align:right">Sửa</th>
+      ${showFile ? `<th style="text-align:center;width:155px">🎵 File Audio</th>` : ''}
+      ${visibleLangs.map(l => `<th style="text-align:center">${l.flag} ${l.name}</th>`).join('')}
+      <th style="width:56px;text-align:right">Sửa</th>
     </tr>`;
   }
 
   if (!list.length) {
-    tbody.innerHTML = `<tr><td colspan="${3 + langs.length}" style="text-align:center;padding:40px;color:var(--text-muted)">
-      ${_audioLangFilter === 'all' ? 'Không tìm thấy địa điểm' : '✅ Tất cả địa điểm đã có script cho ngôn ngữ này!'}
-    </td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="${3 + visibleLangs.length + (showFile ? 1 : 0)}"
+      style="text-align:center;padding:40px;color:var(--text-muted)">Không tìm thấy địa điểm</td></tr>`;
     return;
   }
 
-  const audioCell = (text, langCode, id) => {
-    if (!text) return `<td style="text-align:center"><span style="font-size:12px;color:#f87171;background:#fef2f2;padding:4px 10px;border-radius:20px;border:1px solid #fecaca">✗ Thiếu</span></td>`;
+  const ttsCell = (text, langCode) => {
+    if (!text) return `<td style="text-align:center">
+      <span style="font-size:12px;color:#f87171;background:#fef2f2;padding:4px 10px;border-radius:20px;border:1px solid #fecaca">✗ Thiếu</span>
+    </td>`;
     const safe = escapeSq(text);
     return `<td style="text-align:center">
-      <button class="btn btn-sm" style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:20px;padding:4px 12px;font-size:12px;color:#16a34a;gap:6px;display:inline-flex;align-items:center;transition:all 0.15s ease;width:95px;justify-content:center;box-shadow:0 1px 2px rgba(0,0,0,0.05)"
-        onclick="toggleAudioCell('${safe}', '${langCode}', this)" title="Nghe thử ${langCode.toUpperCase()}">
-        <i data-lucide="play" style="width:14px;height:14px"></i> Nghe
-      </button>
+      <div style="display:inline-flex;gap:4px;align-items:center">
+        <button class="tts-play-btn"
+          style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:20px;padding:4px 11px;font-size:12px;color:#16a34a;gap:5px;display:inline-flex;align-items:center;min-width:74px;justify-content:center;cursor:pointer"
+          onclick="toggleAudioCell('${safe}','${langCode}',this)">
+          <i data-lucide="play" style="width:13px;height:13px"></i> Nghe
+        </button>
+        <button class="tts-stop-btn"
+          style="background:#fef2f2;border:1px solid #fecaca;border-radius:20px;padding:4px 7px;font-size:12px;color:#dc2626;display:inline-flex;align-items:center;cursor:pointer;opacity:0;pointer-events:none;transition:opacity .15s"
+          title="Dừng & về đầu" onclick="stopAndResetCell(this)">
+          <i data-lucide="square" style="width:12px;height:12px"></i>
+        </button>
+      </div>
     </td>`;
   };
 
   tbody.innerHTML = list.map(p => {
-    const id   = p.id || p.Id;
-    const name = p.name || p.Name || '—';
-    const img  = p.imageUrl || p.ImageUrl || '';
-    const imgSrc = img ? (img.startsWith('http') || img.startsWith('data:') ? img : `${BASE_URL}/${img}`) : 'https://via.placeholder.com/44?text=?';
-    const langCells = langs.map(l => audioCell(getPoiTts(p, l.code), l.code, id)).join('');
+    const id       = p.id   || p.Id;
+    const name     = p.name || p.Name    || '—';
+    const img      = p.imageUrl || p.ImageUrl || '';
+    const audioUrl = p.audioUrl || p.AudioUrl || '';
+    const imgSrc   = img
+      ? (img.startsWith('http') || img.startsWith('data:') ? img : `${BASE_URL}/${img}`)
+      : 'https://via.placeholder.com/44?text=?';
+    const langCells = visibleLangs.map(l => ttsCell(getPoiTts(p, l.code), l.code)).join('');
     return `<tr>
       <td><img src="${imgSrc}" onerror="this.src='https://via.placeholder.com/44?text=?'"
-        style="width:44px;height:44px;border-radius:8px;object-fit:cover;border:1px solid #e2e8f0"></td>
-      <td><div style="font-weight:600;font-size:13px">${name}</div>
-          <div style="font-size:11px;color:#94a3b8">⭐ ${(p.rating || p.Rating || 0).toFixed(1)} · ${p.openHours || p.OpenHours || '—'}</div></td>
+        style="width:44px;height:44px;border-radius:8px;object-fit:cover;border:1px solid var(--border,#e2e8f0)"></td>
+      <td>
+        <div style="font-weight:600;font-size:13px">${name}</div>
+        <div style="font-size:11px;color:var(--text-muted,#94a3b8)">⭐ ${(p.rating || p.Rating || 0).toFixed(1)} · ${p.openHours || p.OpenHours || '—'}</div>
+      </td>
+      ${showFile ? `<td style="text-align:center">${audioFileCell(id, name, audioUrl)}</td>` : ''}
       ${langCells}
       <td style="text-align:right">
-        <button class="btn btn-ghost btn-sm" onclick='openEditPoiForm(allPois.find(x=>(x.id||x.Id)==${id}))'><i data-lucide="edit-3"></i></button>
+        <button class="btn btn-ghost btn-sm" onclick='openEditPoiForm(allPois.find(x=>(x.id||x.Id)==${id}))'>
+          <i data-lucide="edit-3"></i>
+        </button>
       </td>
     </tr>`;
   }).join('');
   lucide.createIcons();
 }
 
-let _activeAudioBtn = null;
+// ══ FILE AUDIO ════════════════════════════════════════════════════════════
+
+function audioFileCell(poiId, poiName, audioUrl) {
+  if (!audioUrl) {
+    return `<div style="display:flex;flex-direction:column;gap:4px;align-items:center">
+      <span style="font-size:11px;color:#f87171;background:#fef2f2;padding:3px 8px;border-radius:20px;border:1px solid #fecaca">✗ Chưa có</span>
+      <button style="font-size:11px;padding:3px 10px;border-radius:20px;background:#eff6ff;border:1px solid #bfdbfe;color:#2563eb;display:inline-flex;align-items:center;gap:4px;cursor:pointer"
+        onclick="triggerAudioUpload(${poiId},'${escapeSq(poiName)}')">
+        <i data-lucide="upload" style="width:12px;height:12px"></i> Upload
+      </button>
+    </div>`;
+  }
+  const fullUrl = audioUrl.startsWith('http') ? audioUrl : `${BASE_URL}/${audioUrl}`;
+  return `<div style="display:flex;flex-direction:column;gap:4px;align-items:center">
+    <span style="font-size:11px;color:#16a34a;background:#f0fdf4;padding:3px 8px;border-radius:20px;border:1px solid #bbf7d0">✓ Có file</span>
+    <div style="display:flex;gap:4px">
+      <button id="play-file-${poiId}"
+        style="font-size:11px;padding:3px 8px;border-radius:20px;background:#f0fdf4;border:1px solid #bbf7d0;color:#16a34a;display:inline-flex;align-items:center;gap:3px;cursor:pointer"
+        onclick="previewUploadedFile('${fullUrl}',${poiId},this)">
+        <i data-lucide="play" style="width:12px;height:12px"></i>
+      </button>
+      <button style="font-size:11px;padding:3px 8px;border-radius:20px;background:#eff6ff;border:1px solid #bfdbfe;color:#2563eb;display:inline-flex;align-items:center;cursor:pointer"
+        onclick="triggerAudioUpload(${poiId},'${escapeSq(poiName)}')">
+        <i data-lucide="refresh-cw" style="width:12px;height:12px"></i>
+      </button>
+      <button style="font-size:11px;padding:3px 8px;border-radius:20px;background:#fef2f2;border:1px solid #fecaca;color:#dc2626;display:inline-flex;align-items:center;cursor:pointer"
+        onclick="deleteAudioFile(${poiId},'${escapeSq(poiName)}')">
+        <i data-lucide="trash-2" style="width:12px;height:12px"></i>
+      </button>
+    </div>
+  </div>`;
+}
+
+function triggerAudioUpload(poiId, poiName) {
+  let inp = document.getElementById('_hidden_audio_input');
+  if (!inp) {
+    inp = document.createElement('input');
+    inp.type = 'file'; inp.id = '_hidden_audio_input';
+    inp.accept = '.mp3,.m4a,.wav,.ogg'; inp.style.display = 'none';
+    document.body.appendChild(inp);
+  }
+  inp.value = '';
+  inp.onchange = () => doUploadAudioFile(poiId, poiName, inp.files[0]);
+  inp.click();
+}
+
+async function doUploadAudioFile(poiId, poiName, file) {
+  if (!file) return;
+  if (file.size > 10 * 1024 * 1024) { showToast('File quá lớn (tối đa 10MB)', 'danger'); return; }
+  showToast('\u23f3 Đang upload...', 'info');
+  const fd = new FormData();
+  fd.append('audioFile', file);
+  fd.append('poiId', String(poiId));
+  try {
+    const res = await fetch(`${API}/audio/upload`, { method: 'POST', body: fd });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Lỗi upload');
+    showToast(`\u2705 Upload thành công: ${poiName}`, 'success');
+    const poi = allPois.find(p => (p.id || p.Id) === poiId);
+    if (poi) { poi.AudioUrl = data.url; poi.audioUrl = data.url; }
+    renderAudioTable(); renderAudioStats();
+  } catch (err) { showToast(`\u274c Upload thất bại: ${err.message}`, 'danger'); }
+}
+
+let _uploadedAudio = null;
+let _uploadedPlayBtn = null;
+
+function previewUploadedFile(url, poiId, btn) {
+  if (_uploadedPlayBtn === btn && _uploadedAudio && !_uploadedAudio.paused) {
+    _uploadedAudio.pause();
+    btn.innerHTML = '<i data-lucide="play" style="width:12px;height:12px"></i>';
+    lucide.createIcons(); return;
+  }
+  stopCurrentAudio();
+  if (_uploadedAudio) { _uploadedAudio.pause(); _uploadedAudio = null; }
+  if (_uploadedPlayBtn && _uploadedPlayBtn !== btn) {
+    _uploadedPlayBtn.innerHTML = '<i data-lucide="play" style="width:12px;height:12px"></i>';
+    lucide.createIcons();
+  }
+  _uploadedAudio = new Audio(url); _uploadedPlayBtn = btn;
+  btn.innerHTML = '<i data-lucide="pause" style="width:12px;height:12px"></i>';
+  lucide.createIcons();
+  _uploadedAudio.onended = () => {
+    btn.innerHTML = '<i data-lucide="play" style="width:12px;height:12px"></i>';
+    lucide.createIcons(); _uploadedAudio = null; _uploadedPlayBtn = null;
+  };
+  _uploadedAudio.onerror = () => {
+    showToast('Không thể phát file audio', 'danger');
+    btn.innerHTML = '<i data-lucide="play" style="width:12px;height:12px"></i>';
+    lucide.createIcons();
+  };
+  _uploadedAudio.play();
+}
+
+async function deleteAudioFile(poiId, poiName) {
+  if (!confirm(`Xóa file audio của "${poiName}"?`)) return;
+  try {
+    const res = await fetch(`${API}/audio/${poiId}`, { method: 'DELETE' });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Lỗi xóa');
+    showToast(`\u2705 Đã xóa: ${poiName}`, 'success');
+    const poi = allPois.find(p => (p.id || p.Id) === poiId);
+    if (poi) { poi.AudioUrl = ''; poi.audioUrl = ''; }
+    renderAudioTable(); renderAudioStats();
+  } catch (err) { showToast(`\u274c Xóa thất bại: ${err.message}`, 'danger'); }
+}
+
+// ══ TTS PLAYBACK ══════════════════════════════════════════════════════════
+
+let _activeAudioBtn    = null;
 let _isSpeechSynthesis = false;
 
 function setBtnState(btn, state) {
   if (!btn) return;
-  const states = {
-    'idle': { html: '<i data-lucide="play" style="width:14px;height:14px"></i> Nghe', bg: '#f0fdf4', border: '#bbf7d0', color: '#16a34a' },
-    'loading': { html: '<i data-lucide="loader-2" class="spin" style="width:14px;height:14px"></i> Đang tải', bg: '#eff6ff', border: '#bfdbfe', color: '#2563eb' },
-    'playing': { html: '<i data-lucide="pause" style="width:14px;height:14px"></i> Dừng', bg: '#fef2f2', border: '#fecaca', color: '#dc2626' },
-    'paused': { html: '<i data-lucide="play" style="width:14px;height:14px"></i> Tiếp tục', bg: '#fffbeb', border: '#fde68a', color: '#d97706' }
+  const S = {
+    idle:    { html: '<i data-lucide="play"     style="width:13px;height:13px"></i> Nghe', bg: '#f0fdf4', bd: '#bbf7d0', cl: '#16a34a' },
+    loading: { html: '<i data-lucide="loader-2" class="spin" style="width:13px;height:13px"></i> Tải',  bg: '#eff6ff', bd: '#bfdbfe', cl: '#2563eb' },
+    playing: { html: '<i data-lucide="pause"    style="width:13px;height:13px"></i> Dừng', bg: '#fffbeb', bd: '#fde68a', cl: '#d97706' },
+    paused:  { html: '<i data-lucide="play"     style="width:13px;height:13px"></i> Tiếp', bg: '#f0fdf4', bd: '#bbf7d0', cl: '#16a34a' },
   };
-  const s = states[state];
+  const s = S[state] || S.idle;
   btn.innerHTML = s.html;
-  btn.style.background = s.bg;
-  btn.style.borderColor = s.border;
-  btn.style.color = s.color;
+  btn.style.background  = s.bg;
+  btn.style.borderColor = s.bd;
+  btn.style.color       = s.cl;
+  const stopBtn = btn.parentElement?.querySelector('.tts-stop-btn');
+  if (stopBtn) {
+    const active = state === 'playing' || state === 'paused' || state === 'loading';
+    stopBtn.style.opacity       = active ? '1' : '0';
+    stopBtn.style.pointerEvents = active ? 'auto' : 'none';
+  }
   lucide.createIcons();
 }
 
 async function toggleAudioCell(text, langCode, btn) {
-  // 1. Nếu đang click đúng vào nút đang Active (Pause/Resume)
   if (_activeAudioBtn === btn) {
     if (_isSpeechSynthesis) {
-      if (window.speechSynthesis.paused) {
-        window.speechSynthesis.resume(); setBtnState(btn, 'playing');
-      } else if (window.speechSynthesis.speaking) {
-        window.speechSynthesis.pause(); setBtnState(btn, 'paused');
-      }
+      if (window.speechSynthesis.paused)        { window.speechSynthesis.resume(); setBtnState(btn, 'playing'); }
+      else if (window.speechSynthesis.speaking) { window.speechSynthesis.pause();  setBtnState(btn, 'paused');  }
     } else if (_ttsAudio) {
-      if (_ttsAudio.paused) {
-        _ttsAudio.play(); setBtnState(btn, 'playing');
-      } else {
-        _ttsAudio.pause(); setBtnState(btn, 'paused');
-      }
+      if (_ttsAudio.paused) { _ttsAudio.play();  setBtnState(btn, 'playing'); }
+      else                  { _ttsAudio.pause(); setBtnState(btn, 'paused');  }
     }
-    return; // Đã xử lý toggle pause/play xong
+    return;
   }
-
-  // 2. Click sang nút khác -> Dừng audio hiện tại ngay
   stopCurrentAudio();
-
-  // 3. Khởi tạo phát cho nút mới
   _activeAudioBtn = btn;
   setBtnState(btn, 'loading');
-  try {
-    await playTtsAudio(text, langCode);
-    setBtnState(btn, 'playing');
-  } catch (err) {
-    console.error(err);
-    stopCurrentAudio();
-    showToast('Lỗi phát âm thanh', 'danger');
-  }
+  try   { await playTtsAudio(text, langCode); setBtnState(btn, 'playing'); }
+  catch { stopCurrentAudio(); showToast('Lỗi phát âm thanh', 'danger'); }
 }
 
 function stopCurrentAudio() {
   window.speechSynthesis.cancel();
-  if (_ttsAudio) {
-    _ttsAudio.pause();
-    _ttsAudio = null;
-  }
+  if (_ttsAudio) { _ttsAudio.pause(); _ttsAudio.currentTime = 0; _ttsAudio = null; }
   _isSpeechSynthesis = false;
-
-  if (_activeAudioBtn) {
-    setBtnState(_activeAudioBtn, 'idle');
-    _activeAudioBtn = null;
-  }
+  if (_activeAudioBtn) { setBtnState(_activeAudioBtn, 'idle'); _activeAudioBtn = null; }
 }
 
+function stopAndResetCell(stopBtn) { stopCurrentAudio(); }
+
 function escapeSq(s) {
-  return (s||'').replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '&quot;').replace(/\n/g, ' ').replace(/\r/g, '');
+  return (s || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '&quot;').replace(/\n/g, ' ').replace(/\r/g, '');
 }
 
 // ══ GOOGLE CLOUD TTS (primary) + Web Speech API (fallback) ══
@@ -421,4 +470,3 @@ if (typeof window.speechSynthesis !== 'undefined') {
   window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
   window.speechSynthesis.getVoices();
 }
-

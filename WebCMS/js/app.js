@@ -40,14 +40,27 @@ async function initApp() {
 function textMatch(str, q) {
   if (!q) return true;
   if (!str) return false;
-  const qNFC = String(q).toLowerCase().normalize('NFC');
-  const hasDiacritics = /[àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ]/i.test(qNFC);
-  if (hasDiacritics) {
-    return String(str).toLowerCase().normalize('NFC').includes(qNFC);
-  } else {
-    const normalize = s => String(s).normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').replace(/Đ/g, 'D').toLowerCase();
-    return normalize(str).includes(normalize(q));
-  }
+  
+  const normTone = s => String(s).normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').replace(/Đ/g, 'D').toLowerCase();
+  
+  const qWords = String(q).trim().split(/\s+/);
+  const sNorm = ' ' + normTone(str) + ' ';
+  const sRaw = ' ' + String(str).toLowerCase() + ' ';
+  
+  return qWords.every(w => {
+    const isPlain = !/[àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ]/i.test(w);
+    if (isPlain) {
+      return sNorm.includes(' ' + normTone(w));
+    } else {
+      const hasTones = /[\u0300\u0301\u0303\u0309\u0323]/i.test(w.normalize('NFD'));
+      if (!hasTones) {
+         const removeTones = x => String(x).normalize('NFD').replace(/[\u0300\u0301\u0303\u0309\u0323]/g, '').normalize('NFC').toLowerCase();
+         return (' ' + removeTones(str) + ' ').includes(' ' + removeTones(w));
+      } else {
+         return sRaw.includes(' ' + w.toLowerCase());
+      }
+    }
+  });
 }
 
 function showSkeleton() {

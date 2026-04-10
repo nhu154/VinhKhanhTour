@@ -17,7 +17,8 @@ namespace VinhKhanhTour.Views
     {
         private readonly WebView _webView;
         private readonly Label _statusLabel;
-        private readonly Label _audioBar;
+        private readonly Grid _audioBarContainer;
+        private readonly Label _audioBarLabel;
         private Button _btnExitTour = null!;
         private readonly GeofencingService _geofencing = new();
         private Location? _userLocation;
@@ -71,17 +72,44 @@ namespace VinhKhanhTour.Views
                 HorizontalTextAlignment = TextAlignment.Center
             };
 
-            _audioBar = new Label
+            _audioBarContainer = new Grid
+            {
+                BackgroundColor = Color.FromArgb("#1565C0"),
+                IsVisible = false,
+                ColumnDefinitions =
+                {
+                    new ColumnDefinition { Width = GridLength.Star },
+                    new ColumnDefinition { Width = GridLength.Auto }
+                }
+            };
+
+            _audioBarLabel = new Label
             {
                 Text = string.Empty,
-                BackgroundColor = Color.FromArgb("#1565C0"),
                 TextColor = Colors.White,
-                Padding = new Thickness(16, 10),
+                Padding = new Thickness(16, 10, 0, 10),
                 FontSize = 13,
                 FontAttributes = FontAttributes.Bold,
-                HorizontalTextAlignment = TextAlignment.Center,
-                IsVisible = false
+                VerticalTextAlignment = TextAlignment.Center
             };
+
+            var stopAudioBtn = new Button
+            {
+                Text = "⏹ Dừng",
+                TextColor = Colors.White,
+                BackgroundColor = Color.FromArgb("#d32f2f"), // Red stop button
+                FontAttributes = FontAttributes.Bold,
+                FontSize = 12,
+                CornerRadius = 14,
+                HeightRequest = 28,
+                Padding = new Thickness(12, 0),
+                Margin = new Thickness(0, 0, 16, 0),
+                VerticalOptions = LayoutOptions.Center
+            };
+            stopAudioBtn.Clicked += (s, e) => _ = AudioService.Instance.StopAsync();
+
+            _audioBarContainer.Add(_audioBarLabel, 0, 0);
+            _audioBarContainer.Add(stopAudioBtn, 1, 0);
 
             _btnExitTour = new Button
             {
@@ -103,8 +131,8 @@ namespace VinhKhanhTour.Views
             {
                 MainThread.BeginInvokeOnMainThread(() =>
                 {
-                    _audioBar.IsVisible = isPlaying;
-                    _audioBar.Text = isPlaying
+                    _audioBarContainer.IsVisible = isPlaying;
+                    _audioBarLabel.Text = isPlaying
                         ? $"🎧 Đang phát: {AudioService.Instance.CurrentTrack ?? "..."}"
                         : string.Empty;
                 });
@@ -122,7 +150,7 @@ namespace VinhKhanhTour.Views
             };
             grid.Add(_webView, 0, 0);
             grid.Add(_btnExitTour, 0, 1);
-            grid.Add(_audioBar, 0, 2);
+            grid.Add(_audioBarContainer, 0, 2);
             grid.Add(_statusLabel, 0, 3);
             Content = grid;
 
@@ -180,6 +208,7 @@ namespace VinhKhanhTour.Views
                         foreach (var r in apiList)
                             await App.Database.SaveRestaurantAsync(r);
                         // Reload map với POI mới
+                        _imgCache.Clear();
                         _htmlLoaded = false;
                         await InitAsync();
                         System.Diagnostics.Debug.WriteLine($"[MapPage] ✅ Refreshed {apiList.Count} POIs from API (data changed)");
@@ -272,8 +301,15 @@ namespace VinhKhanhTour.Views
                     if (double.TryParse(q["lat"], System.Globalization.NumberStyles.Float, ic, out double lat) &&
                         double.TryParse(q["lng"], System.Globalization.NumberStyles.Float, ic, out double lng))
                     {
-                        _userLocation = new Location(lat, lng);
-                        _ = VinhKhanhTour.Services.AnalyticsService.Instance.RecordGpsPointAsync(lat, lng);
+                        var newLoc = new Location(lat, lng);
+                        
+                        // Lọc GPS: Chỉ gửi lên hệ thống và đổi mốc nếu khách di chuyển quá 6 mét
+                        if (_userLocation == null || Location.CalculateDistance(_userLocation, newLoc, DistanceUnits.Kilometers) * 1000 >= 6)
+                        {
+                            _ = VinhKhanhTour.Services.AnalyticsService.Instance.RecordGpsPointAsync(lat, lng);
+                            _userLocation = newLoc; // Lưu mốc gốc mới để lần tiếp theo đo từ đây tiến tới
+                        }
+
                         MainThread.BeginInvokeOnMainThread(async () =>
                         {
                             try
@@ -584,18 +620,27 @@ namespace VinhKhanhTour.Views
             lines.Add("function opS(r){var si=document.getElementById('simg'),sp=document.getElementById('sph');var foodEmoji='🍽️';if(r.name.includes('Oc'))foodEmoji='🦪';else if(r.name.includes('Bun')||r.name.includes('Pho'))foodEmoji='🍜';if(r.img){si.src=r.img;si.style.display='block';sp.style.display='none';}else{si.style.display='none';sp.innerHTML=foodEmoji;sp.style.display='flex';}document.getElementById('snm').textContent=r.name;document.getElementById('srt').innerHTML='⭐ '+st(r.rating);document.getElementById('sde').textContent=r.desc;document.getElementById('sad').textContent=r.addr;document.getElementById('shr').textContent=r.hours;var fb=document.getElementById('txFavBtn');if(fb){fb.innerHTML=r.fav?'❤️':'🤍';}document.getElementById('sheet').classList.add('open');}");
             lines.Add("function toggleFav(id,ev){if(ev)ev.stopPropagation(); window.location.href='maui://togglefav?id='+id;}");
             lines.Add("function closeS(){document.getElementById('sheet').classList.remove('open');document.getElementById('menuSheet').classList.remove('open');cur=null;}");
-            lines.Add("function reqR(){if(!cur){return;}if(!uP){toast('Đang lấy vị trí trung tâm do không có GPS');}window.location.href='maui://routerequested?data='+encodeURIComponent(JSON.stringify({lat:cur.lat,lng:cur.lng,name:cur.name,img:cur.img||''}))}");
+            lines.Add("function reqR(){if(!cur){return;}if(!uP){toast('Đang lấy vị trí trung tâm do không có GPS');}window.location.href='maui://routerequested?data='+encodeURIComponent(JSON.stringify({id:cur.id,lat:cur.lat,lng:cur.lng,name:cur.name}))}");
             lines.Add("function shwR(n,d,t,img){document.getElementById('rnm').textContent=n;document.getElementById('rdst').textContent=d;document.getElementById('rtim').textContent=t;var ric=document.getElementById('ricImg');ric.innerHTML=img?'<img src=\"'+img+'\">':'📍';document.getElementById('rs').classList.add('open');document.getElementById('sheet').classList.remove('open');}");
             lines.Add("var _segs=[],_rb=null,_rn='',_rd='',_rt='',_ri='';");
             lines.Add("function endR(){_segs.forEach(function(p){p.setMap(null);});_segs=[];if(rLn){rLn.setMap(null);rLn=null;}if(rLnBg){rLnBg.setMap(null);rLnBg=null;}if(rtMks){rtMks.forEach(function(m){m.setMap(null);});rtMks=[];}if(rtWin){rtWin.close();}document.getElementById('rs').classList.remove('open');}");
-            lines.Add("function startR(n,d,t,img){endR();_rb=new google.maps.LatLngBounds();if(uP)_rb.extend(uP);_rn=n;_rd=d;_rt=t;_ri=img;}");
-            lines.Add("var _curPts=[],_curAlley=false;");
-            lines.Add("function newSeg(idx,alley){if(idx>0&&_curPts.length>0)_flushSeg();_curPts=[];_curAlley=alley===1;}");
-            lines.Add("function addPt(lat,lng){_curPts.push({lat:lat,lng:lng});if(lat)_rb.extend({lat:lat,lng:lng});}");
-            lines.Add("function _flushSeg(){if(!_curPts.length)return;var isAlley=_curAlley;"
-                + "var sh=new google.maps.Polyline({path:_curPts,geodesic:true,strokeColor:isAlley?'#90A4AE':'#1565C0',strokeWeight:isAlley?5:10,strokeOpacity:isAlley?0.45:0.9,zIndex:2});sh.setMap(map);_segs.push(sh);"
-                + "var ln=new google.maps.Polyline({path:_curPts,geodesic:true,strokeColor:isAlley?'#B0BEC5':'#64B5F6',strokeWeight:isAlley?3:6,strokeOpacity:isAlley?0.55:1.0,zIndex:3,icons:isAlley?[{icon:{path:'M 0,-1 0,1',strokeOpacity:1,scale:2},offset:'0',repeat:'10px'}]:[]});ln.setMap(map);_segs.push(ln);}");
-            lines.Add("function finishR(){_flushSeg();map.fitBounds(_rb,{padding:80});var L2=google.maps.event.addListener(map,'idle',function(){if(map.getZoom()>18)map.setZoom(18);google.maps.event.removeListener(L2);});shwR(_rn,_rd,_rt,_ri);}");
+            lines.Add("function drawPremiumRoute(segsArray, n, d, t, img) {");
+            lines.Add("  try {");
+            lines.Add("  endR(); _rb = new google.maps.LatLngBounds(); if(uP)_rb.extend(uP);");
+            lines.Add("  segsArray.forEach(function(seg) {");
+            lines.Add("    var path = seg.pts;");
+            lines.Add("    path.forEach(function(p){ _rb.extend(p); });");
+            lines.Add("    var isAlley = seg.alley;");
+            lines.Add("    var sh = new google.maps.Polyline({path:path, geodesic:true, strokeColor: 'transparent', strokeWeight: 0, strokeOpacity: 0, zIndex:2});");
+            lines.Add("    sh.setMap(map); _segs.push(sh);");
+            lines.Add("    var ln = new google.maps.Polyline({path:path, geodesic:true, strokeColor: 'transparent', strokeWeight: 0, strokeOpacity: 0, zIndex:3, icons: [{icon:{path:google.maps.SymbolPath.CIRCLE,fillColor:'#1A73E8',fillOpacity:1,scale:6,strokeColor:'white',strokeWeight:2.5},offset:'0',repeat:'22px'}]});");
+            lines.Add("    ln.setMap(map); _segs.push(ln);");
+            lines.Add("  });");
+            lines.Add("  map.fitBounds(_rb, {padding:80});");
+            lines.Add("  var L2 = google.maps.event.addListener(map, 'idle', function(){ if(map.getZoom()>18) map.setZoom(18); google.maps.event.removeListener(L2); });");
+            lines.Add("  shwR(n, d, t, img);");
+            lines.Add("  } catch(e) { console.log('Route Error: '+e); }");
+            lines.Add("}");
             lines.Add("function sPos(lat,lng){uP={lat:lat,lng:lng};if(uMk){uMk.setPosition(uP);uCir.setCenter(uP);}else{uMk=new google.maps.Marker({position:uP,map:map,zIndex:1000,icon:{path:google.maps.SymbolPath.CIRCLE,scale:12,fillColor:'#42A5F5',fillOpacity:1,strokeColor:'white',strokeWeight:3}});uCir=new google.maps.Circle({center:uP,radius:35,map:map,fillColor:'#42A5F5',fillOpacity:0.25,strokeColor:'#42A5F5',strokeOpacity:0,strokeWeight:0});map.panTo(uP);}window.location.href='maui://locationupdated?lat='+lat+'&lng='+lng;}");
             lines.Add("function gps(){if(navigator.geolocation){navigator.geolocation.watchPosition(function(p){sPos(p.coords.latitude,p.coords.longitude);},function(err){},{enableHighAccuracy:true,timeout:10000,maximumAge:3000});}}");
             lines.Add("function stopAudio(){window.location.href='maui://stopaudio';}");
@@ -607,8 +652,8 @@ namespace VinhKhanhTour.Views
             lines.Add("function showProximity(id,name,desc,img){_proxCur=ALL.find(function(r){return r.id===id;});document.getElementById('pcNameEl').textContent=name;document.getElementById('pcDescEl').textContent=desc;var ic=document.getElementById('pcIconEl');ic.innerHTML=img?'<img src=\"'+img+'\" style=\"width:100%;height:100%;object-fit:cover;border-radius:12px;\">':'🍽️';document.getElementById('proximityAlert').style.display='flex';setTimeout(function(){document.getElementById('proximityCard').classList.add('show');},10);setTimeout(function(){closeProximity();},8000);}");
             lines.Add("function closeProximity(){document.getElementById('proximityCard').classList.remove('show');setTimeout(function(){document.getElementById('proximityAlert').style.display='none';},450);}");
             lines.Add("function navFromProximity(){if(_proxCur){cur=_proxCur;closeProximity();reqR();}}");
-            lines.Add("function unAccent(str){str=str.toLowerCase();str=str.replace(/à|á|ạ|ả|ã|â|ầ|ấ|ậ|ẩ|ẫ|ă|ằ|ắ|ặ|ẳ|ẵ/g,'a');str=str.replace(/è|é|ẹ|ẻ|ẽ|ê|ề|ế|ệ|ể|ễ/g,'e');str=str.replace(/ì|í|ị|ỉ|ĩ/g,'i');str=str.replace(/ò|ó|ọ|ỏ|õ|ô|ồ|ố|ộ|ổ|ỗ|ơ|ờ|ớ|ợ|ở|ỡ/g,'o');str=str.replace(/ù|ú|ụ|ủ|ũ|ư|ừ|ứ|ự|ử|ữ/g,'u');str=str.replace(/ỳ|ý|ỵ|ỷ|ỹ/g,'y');str=str.replace(/đ/g,'d');return str;}");
-            lines.Add("function onSearch(v){var inp=document.getElementById('btnClearSearch');inp.style.display=v?'block':'none';if(!v){document.getElementById('searchResults').style.display='none';return;}var q=unAccent(v.trim());var res=ALL.filter(function(r){return (' '+unAccent(r.name)).indexOf(' '+q)!==-1;});renderSearchResults(res);}");
+            lines.Add("function textMatch(str, q) { if(!q) return true; if(!str) return false; var normTone = function(s){ return String(s).normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').replace(/đ/g, 'd').replace(/Đ/g, 'D').toLowerCase(); }; var qWords = String(q).trim().split(/\\s+/); var sNorm = ' ' + normTone(str) + ' '; var sRaw = ' ' + String(str).toLowerCase() + ' '; return qWords.every(function(w){ var isPlain = !/[àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ]/i.test(w); if(isPlain) { return sNorm.indexOf(' ' + normTone(w)) !== -1; } else { var hasTones = /[\\u0300\\u0301\\u0303\\u0309\\u0323]/.test(w.normalize('NFD')); if(!hasTones) { var removeTones = function(x){ return String(x).normalize('NFD').replace(/[\\u0300\\u0301\\u0303\\u0309\\u0323]/g, '').normalize('NFC').toLowerCase(); }; return (' ' + removeTones(str) + ' ').indexOf(' ' + removeTones(w)) !== -1; } else { return sRaw.indexOf(' ' + w.toLowerCase()) !== -1; } } }); }");
+            lines.Add("function onSearch(v){var inp=document.getElementById('btnClearSearch');inp.style.display=v?'block':'none';if(!v){document.getElementById('searchResults').style.display='none';return;}var res=ALL.filter(function(r){return textMatch(r.name, v);});renderSearchResults(res);}");
             lines.Add("function renderSearchResults(res){var d=document.getElementById('searchResults');if(!res.length){d.innerHTML='<div style=\"padding:16px;text-align:center;color:#8ba0b2\">'+L[cL].nodata+'</div>';d.style.display='block';return;}var h='';res.forEach(function(r){var imgHtml=r.img?'<img src=\"'+r.img+'\">':'<div>🍜</div>';h+='<div class=\"srItem\" onclick=\"selectSearchResult('+r.id+')\"><div class=\"srImg\">'+imgHtml+'</div><div><div class=\"srName\">'+r.name+'</div><div class=\"srAddr\">'+r.addr+'</div></div></div>';});d.innerHTML=h;d.style.display='block';}");
             lines.Add("function selectSearchResult(id){var r=ALL.find(function(x){return x.id===id;});if(!r)return;clearSearch();pick(r);}");
             lines.Add("function showResults(){if(document.getElementById('searchInput').value)document.getElementById('searchResults').style.display='block';}");
@@ -619,7 +664,7 @@ namespace VinhKhanhTour.Views
             lines.Add("function menuNav(id,ev){ev.stopPropagation();var r=ALL.find(function(x){return x.id===id;});if(!r)return;cur=r;document.getElementById('menuSheet').classList.remove('open');reqR();}");
 
             lines.Add("document.addEventListener('click',function(e){var sr=document.getElementById('searchResults');if(sr&&!sr.contains(e.target)&&e.target.id!=='searchInput')sr.style.display='none';var lb=document.getElementById('langBtn');var ld=document.getElementById('langDropdown');if(ld&&!lb.contains(e.target))ld.style.display='none';});");
-            lines.Add("function initMap(){try{var mapDiv=document.getElementById('map');if(!mapDiv)return;var mapOptions={center:CTR,zoom:16,mapTypeControl:false,streetViewControl:false,fullscreenControl:false,zoomControl:true,zoomControlOptions:{position:google.maps.ControlPosition.LEFT_CENTER},scrollwheel:true,gestureHandling:'greedy',clickableIcons:false,mapTypeId:'roadmap'};map=new google.maps.Map(mapDiv,mapOptions);if(ALL&&ALL.length>0){ALL.forEach(function(r){var mk=new google.maps.Marker({position:{lat:r.lat,lng:r.lng},map:map,title:r.name});mk.addListener('click',function(){pick(r);});});}map.addListener('click',function(){closeS();});google.maps.event.trigger(map, 'resize');setTimeout(gps,1000); applyLang(); }catch(e){console.error(e);}}");
+            lines.Add("function initMap(){try{var mapDiv=document.getElementById('map');if(!mapDiv)return;var mapOptions={center:CTR,zoom:16,mapTypeControl:false,streetViewControl:false,fullscreenControl:false,zoomControl:true,zoomControlOptions:{position:google.maps.ControlPosition.LEFT_CENTER},scrollwheel:true,gestureHandling:'greedy',clickableIcons:false,mapTypeId:'roadmap',disableDoubleClickZoom:true};map=new google.maps.Map(mapDiv,mapOptions);if(ALL&&ALL.length>0){ALL.forEach(function(r){var mk=new google.maps.Marker({position:{lat:r.lat,lng:r.lng},map:map,title:r.name});mk.addListener('click',function(){pick(r);});});}map.addListener('click',function(){closeS();});map.addListener('dblclick',function(e){ toast(cL==='vi'?'Đã dịch chuyển tới đây!':(cL==='en'?'Teleported here!':'已传送到这里！')); sPos(e.latLng.lat(),e.latLng.lng()); });google.maps.event.trigger(map, 'resize');setTimeout(gps,1000); applyLang(); }catch(e){console.error(e);}}");
             lines.Add("</script>");
             lines.Add("<script src='https://maps.googleapis.com/maps/api/js?key=" + KEY + "'></script>");
             lines.Add("<script>window.addEventListener('load',function(){setTimeout(initMap,100);});</script>");
@@ -644,7 +689,7 @@ namespace VinhKhanhTour.Views
             string langNear = _currentLang switch { "en" => "Nearest", "zh" => "最近", _ => "Gần nhất" };
             MainThread.BeginInvokeOnMainThread(() => _statusLabel.Text = $"{langNear}: {nearest.Name} ({minDist:F0}m)");
 
-            if (minDist > 50) return;
+            if (minDist > 5) return; // Chỉ tự phát audio khi nằm sát vùng 5m
             if (_lastNotified.TryGetValue(nearest.Id, out DateTime last) &&
                 (DateTime.Now - last).TotalMinutes < COOLDOWN) return;
             _lastNotified[nearest.Id] = DateTime.Now;
@@ -663,7 +708,7 @@ namespace VinhKhanhTour.Views
                 VisitedAt = DateTime.Now,
                 Username = VinhKhanhTour.Services.UserSession.Instance.Username ?? string.Empty
             });
-            _ = ApiService.Instance.PostAnalyticAsync(nearest.Id, "geofence_enter");
+            _ = ApiService.Instance.PostAnalyticAsync(nearest.Id, "geofence_enter", location.Latitude, location.Longitude);
         }
 
         public void LoadTourPois(List<Restaurant> restaurants, string tourName)
@@ -779,12 +824,23 @@ namespace VinhKhanhTour.Views
                 var steps = leg.GetProperty("steps");
                 var segments = new System.Text.StringBuilder("[");
                 bool firstSeg = true;
+
+                // --- SEGMENT 1: Từ vị trí User đến điểm bắt đầu của Google Route (Hẻm/Kết nối) ---
+                var routeStartPt = DecodePolyline(steps[0].GetProperty("polyline").GetProperty("points").GetString() ?? "").FirstOrDefault();
+                if (routeStartPt != null)
+                {
+                    var connectionPts = new List<object> { new { lat = loc.Latitude, lng = loc.Longitude }, routeStartPt };
+                    var connJson = System.Text.Json.JsonSerializer.Serialize(connectionPts);
+                    segments.Append($"{{\"pts\":{connJson},\"alley\":true}}");
+                    firstSeg = false;
+                }
+
                 foreach (var step in steps.EnumerateArray())
                 {
                     var stepPoly = step.GetProperty("polyline").GetProperty("points").GetString() ?? "";
                     var stepDist = step.GetProperty("distance").GetProperty("value").GetDouble();
                     var stepDur = step.GetProperty("duration").GetProperty("value").GetDouble();
-                    // Hem/duong nho: toc do < 0.85 m/s hoac doan < 30m
+                    // Hem/duong nho: toc do < 0.85 m/s hoac doan < 20m
                     double speed = stepDur > 0 ? stepDist / stepDur : 1.2;
                     bool isAlley = speed < 0.85 || stepDist < 20;
                     var pts = DecodePolyline(stepPoly);
@@ -793,53 +849,40 @@ namespace VinhKhanhTour.Views
                     firstSeg = false;
                     segments.Append($"{{\"pts\":{ptsJson},\"alley\":{(isAlley ? "true" : "false")}}}");
                 }
+
+                // --- SEGMENT X: Từ điểm kết thúc của Google Route đến tọa độ thực của Quán (Nếu cần) ---
+                var lastStep = steps[steps.GetArrayLength() - 1];
+                var routeEndPt = DecodePolyline(lastStep.GetProperty("polyline").GetProperty("points").GetString() ?? "").LastOrDefault();
+                if (routeEndPt != null)
+                {
+                    var endConnectionPts = new List<object> { routeEndPt, new { lat = info.Lat, lng = info.Lng } };
+                    var endConnJson = System.Text.Json.JsonSerializer.Serialize(endConnectionPts);
+                    segments.Append($",{{\"pts\":{endConnJson},\"alley\":true}}");
+                }
                 segments.Append("]");
 
-                var name = info.Name.Replace("'", "\'");
-                var img = (info.Img ?? string.Empty).Replace("'", "\'");
-                var dTxtEsc = dTxt.Replace("'", "\'");
-                var tTxtEsc = tTxt.Replace("'", "\'");
-                // === Inject route qua tung diem rieng le - tranh CORS va JSON size limit ===
-                var ic2 = System.Globalization.CultureInfo.InvariantCulture;
-                await MainThread.InvokeOnMainThreadAsync(async () =>
-                    await _webView.EvaluateJavaScriptAsync(
-                        "startR('" + name + "','" + dTxtEsc + "','" + tTxtEsc + "','" + img + "');"));
-
-                int segIdx2 = 0;
-                foreach (var step in steps.EnumerateArray())
+                var name = info.Name.Replace("'", "\\'");
+                var img = info.Img ?? string.Empty;
+                if (string.IsNullOrEmpty(img) && info.Id > 0)
                 {
-                    var stepPoly2 = step.GetProperty("polyline").GetProperty("points").GetString() ?? "";
-                    var stepDist2 = step.GetProperty("distance").GetProperty("value").GetDouble();
-                    var stepDur2 = step.GetProperty("duration").GetProperty("value").GetDouble();
-                    double speed2 = stepDur2 > 0 ? stepDist2 / stepDur2 : 1.2;
-                    bool isAlley2 = speed2 < 0.85 || stepDist2 < 20;
-                    int alleyInt = isAlley2 ? 1 : 0;
-                    var pts2 = DecodePolyline(stepPoly2);
-
-                    // newSeg(segIdx, isAlley) - bat dau segment moi
-                    var segJs = $"newSeg({segIdx2},{alleyInt});";
-                    await MainThread.InvokeOnMainThreadAsync(async () =>
-                        await _webView.EvaluateJavaScriptAsync(segJs));
-
-                    // addPt(lat, lng) - them tung diem
-                    foreach (var pt in pts2)
+                    if (_imgCache.TryGetValue(info.Id, out var b64) && !string.IsNullOrEmpty(b64))
+                        img = b64;
+                    else
                     {
-                        // Lay lat/lng tu anonymous object
-                        var ptJson = System.Text.Json.JsonSerializer.Serialize(pt);
-                        using var ptDoc = System.Text.Json.JsonDocument.Parse(ptJson);
-                        var ptLat = ptDoc.RootElement.GetProperty("lat").GetDouble().ToString(ic2);
-                        var ptLng = ptDoc.RootElement.GetProperty("lng").GetDouble().ToString(ic2);
-                        var ptJs = $"addPt({ptLat},{ptLng});";
-                        await MainThread.InvokeOnMainThreadAsync(async () =>
-                            await _webView.EvaluateJavaScriptAsync(ptJs));
+                        var r = _restaurants.FirstOrDefault(x => x.Id == info.Id);
+                        if (r != null) img = GetImg(r);
                     }
-                    segIdx2++;
                 }
+                var imgEsc = img.Replace("'", "\\'");
+                var dTxtEsc = dTxt.Replace("'", "\\'");
+                var tTxtEsc = tTxt.Replace("'", "\\'");
 
+                // Gửi toàn bộ dữ liệu chỉ đường trong 1 lần gọi JS duy nhất
+                var segmentsStr = segments.ToString();
                 await MainThread.InvokeOnMainThreadAsync(async () =>
                 {
-                    await _webView.EvaluateJavaScriptAsync("finishR();");
-                    System.Diagnostics.Debug.WriteLine("[MapPage] Route drawn OK");
+                    await _webView.EvaluateJavaScriptAsync($"drawPremiumRoute({segmentsStr}, '{name}', '{dTxtEsc}', '{tTxtEsc}', '{imgEsc}');");
+                    System.Diagnostics.Debug.WriteLine("[MapPage] Route drawn OK: new premium logic combined payload");
                 });
             }
             catch (Exception ex)
@@ -869,6 +912,7 @@ namespace VinhKhanhTour.Views
     }
     public class RouteRequest
     {
+        public int Id { get; set; }
         public double Lat { get; set; }
         public double Lng { get; set; }
         public string Name { get; set; } = string.Empty;

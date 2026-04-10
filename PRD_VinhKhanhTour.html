@@ -1,0 +1,891 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PRD v4 — VinhKhanhTour: Hệ Thống Du Lịch Ẩm Thực Vĩnh Khánh</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/10.9.0/mermaid.min.js"></script>
+<style>
+:root{--blue:#1565C0;--blue-l:#42a5f5;--blue-d:#0D2137;--teal:#00838f;--teal-l:#4fb3bf;--mid:#0D1B2A;--sl:#1e293b;--zn:#334155;--ash:#64748b;--mist:#94a3b8;--cl:#e2e8f0;--sn:#f0f6ff;--wh:#fff;--ok:#16a34a;--wr:#d97706;--nfo:#2563eb;--dng:#dc2626;--or:#e65100;--pu:#7c3aed;--r:14px;--sh:0 4px 20px rgba(13,27,42,.08)}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{font-family:'Be Vietnam Pro',sans-serif;background:var(--sn);color:var(--sl);line-height:1.7;-webkit-font-smoothing:antialiased}
+.sb{position:fixed;top:0;left:0;bottom:0;width:260px;background:var(--mid);color:var(--cl);z-index:200;overflow-y:auto;padding:1.4rem 0;transition:transform .3s}
+.sb.c{transform:translateX(-260px)}
+.sb-logo{padding:0 1.4rem 1.1rem;border-bottom:1px solid rgba(255,255,255,.08);margin-bottom:.8rem}
+.sb-logo h2{font-size:1rem;font-weight:800;background:linear-gradient(135deg,var(--blue-l),var(--blue));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.sb-logo span{font-size:.7rem;color:var(--mist);display:block;margin-top:.1rem}
+.ng{margin-bottom:.5rem}
+.ngt{font-size:.6rem;text-transform:uppercase;letter-spacing:1.5px;color:var(--ash);padding:.35rem 1.4rem;font-weight:600}
+.nl{display:flex;align-items:center;gap:.5rem;padding:.45rem 1.4rem;color:var(--mist);text-decoration:none;font-size:.8rem;transition:all .15s;border-left:3px solid transparent}
+.nl:hover,.nl.a{background:rgba(255,255,255,.05);color:var(--wh);border-left-color:var(--blue)}
+.nl .ni{font-size:.95rem;width:18px;text-align:center}
+.nt{position:fixed;top:.8rem;left:.8rem;z-index:300;width:38px;height:38px;border-radius:10px;background:var(--mid);border:none;color:white;font-size:1.1rem;cursor:pointer;display:none;align-items:center;justify-content:center;box-shadow:var(--sh)}
+.mn{margin-left:260px;min-height:100vh}
+.hero{background:linear-gradient(135deg,var(--blue-d) 0%,var(--blue) 50%,var(--blue-l) 100%);color:white;padding:4rem 2.5rem 3rem;position:relative;overflow:hidden}
+.hero::before{content:'';position:absolute;inset:0;background:url("data:image/svg+xml,%3Csvg width='40' height='40' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='20' cy='20' r='1.5' fill='rgba(255,255,255,0.05)'/%3E%3C/svg%3E")}
+.hi{position:relative;max-width:880px}
+.hb{display:inline-flex;align-items:center;gap:.4rem;background:rgba(255,255,255,.15);backdrop-filter:blur(8px);padding:.3rem .8rem;border-radius:20px;font-size:.72rem;font-weight:600;margin-bottom:.8rem}
+.hero h1{font-size:2.4rem;font-weight:900;letter-spacing:-1.5px;line-height:1.15;margin-bottom:.5rem}
+.hero .sub{font-size:1.05rem;opacity:.9;max-width:640px;line-height:1.7;margin-bottom:1.2rem}
+.ht{display:flex;flex-wrap:wrap;gap:.4rem}
+.ht span{background:rgba(255,255,255,.12);padding:.25rem .6rem;border-radius:8px;font-size:.72rem;font-weight:500}
+.hs{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:.8rem;margin-top:1.5rem}
+.hs div{background:rgba(255,255,255,.1);backdrop-filter:blur(8px);border-radius:12px;padding:.8rem;text-align:center}
+.hs .v{font-size:1.5rem;font-weight:800}
+.hs .l{font-size:.65rem;opacity:.8;margin-top:.1rem}
+.ct{max-width:980px;margin:0 auto;padding:2rem 2.2rem 4rem}
+.sec{margin-bottom:3rem;scroll-margin-top:2rem}
+.sh{display:flex;align-items:center;gap:.7rem;margin-bottom:1.3rem;padding-bottom:.7rem;border-bottom:2px solid var(--cl)}
+.si{width:42px;height:42px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0}
+.si.b{background:linear-gradient(135deg,var(--blue),var(--blue-l));color:white}
+.si.t{background:linear-gradient(135deg,var(--teal),var(--teal-l));color:white}
+.si.g{background:linear-gradient(135deg,var(--ok),#4ade80);color:white}
+.si.p{background:linear-gradient(135deg,var(--pu),#a78bfa);color:white}
+.si.o{background:linear-gradient(135deg,var(--or),#ff833a);color:white}
+.si.w{background:linear-gradient(135deg,var(--wr),#fbbf24);color:white}
+.sh h2{font-size:1.35rem;font-weight:800;color:var(--mid);letter-spacing:-.5px}
+.sh .ch{font-size:.6rem;text-transform:uppercase;letter-spacing:1.5px;color:var(--blue);font-weight:700;display:block}
+.pr{font-size:.9rem;color:var(--zn);margin-bottom:1.1rem}
+.pr strong{color:var(--sl)}
+.cg{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:.9rem;margin:1rem 0}
+.cd{background:var(--wh);border:1px solid var(--cl);border-radius:var(--r);padding:1.2rem;transition:all .2s}
+.cd:hover{box-shadow:var(--sh);transform:translateY(-2px)}
+.cd h3{font-size:.9rem;font-weight:700;color:var(--blue-d);margin-bottom:.35rem;display:flex;align-items:center;gap:.4rem}
+.cd p,.cd li{font-size:.82rem;color:var(--ash);line-height:1.6}
+.cd ul{padding-left:1rem;margin-top:.25rem}
+.cd li{margin-bottom:.12rem}
+.tw{overflow-x:auto;margin:1rem 0;border-radius:var(--r);border:1px solid var(--cl)}
+table{width:100%;border-collapse:collapse;font-size:.8rem}
+thead th{background:var(--mid);color:white;padding:.6rem .8rem;text-align:left;font-weight:600;font-size:.75rem;text-transform:uppercase;letter-spacing:.5px}
+td{padding:.55rem .8rem;border-bottom:1px solid var(--cl)}
+tr:hover td{background:#eff6ff}
+code{background:var(--sn);padding:.1rem .3rem;border-radius:4px;font-family:'JetBrains Mono',monospace;font-size:.78em;color:var(--blue)}
+.dc{background:var(--wh);border:1px solid var(--cl);border-radius:var(--r);padding:1.3rem;margin:1.3rem 0;overflow-x:auto}
+.dc .dt{font-size:.75rem;font-weight:700;color:var(--ash);text-transform:uppercase;letter-spacing:1px;margin-bottom:.8rem;display:flex;align-items:center;gap:.4rem}
+.dc .dt::before{content:'';width:12px;height:3px;background:var(--blue);border-radius:2px}
+.mermaid{text-align:center}
+.hl{border-left:4px solid var(--blue);background:#eff6ff;padding:.9rem 1.1rem;border-radius:0 var(--r) var(--r) 0;margin:.9rem 0;font-size:.85rem}
+.hl.ok{border-color:var(--ok);background:#f0fdf4}
+.hl.wr{border-color:var(--wr);background:#fffbeb}
+.hl.or{border-color:var(--or);background:#fff7ed}
+.fl{display:flex;align-items:center;gap:.35rem;flex-wrap:wrap;margin:.9rem 0}
+.fs{padding:.3rem .7rem;border-radius:8px;font-size:.75rem;font-weight:600;white-space:nowrap;color:white}
+.fs.b{background:var(--blue)} .fs.t{background:var(--teal)} .fs.g{background:var(--ok)} .fs.w{background:var(--wr);color:var(--sl)} .fs.p{background:var(--pu)} .fs.o{background:var(--or)}
+.fa{font-size:.9rem;color:var(--mist)}
+.tl{margin:.9rem 0}
+.ti{display:flex;margin-bottom:.45rem;border-radius:10px;overflow:hidden;border:1px solid var(--cl)}
+.til{width:70px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.78rem;color:white;flex-shrink:0}
+.tib{flex:1;padding:.55rem .9rem;background:var(--wh)}
+.tib strong{font-size:.85rem;display:block;margin-bottom:.08rem}
+.tib span{font-size:.78rem;color:var(--ash)}
+.ft{text-align:center;padding:1.5rem;font-size:.72rem;color:var(--mist);border-top:1px solid var(--cl)}
+@media(max-width:900px){.sb{transform:translateX(-260px)}.sb.open{transform:translateX(0)}.nt{display:flex}.mn{margin-left:0}.hero{padding:2.5rem 1.2rem 2rem}.hero h1{font-size:1.7rem}.ct{padding:1.2rem 1rem 3rem}}
+@media print{.sb,.nt{display:none!important}.mn{margin-left:0}.sec{page-break-inside:avoid}}
+</style>
+</head>
+<body>
+
+<button class="nt" onclick="document.querySelector('.sb').classList.toggle('open')"></button>
+<aside class="sb" id="sidebar">
+<div class="sb-logo"><h2> VinhKhanhTour</h2><span>PRD v4.0 — Full System Documentation</span></div>
+<nav>
+<div class="ng"><div class="ngt">Tổng Quan</div>
+<a href="#overview" class="nl"> Giới Thiệu</a>
+<a href="#arch" class="nl"> Kiến Trúc Hệ Thống</a>
+<a href="#class" class="nl"> Class Diagram</a>
+<a href="#er" class="nl"> ER Diagram</a></div>
+<div class="ng"><div class="ngt">Mobile App</div>
+<a href="#mobile" class="nl"> Pages & Navigation</a>
+<a href="#geo" class="nl"> GPS & Geofence</a>
+<a href="#audio" class="nl"> Audio TTS</a>
+<a href="#session" class="nl"> User Session</a></div>
+<div class="ng"><div class="ngt">Backend API</div>
+<a href="#api" class="nl"> REST Endpoints</a>
+<a href="#approval" class="nl"> Approval Workflow</a>
+<a href="#lang-api" class="nl"> Languages API</a>
+<a href="#auth" class="nl"> Auth & Roles</a></div>
+<div class="ng"><div class="ngt">WebCMS</div>
+<a href="#cms" class="nl"> Admin Dashboard</a>
+<a href="#owner-portal" class="nl"> Owner Portal</a></div>
+<div class="ng"><div class="ngt">Diagrams</div>
+<a href="#state" class="nl"> State Diagrams</a>
+<a href="#seq" class="nl"> Sequence Diagrams</a>
+<a href="#act" class="nl"> Activity Diagrams</a></div>
+<div class="ng"><div class="ngt">Tổng Kết</div>
+<a href="#stack" class="nl"> Tech Stack</a>
+<a href="#roadmap" class="nl"> Roadmap</a></div>
+</nav>
+</aside>
+
+<main class="mn">
+<header class="hero"><div class="hi">
+<div class="hb"> PRD v4.0 — April 2026</div>
+<h1>VinhKhanhTour<br>Ẩm Thực Đường Phố Quận 4</h1>
+<p class="sub">Full-stack 3 tầng: .NET MAUI Android — ASP.NET Core 8 API — WebCMS. Bản đồ tương tác, thuyết minh TTS đa ngôn ngữ, geofencing tự động, quy trình phê duyệt Owner, admin dashboard chuyên nghiệp.</p>
+<div class="ht">
+<span>.NET MAUI 8</span><span>ASP.NET Core 8</span><span>MySQL + Dapper</span><span>SQLite Local</span><span>Google Maps + Cloud TTS</span><span>Owner Approval</span><span>Role-based CMS</span><span>Auto-Translate</span>
+</div>
+<div class="hs">
+<div><div class="v">6</div><div class="l">API Controllers</div></div>
+<div><div class="v">20+</div><div class="l">API Endpoints</div></div>
+<div><div class="v">11+</div><div class="l">Trang Mobile</div></div>
+<div><div class="v">9</div><div class="l">Module CMS</div></div>
+<div><div class="v">3</div><div class="l">User Roles</div></div>
+<div><div class="v">∞</div><div class="l">Dynamic Langs</div></div>
+</div>
+</div></header>
+
+<div class="ct">
+
+<!-- 1. OVERVIEW -->
+<section class="sec" id="overview"><div class="sh"><div class="si b"></div><div><span class="ch">Chapter 00</span><h2>Giới Thiệu Sản Phẩm</h2></div></div>
+<p class="pr"><strong>VinhKhanhTour</strong> là hệ thống full-stack 3 tầng giúp du khách khám phá ẩm thực đường phố Vĩnh Khánh, Q4, TP.HCM. Phiên bản v4 bổ sung <strong>Owner Approval Workflow</strong> (chủ quán gửi yêu cầu → admin duyệt), <strong>Languages API server-side</strong>, <strong>Role-based CMS</strong> (admin/owner/user) và <strong>UserSession singleton</strong> hỗ trợ Guest mode.</p>
+<div class="cg">
+<div class="cd"><h3> Mục Tiêu</h3><ul>
+<li>Thuyết minh audio tự động qua geofencing (50m radius)</li>
+<li>2-Tier TTS: Google Cloud Wavenet (online) ↔ MAUI (offline)</li>
+<li>Tour theo chủ đề: Ốc, Nướng, Vặt, Đặc sản</li>
+<li>Chủ quán tự quản lý nội dung qua Owner Portal</li>
+<li>Admin phê duyệt mọi thay đổi (Approval Workflow)</li></ul></div>
+<div class="cd"><h3> 3 Vai Trò Người Dùng</h3><ul>
+<li><strong> Admin:</strong> Full access WebCMS — CRUD tất cả, phê duyệt yêu cầu</li>
+<li><strong> Owner (Chủ quán):</strong> Quản lý quán mình, gửi yêu cầu sửa/tạo POI</li>
+<li><strong> User / Guest:</strong> Dùng Mobile app — xem bản đồ, nghe thuyết minh</li></ul></div>
+<div class="cd"><h3> Tính Năng Mới v4</h3><ul>
+<li> <strong>Approval Workflow</strong> — chủ quán gửi → admin duyệt → auto apply</li>
+<li> <strong>Languages API</strong> — quản lý ngôn ngữ server-side (MySQL)</li>
+<li> <strong>UserSession</strong> — Guest/User/Owner mode persist qua Preferences</li>
+<li> <strong>Owner Dashboard</strong> — trang riêng cho chủ quán trên WebCMS</li>
+<li> <strong>Role-based Permissions</strong> — menu ẩn/hiện theo role</li>
+<li> <strong>Auto-translate</strong> — dịch TTS script tự động qua Google Translate</li></ul></div>
+</div></section>
+
+<!-- 2. ARCHITECTURE -->
+<section class="sec" id="arch"><div class="sh"><div class="si t"></div><div><span class="ch">Chapter 01</span><h2>Kiến Trúc Hệ Thống</h2></div></div>
+<div class="dc"><div class="dt">System Architecture — Component Diagram</div>
+<div class="mermaid">
+graph TB
+ subgraph " Mobile — .NET MAUI Android"
+ M_MAP[" MapPage<br/>Google Maps WebView"]
+ M_WELCOME[" WelcomePage<br/>Tour Cards"]
+ M_GEO[" GeofencingService<br/>Haversine 50m"]
+ M_AUDIO[" AudioService<br/>2-Tier TTS"]
+ M_DB[" SQLite<br/>vinhkhanh.db"]
+ M_API[" ApiService<br/>HttpClient"]
+ M_SESSION[" UserSession<br/>Guest/User/Owner"]
+ M_ANALYTICS[" AnalyticsService"]
+ end
+ subgraph " Backend — ASP.NET Core 8"
+ API_REST[" Restaurants<br/>CRUD + Upload"]
+ API_TOUR[" Tours<br/>CRUD + i18n"]
+ API_AUTH[" Auth<br/>Login/Register/RBAC"]
+ API_ANAL[" Analytics<br/>Stats + Events"]
+ API_APPR[" Approvals<br/>Owner Workflow"]
+ API_LANG[" Languages<br/>Server-side Registry"]
+ end
+ subgraph " WebCMS — Role-based"
+ CMS_ADMIN[" Admin Dashboard<br/>Full Control"]
+ CMS_OWNER[" Owner Portal<br/>Quán Của Tôi"]
+ CMS_APPROV[" Approval Manager<br/>Duyệt/Từ chối"]
+ end
+ subgraph " Database"
+ MYSQL[(MySQL<br/>vinhkhanhtour_db)]
+ FILES[" wwwroot/uploads"]
+ end
+ M_API -->|REST| API_REST
+ M_API -->|REST| API_AUTH
+ M_API -->|REST| API_TOUR
+ M_API -->|REST| API_LANG
+ M_ANALYTICS -->|POST| API_ANAL
+ M_GEO --> M_AUDIO
+ CMS_ADMIN -->|fetch| API_REST
+ CMS_OWNER -->|POST| API_APPR
+ CMS_APPROV -->|PUT| API_APPR
+ API_REST --> MYSQL
+ API_TOUR --> MYSQL
+ API_AUTH --> MYSQL
+ API_ANAL --> MYSQL
+ API_APPR --> MYSQL
+ API_LANG --> MYSQL
+ API_REST --> FILES
+ style M_MAP fill:#1565C0,color:#fff
+ style API_APPR fill:#16a34a,color:#fff
+ style API_LANG fill:#00838f,color:#fff
+ style CMS_OWNER fill:#10b981,color:#fff
+ style M_SESSION fill:#7c3aed,color:#fff
+</div></div>
+<div class="hl"><strong>Data Sync:</strong> App khởi động → API restaurants + languages → ghi đè SQLite local. API không khả dụng → dùng SQLite cache (offline fallback).</div>
+</section>
+
+<!-- 3. CLASS DIAGRAM -->
+<section class="sec" id="class"><div class="sh"><div class="si p"></div><div><span class="ch">Diagram</span><h2>Class Diagram</h2></div></div>
+<div class="dc"><div class="dt">Domain Model — Full Class Diagram</div>
+<div class="mermaid">
+classDiagram
+ class Restaurant {
+ +int Id
+ +string Name
+ +string Description
+ +string Category
+ +double Latitude
+ +double Longitude
+ +string Address
+ +string ImageUrl
+ +double Rating
+ +string OpenHours
+ +bool IsFavorite
+ +string TtsScript
+ +string TtsScriptEn
+ +string TtsScriptZh
+ +string Translations
+ +int Radius
+ +bool IsAdsPopup
+ +string AudioUrl
+ +GetTtsScript() string
+ }
+ class Tour {
+ +int Id
+ +string Name / NameEn / NameZh
+ +string Description / DescEn / DescZh
+ +string Duration
+ +double Rating
+ +string Emoji
+ +string ImageUrl
+ +string Pois
+ +GetRestaurantIds() List~int~
+ +GetName(lang) string
+ }
+ class User {
+ +int Id
+ +string Username
+ +string Password
+ +string FullName
+ +string Role
+ +DateTime CreatedAt
+ }
+ class ApprovalRequest {
+ +int Id
+ +int UserId
+ +string UserName
+ +int LocationId
+ +string LocationName
+ +string Action
+ +string RequestData
+ +string OldData
+ +string Status
+ +string AdminNote
+ +int ReviewedBy
+ +DateTime CreatedAt
+ +DateTime ReviewedAt
+ }
+ class AppLanguage {
+ +string Code
+ +string Name
+ +string Flag
+ +bool IsDefault
+ +int SortOrder
+ }
+ class UserSession {
+ +bool IsLoggedIn
+ +bool IsGuest
+ +string Username
+ +string FullName
+ +bool IsAuthenticatedUser
+ +LoginAsUser(user, name)
+ +LoginAsGuest()
+ +Logout()
+ }
+ class AudioService {
+ -string _language
+ -bool _isPlaying
+ +SetLanguage(lang)
+ +PlayCommentaryAsync(poiId, script)
+ +StopAsync()
+ -PlayGoogleTtsAsync(script)
+ -PlayMauiTtsAsync(script)
+ }
+ class GeofencingService {
+ -Dictionary lastTriggered
+ +CalculateDistance() double
+ +CheckNearbyRestaurant() Restaurant
+ -CanTrigger(id) bool
+ }
+ class ApiService {
+ +GetRestaurantsAsync() List~Restaurant~
+ +GetToursAsync() List~Tour~
+ +GetLanguagesAsync() List~AppLanguage~
+ +LoginWithDetailsAsync() LoginResult
+ +PostAnalyticAsync()
+ }
+ Restaurant "1" --> "*" ApprovalRequest : modified by
+ Tour "*" --> "*" Restaurant : contains
+ User "1" --> "*" ApprovalRequest : submits
+ GeofencingService --> Restaurant : checks proximity
+ AudioService --> Restaurant : plays TTS
+ ApiService --> Restaurant : fetches
+ ApiService --> AppLanguage : fetches
+ UserSession --> User : manages state
+</div></div>
+</section>
+
+<!-- 4. ER DIAGRAM -->
+<section class="sec" id="er"><div class="sh"><div class="si g"></div><div><span class="ch">Diagram</span><h2>Entity-Relationship Diagram</h2></div></div>
+<div class="dc"><div class="dt">MySQL Database — ER Diagram</div>
+<div class="mermaid">
+erDiagram
+ RESTAURANTS {
+ int Id PK
+ varchar Name
+ text Description
+ varchar Category
+ double Latitude
+ double Longitude
+ varchar Address
+ varchar ImageUrl
+ double Rating
+ varchar OpenHours
+ text TtsScript
+ text TtsScriptEn
+ text TtsScriptZh
+ text Translations
+ int Radius
+ boolean IsAdsPopup
+ varchar AudioUrl
+ }
+ TOURS {
+ int Id PK
+ varchar Name
+ varchar NameEn
+ varchar NameZh
+ text Description
+ text DescEn
+ text DescZh
+ varchar Duration
+ double Rating
+ varchar Emoji
+ varchar ImageUrl
+ boolean IsActive
+ text Pois
+ }
+ USERS {
+ int Id PK
+ varchar Username
+ varchar Password
+ varchar FullName
+ varchar Role
+ datetime CreatedAt
+ }
+ APPROVAL_REQUESTS {
+ int Id PK
+ int UserId FK
+ varchar UserName
+ int LocationId FK
+ varchar LocationName
+ varchar Action
+ text RequestData
+ text OldData
+ varchar Status
+ text AdminNote
+ int ReviewedBy FK
+ datetime CreatedAt
+ datetime ReviewedAt
+ }
+ APP_LANGUAGES {
+ varchar Code PK
+ varchar Name
+ varchar Flag
+ boolean IsDefault
+ int SortOrder
+ }
+ USER_LOCATIONS {
+ int UserId FK
+ int LocationId FK
+ }
+ ANALYTICS {
+ int Id PK
+ int RestaurantId FK
+ varchar EventType
+ datetime Timestamp
+ }
+ RESTAURANTS ||--o{ ANALYTICS : "tracked"
+ RESTAURANTS ||--o{ APPROVAL_REQUESTS : "modified"
+ USERS ||--o{ APPROVAL_REQUESTS : "submits"
+ USERS ||--o{ USER_LOCATIONS : "owns"
+ RESTAURANTS ||--o{ USER_LOCATIONS : "owned by"
+ TOURS }o--o{ RESTAURANTS : "Pois JSON"
+</div></div>
+<div class="tw"><table>
+<thead><tr><th>Table</th><th>Mới?</th><th>Mô Tả</th></tr></thead>
+<tbody>
+<tr><td><code>restaurants</code></td><td>—</td><td>POI — quán ăn, WC, bãi xe. TTS 3 lang + Translations JSON dynamic</td></tr>
+<tr><td><code>tours</code></td><td>—</td><td>Hành trình tour. Pois = JSON array IDs. i18n Name/Desc</td></tr>
+<tr><td><code>users</code></td><td>—</td><td>Tài khoản. Role: admin / owner / user</td></tr>
+<tr><td><code>approval_requests</code></td><td></td><td>Yêu cầu phê duyệt từ owner → admin review → auto apply</td></tr>
+<tr><td><code>app_languages</code></td><td></td><td>Registry ngôn ngữ server-side. Auto-seed vi/en/zh. Auto-create table.</td></tr>
+<tr><td><code>user_locations</code></td><td></td><td>Liên kết owner ↔ restaurants (chủ quán sở hữu quán nào)</td></tr>
+<tr><td><code>analytics</code></td><td>—</td><td>Event tracking: poi_visit, audio, gps_point</td></tr>
+</tbody></table></div>
+</section>
+
+<!-- 5. MOBILE -->
+<section class="sec" id="mobile"><div class="sh"><div class="si b"></div><div><span class="ch">Chapter 02</span><h2>Mobile App — Pages & Navigation</h2></div></div>
+<p class="pr">Kiến trúc <strong>Views/ + Services/ + Models/ + Helpers/</strong>. Restructured thư mục rõ ràng. UserSession singleton persist login state qua <code>Preferences</code>.</p>
+<div class="cg">
+<div class="cd"><h3> LoginPage</h3><p>Đăng nhập API với <code>LoginWithDetailsAsync</code> → nhận role + fullName + id. Guest mode không cần đăng nhập. UserSession lưu trạng thái.</p></div>
+<div class="cd"><h3> WelcomePage</h3><p>Tour cards dynamic từ API. MiniMap preview. Language switcher vi/en/zh + dynamic langs từ <code>GET /api/languages</code>.</p></div>
+<div class="cd"><h3> TourDetailPage</h3><p>Hero image + info. OSRM routing. "Bắt đầu Tour" → MapPage với filtered restaurants.</p></div>
+<div class="cd"><h3> MapPage</h3><p>Google Maps JS via WebView. Markers + InfoWindow. Geofencing loop. Tour mode filter restaurants.</p></div>
+<div class="cd"><h3> ProfilePage</h3><p>Full i18n UI (ApplyLanguage method). Stats: visits, badges, points. UserSession: hiển thị tên/role. Settings & Privacy.</p></div>
+<div class="cd"><h3> AnalyticsPage</h3><p>Summary: TotalListens, UniquePois, AvgListenSec, TourCompletes. Top POIs chart.</p></div>
+</div></section>
+
+<!-- 6. GEOFENCE -->
+<section class="sec" id="geo"><div class="sh"><div class="si t"></div><div><span class="ch">Chapter 03</span><h2>GPS & Geofencing</h2></div></div>
+<div class="fl">
+<span class="fs b">GPS Update</span><span class="fa">→</span>
+<span class="fs t">Haversine ≤ 50m?</span><span class="fa">→</span>
+<span class="fs g">Cooldown 5min OK?</span><span class="fa">→</span>
+<span class="fs o">Nearest POI</span><span class="fa">→</span>
+<span class="fs p">PlayCommentaryAsync</span>
+</div>
+<div class="cg">
+<div class="cd"><h3> Haversine Formula</h3><p>Earth radius 6,371,000m. Tính khoảng cách chính xác trên bề mặt trái đất.</p></div>
+<div class="cd"><h3> Cooldown 300s</h3><p><code>lastTriggered[id]</code> — sau phát audio, chờ 5 phút mới trigger lại cùng POI.</p></div>
+<div class="cd"><h3> Nearest Selection</h3><p>Nhiều POI trong 50m → chọn gần nhất. Single audio tại 1 thời điểm.</p></div>
+</div></section>
+
+<!-- 7. AUDIO -->
+<section class="sec" id="audio"><div class="sh"><div class="si o"></div><div><span class="ch">Chapter 04</span><h2>Audio TTS — 2 Tier System</h2></div></div>
+<div class="tl">
+<div class="ti"><div class="til" style="background:var(--blue)">Tier 1</div><div class="tib"><strong>Google Cloud TTS — Wavenet (Online)</strong><span>vi-VN-Wavenet-A, en-US-Wavenet-F, cmn-CN-Wavenet-A. Base64 → MP3 → Android MediaPlayer.</span></div></div>
+<div class="ti"><div class="til" style="background:var(--wr)">Tier 2</div><div class="tib"><strong>MAUI TextToSpeech (Offline)</strong><span><code>TextToSpeech.Default.SpeakAsync()</code> — giọng built-in device. Locale matching tự động.</span></div></div>
+</div>
+<div class="hl or"><strong>Dynamic Language Script:</strong> <code>Restaurant.Translations</code> JSON <code>{"ja":{"name":"...","tts":"..."}}</code> → AudioService kiểm tra currentLang → deserialize → lấy tts field. Fallback chain: target → vi → auto-generated.</div>
+</section>
+
+<!-- 8. SESSION -->
+<section class="sec" id="session"><div class="sh"><div class="si p"></div><div><span class="ch">Chapter 05 — </span><h2>UserSession — Quản Lý Phiên</h2></div></div>
+<p class="pr">Singleton <code>UserSession</code> persist qua <code>Preferences</code>. Hỗ trợ 3 chế độ: Guest (ẩn danh), User (đã đăng nhập), Owner (chủ quán). Property <code>IsAuthenticatedUser</code> = IsLoggedIn && !IsGuest.</p>
+<div class="cg">
+<div class="cd"><h3>LoginAsUser()</h3><p>Lưu username, fullName, isGuest=false. Profile hiển thị tên thật.</p></div>
+<div class="cd"><h3>LoginAsGuest()</h3><p>username="guest", fullName="Du khách". Truy cập app mà không cần đăng ký.</p></div>
+<div class="cd"><h3>Logout()</h3><p>Clear tất cả Preferences keys. Quay về LoginPage.</p></div>
+</div></section>
+
+<!-- 9. API ENDPOINTS -->
+<section class="sec" id="api"><div class="sh"><div class="si g"></div><div><span class="ch">Chapter 06</span><h2>REST API — 6 Controllers, 20+ Endpoints</h2></div></div>
+<div class="tw"><table>
+<thead><tr><th>Controller</th><th>Endpoint</th><th>Method</th><th>Mô Tả</th></tr></thead>
+<tbody>
+<tr><td rowspan="6"><strong>Restaurants</strong></td><td><code>/api/restaurants</code></td><td>GET</td><td>Lấy tất cả</td></tr>
+<tr><td><code>/api/restaurants/{id}</code></td><td>GET</td><td>Lấy theo ID</td></tr>
+<tr><td><code>/api/restaurants</code></td><td>POST</td><td>Tạo mới (auto base64 → file)</td></tr>
+<tr><td><code>/api/restaurants/{id}</code></td><td>PUT</td><td>Cập nhật</td></tr>
+<tr><td><code>/api/restaurants/{id}</code></td><td>DELETE</td><td>Xóa</td></tr>
+<tr><td><code>/api/restaurants/upload-image</code></td><td>POST</td><td>Upload multipart (max 3MB)</td></tr>
+<tr><td rowspan="4"><strong>Tours</strong></td><td><code>/api/tours</code></td><td>GET</td><td>Lấy tất cả (i18n COALESCE)</td></tr>
+<tr><td><code>/api/tours</code></td><td>POST</td><td>Tạo tour mới</td></tr>
+<tr><td><code>/api/tours/{id}</code></td><td>PUT</td><td>Cập nhật tour</td></tr>
+<tr><td><code>/api/tours/{id}</code></td><td>DELETE</td><td>Xóa tour</td></tr>
+<tr><td rowspan="5"><strong>Auth</strong></td><td><code>/api/auth/login</code></td><td>POST</td><td>Login → {success, role, fullName, id}</td></tr>
+<tr><td><code>/api/auth/register</code></td><td>POST</td><td>Đăng ký</td></tr>
+<tr><td><code>/api/auth/users</code></td><td>GET</td><td>Danh sách users</td></tr>
+<tr><td><code>/api/auth/users/{id}</code></td><td>PUT</td><td>Cập nhật user</td></tr>
+<tr><td><code>/api/auth/users/{id}</code></td><td>DELETE</td><td>Xóa user</td></tr>
+<tr><td rowspan="4"><strong>Analytics</strong></td><td><code>/api/analytics</code></td><td>GET/POST</td><td>Đọc/Ghi events (LIMIT 500)</td></tr>
+<tr><td><code>/api/analytics/stats</code></td><td>GET</td><td>Thống kê: total/today/week/topPoi/byDay</td></tr>
+<tr><td><code>/api/analytics/clear</code></td><td>DELETE</td><td>Xóa toàn bộ</td></tr>
+<tr><td colspan="3" style="background:#f0fdf4;font-weight:600"> Controllers mới bên dưới</td></tr>
+<tr><td rowspan="7"><strong> Approvals</strong></td><td><code>/api/approvals</code></td><td>GET</td><td>Lấy tất cả (filter ?status=)</td></tr>
+<tr><td><code>/api/approvals/count/pending</code></td><td>GET</td><td>Đếm pending → badge</td></tr>
+<tr><td><code>/api/approvals/user/{userId}</code></td><td>GET</td><td>Requests của 1 owner</td></tr>
+<tr><td><code>/api/approvals</code></td><td>POST</td><td>Owner gửi yêu cầu mới</td></tr>
+<tr><td><code>/api/approvals/{id}/review</code></td><td>PUT</td><td>Admin duyệt/từ chối → auto apply</td></tr>
+<tr><td><code>/api/approvals/register-location</code></td><td>POST</td><td>Owner đăng ký sở hữu quán</td></tr>
+<tr><td><code>/api/approvals/my-locations/{userId}</code></td><td>GET</td><td>Danh sách quán của owner</td></tr>
+<tr><td rowspan="3"><strong> Languages</strong></td><td><code>/api/languages</code></td><td>GET</td><td>Lấy tất cả (auto-create table + seed)</td></tr>
+<tr><td><code>/api/languages</code></td><td>POST</td><td>Upsert ngôn ngữ mới</td></tr>
+<tr><td><code>/api/languages/{code}</code></td><td>DELETE</td><td>Xóa (không cho xóa vi/en/zh)</td></tr>
+</tbody></table></div>
+</section>
+
+<!-- 10. APPROVAL WORKFLOW -->
+<section class="sec" id="approval"><div class="sh"><div class="si g"></div><div><span class="ch">Chapter 07 — </span><h2>Approval Workflow — Owner → Admin</h2></div></div>
+<p class="pr">Chủ quán gửi yêu cầu (create_poi, update_info, update_audio, update_image) → Admin duyệt/từ chối → Nếu approved, hệ thống tự động áp dụng data vào <code>restaurants</code> table bao gồm xử lý ảnh base64, tạo record mới hoặc cập nhật record cũ.</p>
+<div class="fl">
+<span class="fs g"> Owner</span><span class="fa">→</span>
+<span class="fs b">POST /approvals</span><span class="fa">→</span>
+<span class="fs w"> Pending</span><span class="fa">→</span>
+<span class="fs p"> Admin Review</span><span class="fa">→</span>
+<span class="fs g"> Approved</span><span class="fa">→</span>
+<span class="fs o">Auto Apply to DB</span>
+</div>
+<div class="cg">
+<div class="cd"><h3>4 Loại Action</h3><ul>
+<li><code>create_poi</code> — Tạo POI mới + gán owner</li>
+<li><code>update_info</code> — Sửa tên, mô tả, giờ mở cửa...</li>
+<li><code>update_audio</code> — Sửa TTS script vi/en/zh</li>
+<li><code>update_image</code> — Đổi ảnh đại diện</li></ul></div>
+<div class="cd"><h3>Auto Apply Logic</h3><p>Khi status = "approved", server tự động: parse RequestData JSON → xử lý base64 image → INSERT (create) hoặc UPDATE (edit) vào <code>restaurants</code>. Nếu create → auto INSERT <code>user_locations</code>.</p></div>
+<div class="cd"><h3>Data Tracking</h3><p><code>OldData</code> lưu dữ liệu cũ trước khi sửa. <code>RequestData</code> chứa dữ liệu mới. Admin có thể xem diff trước khi duyệt.</p></div>
+</div></section>
+
+<!-- 11. LANGUAGES API -->
+<section class="sec" id="lang-api"><div class="sh"><div class="si t"></div><div><span class="ch">Chapter 08 — </span><h2>Languages API — Server-side Registry</h2></div></div>
+<p class="pr"><code>LanguagesController</code> tự tạo table <code>app_languages</code> nếu chưa có (<code>EnsureTableAsync</code>), seed 3 ngôn ngữ mặc định (vi/en/zh). Mobile app gọi <code>GET /api/languages</code> để lấy danh sách ngôn ngữ dynamic. WebCMS auto-translate TTS script qua Google Translate API miễn phí.</p>
+<div class="cg">
+<div class="cd"><h3>Auto-Create Table</h3><p><code>CREATE TABLE IF NOT EXISTS app_languages</code> — không cần migration thủ công. Tự seed vi/en/zh nếu bảng trống.</p></div>
+<div class="cd"><h3>Protected Defaults</h3><p>Không cho xóa vi/en/zh (400 BadRequest). Dynamic langs (ja, ko, fr...) có thể thêm/xóa tự do.</p></div>
+<div class="cd"><h3>Auto-translate</h3><p>WebCMS dùng <code>translate.googleapis.com</code> free API dịch TTS script từ Vietnamese sang target language tự động.</p></div>
+</div></section>
+
+<!-- 12. AUTH & ROLES -->
+<section class="sec" id="auth"><div class="sh"><div class="si p"></div><div><span class="ch">Chapter 09</span><h2>Authentication & Role-based Access</h2></div></div>
+<p class="pr">Login trả về <code>{success, id, role, fullName}</code>. WebCMS dùng <code>sessionStorage</code> lưu role → <code>applyRolePermissions()</code> ẩn/hiện menu items.</p>
+<div class="tw"><table>
+<thead><tr><th>Role</th><th>WebCMS Menu</th><th>Mobile</th></tr></thead>
+<tbody>
+<tr><td><strong> admin</strong></td><td>Dashboard, POI, Tours, Users, Approvals, Languages, Audio, History</td><td>Full access</td></tr>
+<tr><td><strong> owner</strong></td><td>Owner Dashboard (Quán của tôi), POI (quán mình), Audio</td><td>Full access + owner UI</td></tr>
+<tr><td><strong> user</strong></td><td>Dashboard, History</td><td>Full access</td></tr>
+</tbody></table></div>
+</section>
+
+<!-- 13. WEBCMS -->
+<section class="sec" id="cms"><div class="sh"><div class="si b"></div><div><span class="ch">Chapter 10</span><h2>WebCMS — Admin Dashboard</h2></div></div>
+<p class="pr">Restructured: JS tách thành modules (<code>js/pages/*.js</code>, <code>js/helpers/*.js</code>). 9 trang quản trị. Chart.js + Lucide icons. Vietnamese diacritics-aware search.</p>
+<div class="cg">
+<div class="cd"><h3> Dashboard</h3><p>Stats cards + Line chart 7 ngày + Pie chart theo quán + Recent activity.</p></div>
+<div class="cd"><h3> POI Manager</h3><p>Split-layout: Google Maps + POI list. Click map → tạo POI. Filter chips. Search diacritics-aware.</p></div>
+<div class="cd"><h3> Tour Manager</h3><p>CRUD tours. POI selector. i18n vi/en/zh. Emoji picker.</p></div>
+<div class="cd"><h3> User Manager</h3><p>CRUD users. Filter role. Change password.</p></div>
+<div class="cd"><h3> Approval Manager </h3><p>Filter pending/approved/rejected. Xem diff data. Approve → auto apply. Reject → ghi note.</p></div>
+<div class="cd"><h3> Language Manager </h3><p>Thêm ngôn ngữ → sync MySQL + localStorage. Quick-add buttons. Delete protection vi/en/zh.</p></div>
+<div class="cd"><h3> Audio Manager</h3><p>Preview TTS script. Trạng thái có/thiếu per language. Auto-translate.</p></div>
+<div class="cd"><h3> History</h3><p>Nhật ký hành trình khách. Search + filter.</p></div>
+</div></section>
+
+<!-- 14. OWNER PORTAL -->
+<section class="sec" id="owner-portal"><div class="sh"><div class="si g"></div><div><span class="ch">Chapter 11 — </span><h2>Owner Portal — Quán Của Tôi</h2></div></div>
+<p class="pr">Khi login với role=owner → WebCMS hiển thị <strong>"Quán của tôi"</strong> làm trang mặc định. Owner có thể xem stats quán mình, gửi yêu cầu sửa/tạo POI, theo dõi trạng thái duyệt.</p>
+<div class="cg">
+<div class="cd"><h3> Owner Stats</h3><p>4 ô thống kê: lượt ghé, đánh giá, yêu cầu pending, yêu cầu approved. Chart 7 ngày riêng quán.</p></div>
+<div class="cd"><h3> Gửi Yêu Cầu</h3><p>Owner chỉnh sửa info/audio/image → POST /api/approvals → chờ admin review. Tracking real-time trạng thái.</p></div>
+<div class="cd"><h3> Register Location</h3><p>POST /api/approvals/register-location → liên kết user_id ↔ restaurant_id. Admin xác nhận.</p></div>
+</div></section>
+
+<!-- STATE DIAGRAMS -->
+<section class="sec" id="state"><div class="sh"><div class="si o"></div><div><span class="ch">Diagram</span><h2>State Diagrams</h2></div></div>
+
+<div class="dc"><div class="dt">Approval Request — State Machine</div>
+<div class="mermaid">
+stateDiagram-v2
+ [*] --> Pending : Owner submits request
+ Pending --> Approved : Admin approves
+ Pending --> Rejected : Admin rejects
+ Approved --> Applied : Auto-apply to DB
+ Applied --> [*] : Done
+ Rejected --> Pending : Owner re-submits
+ Pending --> [*] : Admin deletes
+
+ note right of Approved
+ Server auto:
+ parse RequestData JSON
+ handle base64 image
+ INSERT or UPDATE restaurants
+ link user_locations
+ end note
+</div></div>
+
+<div class="dc"><div class="dt">Audio Playback — State Machine</div>
+<div class="mermaid">
+stateDiagram-v2
+ [*] --> Idle
+ Idle --> CheckNet : Geofence triggers POI
+ CheckNet --> GoogleTTS : Online
+ CheckNet --> MauiTTS : Offline
+ GoogleTTS --> Playing : API success → MP3
+ GoogleTTS --> MauiTTS : API error fallback
+ MauiTTS --> Playing : SpeakAsync started
+ Playing --> Idle : Finished / StopAsync
+</div></div>
+
+<div class="dc"><div class="dt">User Session — State Machine</div>
+<div class="mermaid">
+stateDiagram-v2
+ [*] --> NotLoggedIn : App start
+ NotLoggedIn --> Guest : LoginAsGuest()
+ NotLoggedIn --> Authenticated : LoginAsUser()
+ Guest --> WelcomePage : Navigate
+ Authenticated --> WelcomePage : Navigate
+ WelcomePage --> MapPage : Start tour
+ Authenticated --> NotLoggedIn : Logout()
+ Guest --> NotLoggedIn : Logout()
+
+ note right of Guest
+ IsGuest = true
+ FullName = "Du khách"
+ Limited profile display
+ end note
+</div></div>
+
+<div class="dc"><div class="dt">Geofence Zone — State Machine</div>
+<div class="mermaid">
+stateDiagram-v2
+ [*] --> Monitoring : GPS active
+ Monitoring --> InRange : distance ≤ 50m
+ InRange --> CooldownCheck : Restaurant found
+ CooldownCheck --> Monitoring : Cooldown active
+ CooldownCheck --> AudioTrigger : Cooldown expired
+ AudioTrigger --> Playing : PlayCommentaryAsync
+ Playing --> Cooldown : Audio finished
+ Cooldown --> Monitoring : 300s elapsed
+</div></div>
+</section>
+
+<!-- SEQUENCE DIAGRAMS -->
+<section class="sec" id="seq"><div class="sh"><div class="si t"></div><div><span class="ch">Diagram</span><h2>Sequence Diagrams</h2></div></div>
+
+<div class="dc"><div class="dt">End-to-End — Mở App → Nghe Audio</div>
+<div class="mermaid">
+sequenceDiagram
+ participant U as User
+ participant APP as MAUI App
+ participant SES as UserSession
+ participant SQL as SQLite
+ participant API as API Server
+ participant DB as MySQL
+ participant GEO as Geofence
+ participant TTS as Audio
+
+ U->>APP: Mở app
+ APP->>SES: Check IsLoggedIn
+ alt Not logged in
+ APP->>U: Show LoginPage
+ U->>APP: Login / Guest
+ APP->>API: POST /auth/login
+ API->>DB: SELECT users
+ API-->>APP: {role, fullName, id}
+ APP->>SES: LoginAsUser() / LoginAsGuest()
+ end
+
+ APP->>API: GET /restaurants + /languages
+ API->>DB: SELECT
+ API-->>APP: Data
+ APP->>SQL: Cache locally
+
+ U->>APP: Chọn Tour → MapPage
+ APP->>GEO: Start GPS tracking
+
+ loop GPS Loop
+ GEO->>GEO: Haversine ≤ 50m + Cooldown OK?
+ GEO-->>TTS: Nearest POI found
+ end
+
+ TTS->>TTS: GetTtsScript(currentLang)
+ alt Online
+ TTS->>TTS: Google Cloud TTS → MP3
+ else Offline
+ TTS->>U: MAUI SpeakAsync
+ end
+ TTS->>API: POST /analytics
+</div></div>
+
+<div class="dc"><div class="dt"> Owner Approval Workflow</div>
+<div class="mermaid">
+sequenceDiagram
+ participant O as Owner
+ participant CMS as WebCMS
+ participant API as API
+ participant DB as MySQL
+ participant A as Admin
+
+ O->>CMS: Login (role=owner)
+ CMS->>CMS: applyRolePermissions()
+ CMS->>CMS: Show "Quán của tôi"
+ CMS->>API: GET /approvals/my-locations/{userId}
+ API-->>CMS: Owner's restaurants
+
+ O->>CMS: Sửa thông tin quán
+ CMS->>API: POST /approvals
+ Note over API: RequestData = JSON new data<br/>OldData = JSON old data
+ API->>DB: INSERT approval_requests (pending)
+ API-->>CMS: "Chờ admin duyệt"
+
+ A->>CMS: Mở Approval Manager
+ CMS->>API: GET /approvals?status=pending
+ API-->>CMS: Pending list + badge count
+ A->>CMS: Review → Approve
+ CMS->>API: PUT /approvals/{id}/review
+ API->>API: ApplyApprovedData()
+ API->>DB: UPDATE restaurants (auto apply)
+ API->>DB: INSERT user_locations (if create)
+ API-->>CMS: " Đã duyệt và áp dụng!"
+</div></div>
+
+<div class="dc"><div class="dt"> Language Management Flow</div>
+<div class="mermaid">
+sequenceDiagram
+ participant A as Admin
+ participant CMS as WebCMS
+ participant API as API
+ participant DB as MySQL
+ participant APP as Mobile
+
+ A->>CMS: Thêm ngôn ngữ (ja/ko/fr...)
+ CMS->>API: POST /api/languages
+ API->>DB: EnsureTableAsync()
+ API->>DB: INSERT app_languages
+ API-->>CMS: Success
+ CMS->>CMS: saveLangs() → localStorage
+
+ A->>CMS: Sửa POI → nhập TTS Nhật
+ CMS->>CMS: autoTranslateLang("ja")
+ CMS->>CMS: Google Translate API (free)
+ CMS->>API: PUT /restaurants/{id}
+ Note over API: Translations JSON updated<br/>{"ja":{"name":"...","tts":"..."}}
+
+ APP->>API: GET /languages
+ API-->>APP: [vi,en,zh,ja,ko...]
+ APP->>APP: Language picker updated
+ APP->>APP: AudioService.SetLanguage("ja")
+ APP->>APP: restaurant.GetTtsScript() → ja TTS
+</div></div>
+</section>
+
+<!-- ACTIVITY DIAGRAMS -->
+<section class="sec" id="act"><div class="sh"><div class="si g"></div><div><span class="ch">Diagram</span><h2>Activity Diagrams</h2></div></div>
+
+<div class="dc"><div class="dt">Geofence Audio Trigger</div>
+<div class="mermaid">
+flowchart TD
+ A([ GPS Update]) --> B[Get restaurants from SQLite]
+ B --> C{For each restaurant}
+ C --> D[Haversine distance]
+ D --> E{≤ 50m?}
+ E -->|No| C
+ E -->|Yes| F{Cooldown ≥ 300s?}
+ F -->|No| C
+ F -->|Yes| G{Nearest?}
+ G -->|No| C
+ G -->|Yes| H[Set nearest]
+ H --> C
+ C -->|Done| I{Found?}
+ I -->|No| Z([Wait next GPS])
+ I -->|Yes| J[GetTtsScript currentLang]
+ J --> K{Online?}
+ K -->|Yes| L[ Google Cloud TTS]
+ K -->|No| M[ MAUI TTS Offline]
+ L --> N[Record analytics]
+ M --> N
+ N --> Z
+ style A fill:#00838f,color:#fff
+ style L fill:#1565C0,color:#fff
+ style M fill:#d97706,color:#fff
+</div></div>
+
+<div class="dc"><div class="dt"> Approval Review + Auto Apply</div>
+<div class="mermaid">
+flowchart TD
+ A([Admin opens Approvals]) --> B[GET /approvals?status=pending]
+ B --> C[Render approval cards]
+ C --> D{Admin action?}
+ D -->|Approve| E[PUT /approvals/id/review status=approved]
+ D -->|Reject| F[PUT /approvals/id/review status=rejected]
+ F --> G[Save AdminNote → Done]
+
+ E --> H[ApplyApprovedData]
+ H --> I{Action type?}
+ I -->|create_poi| J[INSERT restaurants]
+ I -->|update_*| K[UPDATE restaurants WHERE Id]
+ J --> L[INSERT user_locations]
+ J --> M[Handle base64 image]
+ K --> M
+ L --> N([ Applied successfully])
+ M --> N
+
+ style A fill:#7c3aed,color:#fff
+ style N fill:#16a34a,color:#fff
+ style G fill:#dc2626,color:#fff
+</div></div>
+
+<div class="dc"><div class="dt">App Startup + Data Sync</div>
+<div class="mermaid">
+flowchart TD
+ A([App Launch]) --> B[DatabaseService init v6]
+ B --> C{DB version OK?}
+ C -->|No| D[Drop + recreate tables]
+ C -->|Yes| E[Tables ready]
+ D --> E
+ E --> F[API: GetRestaurantsAsync]
+ F --> G{API OK?}
+ G -->|Yes| H[Clear SQLite → Save API data]
+ G -->|No| I{SQLite has data?}
+ I -->|Yes| J[Use cached data]
+ I -->|No| K[Seed 11 hardcoded restaurants]
+ H --> L
+ J --> L
+ K --> L
+ L([Show LoginPage])
+ style A fill:#16a34a,color:#fff
+ style L fill:#1565C0,color:#fff
+</div></div>
+</section>
+
+<!-- TECH STACK -->
+<section class="sec" id="stack"><div class="sh"><div class="si b"></div><div><span class="ch">Summary</span><h2>Technology Stack & Constants</h2></div></div>
+<div class="cg">
+<div class="cd"><h3> Mobile</h3><ul><li>.NET MAUI 8 (Android)</li><li>SQLite-net-pcl</li><li>Google Maps JS API (WebView)</li><li>Google Cloud TTS (Wavenet)</li><li>MAUI TextToSpeech (offline)</li><li>OSRM routing</li></ul></div>
+<div class="cd"><h3> Backend</h3><ul><li>ASP.NET Core 8</li><li>Dapper micro-ORM</li><li>MySQL 8+ (vinhkhanhtour_db)</li><li>MySql.Data connector</li><li>Static Files (uploads)</li><li>CORS AllowAll</li></ul></div>
+<div class="cd"><h3> WebCMS</h3><ul><li>Vanilla HTML/JS/CSS (modular)</li><li>Google Maps JS API</li><li>Chart.js</li><li>Lucide Icons</li><li>Google Translate (free)</li><li>sessionStorage (role-based)</li></ul></div>
+</div>
+<div class="tw"><table>
+<thead><tr><th>Constant</th><th>Value</th><th>Location</th></tr></thead>
+<tbody>
+<tr><td>Geofence Radius</td><td>50m</td><td>GeofencingService.cs</td></tr>
+<tr><td>Geofence Cooldown</td><td>300s (5 min)</td><td>GeofencingService.cs</td></tr>
+<tr><td>API Timeout</td><td>30s</td><td>ApiService.cs</td></tr>
+<tr><td>Google TTS Timeout</td><td>15s</td><td>AudioService.cs</td></tr>
+<tr><td>Image Max Size</td><td>3 MB</td><td>Controllers</td></tr>
+<tr><td>Analytics Limit</td><td>500 rows</td><td>AnalyticsController.cs</td></tr>
+<tr><td>SQLite DB Version</td><td>v6</td><td>DatabaseService.cs</td></tr>
+<tr><td>API Base (mobile)</td><td>http://10.0.2.2:5256/api</td><td>ApiService.cs</td></tr>
+<tr><td>API Base (CMS)</td><td>http://localhost:5256/api</td><td>config.js</td></tr>
+<tr><td>Map Center</td><td>10.7615, 106.7033</td><td>MapPage / app.js</td></tr>
+<tr><td>TTS Voice vi</td><td>vi-VN-Wavenet-A</td><td>AudioService.cs</td></tr>
+<tr><td>TTS Voice en</td><td>en-US-Wavenet-F</td><td>AudioService.cs</td></tr>
+<tr><td>TTS Voice zh</td><td>cmn-CN-Wavenet-A</td><td>AudioService.cs</td></tr>
+<tr><td>Default Languages</td><td>vi, en, zh (protected)</td><td>LanguagesController.cs</td></tr>
+</tbody></table></div>
+</section>
+
+<!-- ROADMAP -->
+<section class="sec" id="roadmap"><div class="sh"><div class="si w"></div><div><span class="ch">Future</span><h2>Roadmap</h2></div></div>
+<div class="cg">
+<div class="cd"><h3> Security</h3><ul><li>JWT auth thay plain text password</li><li>bcrypt password hashing</li><li>API key rotation</li><li>Rate limiting</li></ul></div>
+<div class="cd"><h3> Offline</h3><ul><li>Pre-download audio cho offline</li><li>Offline map tiles (PMTiles)</li><li>Background sync</li></ul></div>
+<div class="cd"><h3> Features</h3><ul><li>Review & Rating</li><li>Push notifications</li><li>QR code tour sharing</li><li>Multi-region (Q1, Q7...)</li><li>AI restaurant descriptions</li></ul></div>
+</div>
+<div class="hl ok"><strong> Đã hoàn thành v4:</strong> Full-stack 3 tầng + Owner Approval Workflow + Languages API server-side + Role-based CMS (admin/owner/user) + UserSession (Guest/Auth) + Auto-translate + Restructured WebCMS modules.</div>
+</section>
+
+</div>
+<footer class="ft">
+<p><strong>VinhKhanhTour</strong> — PRD v4.0</p>
+<p>.NET MAUI + ASP.NET Core 8 + WebCMS — Du Lịch Ẩm Thực Vĩnh Khánh, Quận 4, TP.HCM</p>
+<p>Generated April 2026 • Verified against source code</p>
+</footer>
+</main>
+
+<script>
+mermaid.initialize({startOnLoad:true,theme:'base',themeVariables:{primaryColor:'#eff6ff',primaryTextColor:'#1e293b',primaryBorderColor:'#1565C0',lineColor:'#64748b',secondaryColor:'#f0fdf4',tertiaryColor:'#fff7ed',fontFamily:'Be Vietnam Pro,sans-serif',fontSize:'12px',nodeBorder:'#1565C0',mainBkg:'#eff6ff',clusterBkg:'#f8fafc',clusterBorder:'#cbd5e1',actorBorder:'#1565C0',actorBkg:'#eff6ff',actorTextColor:'#1e293b',noteBkgColor:'#fef3c7',noteTextColor:'#1e293b',noteBorderColor:'#d97706',activationBorderColor:'#1565C0',activationBkgColor:'#dbeafe',relationColor:'#64748b'},flowchart:{curve:'basis',padding:12},sequence:{actorMargin:55,width:160,height:45,mirrorActors:true,useMaxWidth:true},er:{useMaxWidth:true}});
+const secs=document.querySelectorAll('.sec'),nls=document.querySelectorAll('.nl');
+const obs=new IntersectionObserver(e=>{e.forEach(en=>{if(en.isIntersecting){nls.forEach(l=>l.classList.remove('a'));const a=document.querySelector(`.nl[href="#${en.target.id}"]`);if(a)a.classList.add('a')}})},{rootMargin:'-20% 0px -70% 0px'});
+secs.forEach(s=>obs.observe(s));
+nls.forEach(l=>l.addEventListener('click',()=>{if(window.innerWidth<=900)document.querySelector('.sb').classList.remove('open')}));
+</script>
+</body>
+</html>

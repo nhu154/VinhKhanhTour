@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using MySql.Data.MySqlClient;
 using Dapper;
 using System.Text.Json;
+using VinhkhanhTour.API.Services;
 
 namespace VinhkhanhTour.API.Controllers
 {
@@ -23,9 +24,16 @@ namespace VinhkhanhTour.API.Controllers
 
     public class ReviewDto
     {
-        public string Status { get; set; } = ""; // approved / rejected
+        public string Status { get; set; } = "";
         public string? AdminNote { get; set; }
-        public int ReviewedBy { get; set; } = 1;
+        public int ReviewedBy { get; set; }
+    }
+
+    // DTO type-safe cho RegisterLocation (thay dynamic)
+    public class RegisterLocationDto
+    {
+        public int UserId { get; set; }
+        public int LocationId { get; set; }
     }
 
     [ApiController]
@@ -33,18 +41,14 @@ namespace VinhkhanhTour.API.Controllers
     public class ApprovalsController : ControllerBase
     {
         private readonly string _conn;
-        private readonly string _uploadDir;
+        private readonly ImageService _img;
 
-        public ApprovalsController(IConfiguration config, IWebHostEnvironment env)
+        public ApprovalsController(IConfiguration config, ImageService img)
         {
             _conn = config.GetConnectionString("DefaultConnection")!;
-            _uploadDir = Path.Combine(
-                env.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot"),
-                "uploads");
-            Directory.CreateDirectory(_uploadDir);
+            _img = img;
         }
 
-        // GET: api/approvals — lấy tất cả (admin)
         [HttpGet]
         public async Task<IActionResult> GetAll([FromQuery] string status = "")
         {
@@ -57,7 +61,6 @@ namespace VinhkhanhTour.API.Controllers
             return Ok(list);
         }
 
-        // GET: api/approvals/count/pending — đếm badge
         [HttpGet("count/pending")]
         public async Task<IActionResult> CountPending()
         {
@@ -67,7 +70,6 @@ namespace VinhkhanhTour.API.Controllers
             return Ok(new { count });
         }
 
-        // GET: api/approvals/user/{userId} — lấy requests của 1 user
         [HttpGet("user/{userId}")]
         public async Task<IActionResult> GetByUser(int userId)
         {
@@ -78,7 +80,6 @@ namespace VinhkhanhTour.API.Controllers
             return Ok(list);
         }
 
-        // POST: api/approvals — chủ quán gửi yêu cầu
         [HttpPost]
         public async Task<IActionResult> Create([FromBody] ApprovalRequestDto body)
         {
@@ -91,31 +92,23 @@ namespace VinhkhanhTour.API.Controllers
             return Ok(new { message = "Đã gửi yêu cầu, chờ admin duyệt", id });
         }
 
-        // PUT: api/approvals/{id}/review — admin duyệt/từ chối
         [HttpPut("{id}/review")]
         public async Task<IActionResult> Review(int id, [FromBody] ReviewDto body)
         {
             using var db = new MySqlConnection(_conn);
-
-            // Lấy request
             var req = await db.QueryFirstOrDefaultAsync<ApprovalRequestDto>(
                 "SELECT * FROM approval_requests WHERE Id=@id", new { id });
             if (req == null) return NotFound();
 
-            // Cập nhật trạng thái
             await db.ExecuteAsync(@"
                 UPDATE approval_requests
                 SET Status=@Status, AdminNote=@AdminNote, ReviewedAt=NOW(), ReviewedBy=@ReviewedBy
                 WHERE Id=@id",
                 new { body.Status, body.AdminNote, body.ReviewedBy, id });
 
-            // Nếu approved → áp dụng data vào restaurants
             if (body.Status == "approved")
             {
-                try
-                {
-                    await ApplyApprovedData(db, req);
-                }
+                try { await ApplyApprovedData(db, req); }
                 catch (Exception ex)
                 {
                     return Ok(new { message = $"Đã duyệt nhưng lỗi khi áp dụng: {ex.Message}" });
@@ -125,7 +118,6 @@ namespace VinhkhanhTour.API.Controllers
             return Ok(new { message = body.Status == "approved" ? "✅ Đã duyệt và áp dụng!" : "❌ Đã từ chối" });
         }
 
-        // DELETE: api/approvals/{id}
         [HttpDelete("{id}")]
         public async Task<IActionResult> Delete(int id)
         {
@@ -134,7 +126,6 @@ namespace VinhkhanhTour.API.Controllers
             return Ok(new { message = "Đã xóa" });
         }
 
-        // DELETE: api/approvals/clear — Xóa tất cả yêu cầu (admin reset)
         [HttpDelete("clear")]
         public async Task<IActionResult> ClearAll()
         {
@@ -143,7 +134,6 @@ namespace VinhkhanhTour.API.Controllers
             return Ok(new { message = "Đã dọn sạch toàn bộ danh sách phê duyệt" });
         }
 
-        // GET: api/approvals/my-locations/{userId}
         [HttpGet("my-locations/{userId}")]
         public async Task<IActionResult> GetMyLocations(int userId)
         {
@@ -155,28 +145,23 @@ namespace VinhkhanhTour.API.Controllers
             return Ok(list);
         }
 
-        // POST: api/approvals/register-location — chủ quán đăng ký quán
+        // ĐÃ SỬA: dùng DTO type-safe thay vì dynamic
         [HttpPost("register-location")]
-        public async Task<IActionResult> RegisterLocation([FromBody] dynamic body)
+        public async Task<IActionResult> RegisterLocation([FromBody] RegisterLocationDto body)
         {
             using var db = new MySqlConnection(_conn);
-            int userId = (int)body.UserId;
-            int locationId = (int)body.LocationId;
-
-            // Kiểm tra đã đăng ký chưa
             var exists = await db.ExecuteScalarAsync<int>(
                 "SELECT COUNT(*) FROM user_locations WHERE UserId=@userId AND LocationId=@locationId",
-                new { userId, locationId });
+                new { body.UserId, body.LocationId });
             if (exists > 0)
                 return BadRequest(new { message = "Bạn đã đăng ký quán này rồi" });
 
             await db.ExecuteAsync(
-                "INSERT INTO user_locations (UserId, LocationId) VALUES (@userId, @locationId)",
-                new { userId, locationId });
+                "INSERT INTO user_locations (UserId, LocationId) VALUES (@UserId, @LocationId)",
+                new { body.UserId, body.LocationId });
             return Ok(new { message = "Đã đăng ký, chờ admin xác nhận" });
         }
 
-        // ── Áp dụng data đã được duyệt vào DB ──
         private async Task ApplyApprovedData(MySqlConnection db, ApprovalRequestDto req)
         {
             var data = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(req.RequestData)!;
@@ -184,10 +169,7 @@ namespace VinhkhanhTour.API.Controllers
             double GetDbl(string key, double def = 0) => data.TryGetValue(key, out var v) && v.TryGetDouble(out var d) ? d : def;
             int GetInt(string key, int def = 0) => data.TryGetValue(key, out var v) && v.TryGetInt32(out var i) ? i : def;
 
-            // Xử lý ảnh base64 nếu có
-            var imgUrl = GetStr("ImageUrl");
-            if (!string.IsNullOrEmpty(imgUrl) && imgUrl.Contains("base64,"))
-                imgUrl = SaveBase64Image(imgUrl);
+            var imgUrl = _img.SaveIfBase64(GetStr("ImageUrl"), "poi");
 
             if (req.Action == "create_poi")
             {
@@ -215,7 +197,6 @@ namespace VinhkhanhTour.API.Controllers
                         Radius = GetInt("Radius", 50)
                     });
 
-                // Gán quán mới cho chủ quán
                 var newId = await db.ExecuteScalarAsync<int>("SELECT LAST_INSERT_ID()");
                 await db.ExecuteAsync(
                     "INSERT IGNORE INTO user_locations (UserId,LocationId) VALUES (@u,@l)",
@@ -223,7 +204,6 @@ namespace VinhkhanhTour.API.Controllers
             }
             else if (req.LocationId.HasValue)
             {
-                // update_info / update_audio / update_image
                 await db.ExecuteAsync(@"
                     UPDATE restaurants SET
                     Name=@Name, Description=@Desc, Category=@Cat,
@@ -251,23 +231,6 @@ namespace VinhkhanhTour.API.Controllers
                         Id = req.LocationId.Value
                     });
             }
-        }
-
-        private string SaveBase64Image(string base64)
-        {
-            try
-            {
-                var match = System.Text.RegularExpressions.Regex.Match(
-                    base64, @"data:image/(?<ext>.*?);base64,(?<data>.*)");
-                if (!match.Success) return base64;
-                var ext = match.Groups["ext"].Value.Replace("jpeg", "jpg");
-                var bytes = Convert.FromBase64String(match.Groups["data"].Value);
-                if (bytes.Length > 3 * 1024 * 1024) return "";
-                var fileName = $"poi_{Guid.NewGuid():N}.{ext}";
-                System.IO.File.WriteAllBytes(Path.Combine(_uploadDir, fileName), bytes);
-                return $"uploads/{fileName}";
-            }
-            catch { return base64; }
         }
     }
 }

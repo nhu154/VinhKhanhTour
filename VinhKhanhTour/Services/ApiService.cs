@@ -9,7 +9,7 @@ namespace VinhKhanhTour.Services
         public static ApiService Instance => _instance ??= new ApiService();
 
         private readonly HttpClient _http;
-        private const string BASE = "http://10.0.2.2:5256/api";
+        private const string BASE = "http://192.168.1.233:5256/api";
 
         private ApiService()
         {
@@ -21,11 +21,12 @@ namespace VinhKhanhTour.Services
             if (string.IsNullOrWhiteSpace(imageUrl)) return "";
             
             // Xử lý trường hợp DB lưu sẵn localhost từ phiên bản WebCMS
-            imageUrl = imageUrl.Replace("localhost:5256", "10.0.2.2:5256")
-                               .Replace("127.0.0.1:5256", "10.0.2.2:5256");
+            imageUrl = imageUrl.Replace("localhost:5256", "192.168.1.233:5256")
+                               .Replace("127.0.0.1:5256", "192.168.1.233:5256")
+                               .Replace("10.0.2.2:5256", "192.168.1.233:5256");
 
             if (imageUrl.StartsWith("http://") || imageUrl.StartsWith("https://")) return imageUrl;
-            return "http://10.0.2.2:5256/" + imageUrl.TrimStart('/');
+            return "http://192.168.1.233:5256/" + imageUrl.TrimStart('/');
         }
 
         public async Task<List<Restaurant>> GetRestaurantsAsync()
@@ -49,19 +50,44 @@ namespace VinhKhanhTour.Services
             }
         }
 
-        public async Task PostAnalyticAsync(int restaurantId, string eventType = "visit")
+        public async Task PostAnalyticAsync(int restaurantId, string eventType = "visit", double lat = 0, double lng = 0, double value = 0.0)
         {
             try
             {
                 await _http.PostAsJsonAsync($"{BASE}/analytics", new
                 {
                     RestaurantId = restaurantId,
-                    EventType = eventType
+                    EventType = eventType,
+                    Value = value,
+                    Lat = lat,
+                    Lng = lng
                 });
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"[ApiService] PostAnalytic: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Gửi điểm GPS ẩn danh lên server để vẽ heatmap
+        /// </summary>
+        public async Task PostGpsPointAsync(double lat, double lng)
+        {
+            try
+            {
+                await _http.PostAsJsonAsync($"{BASE}/analytics", new
+                {
+                    RestaurantId = 0,
+                    EventType = "gps_point",
+                    Value = 0.0,
+                    Lat = lat,
+                    Lng = lng
+                });
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[ApiService] PostGpsPoint: {ex.Message}");
             }
         }
 
@@ -152,13 +178,14 @@ namespace VinhKhanhTour.Services
         {
             try
             {
+                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(3)); // Timeout siêu tốc
                 var res = await _http.PostAsJsonAsync($"{BASE}/auth/login", new
                 {
                     Username = username,
                     Password = password
-                });
+                }, cts.Token);
                 if (!res.IsSuccessStatusCode) return null;
-                var json = await res.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>();
+                var json = await res.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>(cancellationToken: cts.Token);
                 return new LoginResult
                 {
                     Success = true,

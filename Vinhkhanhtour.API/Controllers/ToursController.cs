@@ -1,12 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
 using MySql.Data.MySqlClient;
 using Dapper;
-using System.Collections.Generic;
-using System.Threading.Tasks;
-using System.IO;
-using System.Text.RegularExpressions;
-using System;
 using System.Globalization;
+using VinhkhanhTour.API.Services;
 
 namespace VinhkhanhTour.API.Controllers
 {
@@ -15,13 +11,12 @@ namespace VinhkhanhTour.API.Controllers
     public class ToursController : ControllerBase
     {
         private readonly string _conn;
-        private readonly string _uploadDir;
+        private readonly ImageService _img;
 
-        public ToursController(IConfiguration config, IWebHostEnvironment env)
+        public ToursController(IConfiguration config, ImageService img)
         {
             _conn = config.GetConnectionString("DefaultConnection")!;
-            _uploadDir = Path.Combine(env.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot"), "uploads");
-            Directory.CreateDirectory(_uploadDir);
+            _img = img;
         }
 
         [HttpGet]
@@ -29,7 +24,7 @@ namespace VinhkhanhTour.API.Controllers
         {
             using var db = new MySqlConnection(_conn);
             var list = await db.QueryAsync(@"
-                SELECT Id, Name, 
+                SELECT Id, Name,
                        COALESCE(NameEn, '') as NameEn,
                        COALESCE(NameZh, '') as NameZh,
                        COALESCE(Description, '') as Description,
@@ -45,12 +40,34 @@ namespace VinhkhanhTour.API.Controllers
             return Ok(list);
         }
 
+        // ĐÃ THÊM: GET /{id} — lấy 1 tour theo ID
+        [HttpGet("{id}")]
+        public async Task<IActionResult> GetById(int id)
+        {
+            using var db = new MySqlConnection(_conn);
+            var tour = await db.QueryFirstOrDefaultAsync(@"
+                SELECT Id, Name,
+                       COALESCE(NameEn, '') as NameEn,
+                       COALESCE(NameZh, '') as NameZh,
+                       COALESCE(Description, '') as Description,
+                       COALESCE(DescEn, '') as DescEn,
+                       COALESCE(DescZh, '') as DescZh,
+                       COALESCE(Duration, '45 phút') as Duration,
+                       COALESCE(Rating, 4.0) as Rating,
+                       COALESCE(Emoji, '🍜') as Emoji,
+                       COALESCE(ImageUrl, '') as ImageUrl,
+                       COALESCE(IsActive, 1) as IsActive,
+                       COALESCE(Pois, '[]') as Pois
+                FROM tours WHERE Id=@Id", new { Id = id });
+            if (tour == null) return NotFound();
+            return Ok(tour);
+        }
+
         [HttpPost]
         public async Task<IActionResult> Create([FromBody] Dictionary<string, object> body)
         {
             using var db = new MySqlConnection(_conn);
-            var imgUrl = body.GetValueOrDefault("ImageUrl", "")?.ToString();
-            imgUrl = SaveBase64Image(imgUrl);
+            var imgUrl = _img.SaveIfBase64(body.GetValueOrDefault("ImageUrl", "")?.ToString(), "tour");
 
             await db.ExecuteAsync(@"
                 INSERT INTO tours (Name, NameEn, NameZh, Description, DescEn, DescZh, Duration, Rating, Emoji, ImageUrl, IsActive, Pois)
@@ -64,7 +81,8 @@ namespace VinhkhanhTour.API.Controllers
                     DescEn = body.GetValueOrDefault("DescEn", "")?.ToString(),
                     DescZh = body.GetValueOrDefault("DescZh", "")?.ToString(),
                     Duration = body.GetValueOrDefault("Duration", "45 phút")?.ToString(),
-                    Rating = double.TryParse(body.GetValueOrDefault("Rating", 4.0)?.ToString(), NumberStyles.Any, CultureInfo.InvariantCulture, out var r) ? r : 4.0,
+                    Rating = double.TryParse(body.GetValueOrDefault("Rating", 4.0)?.ToString(),
+                                    NumberStyles.Any, CultureInfo.InvariantCulture, out var r) ? r : 4.0,
                     Emoji = body.GetValueOrDefault("Emoji", "🍜")?.ToString(),
                     ImageUrl = imgUrl,
                     IsActive = true,
@@ -77,8 +95,7 @@ namespace VinhkhanhTour.API.Controllers
         public async Task<IActionResult> Update(int id, [FromBody] Dictionary<string, object> body)
         {
             using var db = new MySqlConnection(_conn);
-            var imgUrl = body.GetValueOrDefault("ImageUrl", "")?.ToString();
-            imgUrl = SaveBase64Image(imgUrl);
+            var imgUrl = _img.SaveIfBase64(body.GetValueOrDefault("ImageUrl", "")?.ToString(), "tour");
 
             await db.ExecuteAsync(@"
                 UPDATE tours SET
@@ -97,7 +114,8 @@ namespace VinhkhanhTour.API.Controllers
                     DescEn = body.GetValueOrDefault("DescEn", "")?.ToString(),
                     DescZh = body.GetValueOrDefault("DescZh", "")?.ToString(),
                     Duration = body.GetValueOrDefault("Duration", "45 phút")?.ToString(),
-                    Rating = double.TryParse(body.GetValueOrDefault("Rating", 4.0)?.ToString(), NumberStyles.Any, CultureInfo.InvariantCulture, out var r) ? r : 4.0,
+                    Rating = double.TryParse(body.GetValueOrDefault("Rating", 4.0)?.ToString(),
+                                    NumberStyles.Any, CultureInfo.InvariantCulture, out var r) ? r : 4.0,
                     Emoji = body.GetValueOrDefault("Emoji", "🍜")?.ToString(),
                     ImageUrl = imgUrl,
                     Pois = body.GetValueOrDefault("Pois", "[]")?.ToString()
@@ -111,35 +129,6 @@ namespace VinhkhanhTour.API.Controllers
             using var db = new MySqlConnection(_conn);
             await db.ExecuteAsync("DELETE FROM tours WHERE Id=@Id", new { Id = id });
             return Ok(new { message = "Xóa tour thành công" });
-        }
-
-        private string SaveBase64Image(string imageData)
-        {
-            if (string.IsNullOrEmpty(imageData)) return imageData;
-
-            if (!imageData.Contains("base64,")) return imageData;
-
-            try
-            {
-                var match = Regex.Match(imageData, @"data:image/(?<ext>.*?);base64,(?<data>.*)");
-                if (!match.Success) return imageData;
-
-                var ext = match.Groups["ext"].Value.Replace("jpeg", "jpg");
-                var data = Convert.FromBase64String(match.Groups["data"].Value);
-
-                if (data.Length > 3 * 1024 * 1024) return ""; // 3MB limit
-
-                var fileName = $"tour_{Guid.NewGuid():N}.{ext}";
-                var filePath = Path.Combine(_uploadDir, fileName);
-                System.IO.File.WriteAllBytes(filePath, data);
-
-                return $"uploads/{fileName}";
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"[SaveImage] Error: {ex.Message}");
-                return imageData;
-            }
         }
     }
 }

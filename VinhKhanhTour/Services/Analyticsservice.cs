@@ -1,4 +1,4 @@
-﻿using VinhKhanhTour.Models;
+using VinhKhanhTour.Models;
 
 namespace VinhKhanhTour.Services
 {
@@ -21,6 +21,9 @@ namespace VinhKhanhTour.Services
                     TimestampTicks = DateTime.Now.Ticks
                 };
                 await App.Database.InsertAnalyticsEventAsync(evt);
+
+                // Gửi lên server để CMS vẽ heatmap (fire-and-forget, ẩn danh)
+                _ = ApiService.Instance.PostGpsPointAsync(lat, lng);
             }
             catch (Exception ex)
             {
@@ -28,7 +31,7 @@ namespace VinhKhanhTour.Services
             }
         }
 
-        public async Task RecordPoiVisitAsync(int poiId)
+        public async Task RecordPoiVisitAsync(int poiId, double lat = 0, double lng = 0)
         {
             try
             {
@@ -36,10 +39,12 @@ namespace VinhKhanhTour.Services
                 {
                     EventType = "poi_visit",
                     PoiId = poiId,
+                    Lat = lat,
+                    Lng = lng,
                     TimestampTicks = DateTime.Now.Ticks
                 };
                 await App.Database.InsertAnalyticsEventAsync(evt);
-                await ApiService.Instance.PostAnalyticAsync(poiId, "poi_visit");
+                await ApiService.Instance.PostAnalyticAsync(poiId, "poi_visit", lat, lng);
             }
             catch (Exception ex)
             {
@@ -59,6 +64,7 @@ namespace VinhKhanhTour.Services
                     TimestampTicks = DateTime.Now.Ticks
                 };
                 await App.Database.InsertAnalyticsEventAsync(evt);
+                await ApiService.Instance.PostAnalyticAsync(poiId, $"audio_{lang}", 0, 0, durationSeconds);
             }
             catch (Exception ex)
             {

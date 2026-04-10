@@ -19,6 +19,13 @@ namespace VinhkhanhTour.API.Controllers
         public string Password { get; set; } = "";
     }
 
+    public class ChangePasswordDto
+    {
+        public int UserId { get; set; }
+        public string OldPassword { get; set; } = "";
+        public string NewPassword { get; set; } = "";
+    }
+
     [ApiController]
     [Route("api/[controller]")]
     public class AuthController : ControllerBase
@@ -33,17 +40,44 @@ namespace VinhkhanhTour.API.Controllers
         [HttpPost("login")]
         public async Task<IActionResult> Login([FromBody] LoginDto body)
         {
-            // Hardcode fallback admin
-            if (body.Username == "admin" && (body.Password == "admin123" || body.Password == "admin"))
-                return Ok(new { success = true, role = "admin", fullName = "Administrator" });
+            if (string.IsNullOrEmpty(body.Username) || string.IsNullOrEmpty(body.Password))
+                return BadRequest(new { message = "Username và Password không được trống" });
 
             using var db = new MySqlConnection(_conn);
             var user = await db.QueryFirstOrDefaultAsync<UserDto>(
-                "SELECT * FROM users WHERE Username=@u AND Password=@p",
-                new { u = body.Username, p = body.Password });
+                "SELECT * FROM users WHERE Username=@u",
+                new { u = body.Username });
 
-            if (user == null) return Unauthorized(new { message = "Sai tài khoản hoặc mật khẩu" });
-            return Ok(new { success = true, id = user.Id, role = (user.Role ?? "user").ToLower().Trim(), fullName = user.FullName });
+            if (user == null)
+                return Unauthorized(new { message = "Sai tài khoản hoặc mật khẩu" });
+
+            bool passwordOk;
+            if (user.Password.StartsWith("$2"))
+            {
+                passwordOk = BCrypt.Net.BCrypt.Verify(body.Password, user.Password);
+            }
+            else
+            {
+                passwordOk = user.Password == body.Password;
+                if (passwordOk)
+                {
+                    var newHash = BCrypt.Net.BCrypt.HashPassword(body.Password);
+                    await db.ExecuteAsync(
+                        "UPDATE users SET Password=@p WHERE Id=@id",
+                        new { p = newHash, id = user.Id });
+                }
+            }
+
+            if (!passwordOk)
+                return Unauthorized(new { message = "Sai tài khoản hoặc mật khẩu" });
+
+            return Ok(new
+            {
+                success = true,
+                id = user.Id,
+                role = (user.Role ?? "user").ToLower().Trim(),
+                fullName = user.FullName
+            });
         }
 
         // POST: api/auth/register
@@ -58,20 +92,54 @@ namespace VinhkhanhTour.API.Controllers
                 "SELECT COUNT(*) FROM users WHERE Username=@u", new { u = body.Username });
             if (exists > 0) return BadRequest(new { message = "Username đã tồn tại" });
 
+            var hashedPassword = BCrypt.Net.BCrypt.HashPassword(body.Password);
             await db.ExecuteAsync(
                 "INSERT INTO users (Username, Password, FullName, Role) VALUES (@Username, @Password, @FullName, @Role)",
-                body);
+                new { body.Username, Password = hashedPassword, body.FullName, body.Role });
+
             return Ok(new { message = "Đăng ký thành công" });
         }
 
-        // GET: api/auth/users — lấy danh sách users (không trả password)
+        // PUT: api/auth/change-password
+        [HttpPut("change-password")]
+        public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordDto body)
+        {
+            if (body.UserId <= 0 || string.IsNullOrEmpty(body.OldPassword) || string.IsNullOrEmpty(body.NewPassword))
+                return BadRequest(new { message = "Thiếu thông tin bắt buộc" });
+
+            if (body.NewPassword.Length < 6)
+                return BadRequest(new { message = "Mật khẩu mới phải có ít nhất 6 ký tự" });
+
+            using var db = new MySqlConnection(_conn);
+            var user = await db.QueryFirstOrDefaultAsync<UserDto>(
+                "SELECT * FROM users WHERE Id=@Id", new { Id = body.UserId });
+
+            if (user == null)
+                return NotFound(new { message = "Người dùng không tồn tại" });
+
+            // Kiểm tra mật khẩu cũ
+            bool oldOk = user.Password.StartsWith("$2")
+                ? BCrypt.Net.BCrypt.Verify(body.OldPassword, user.Password)
+                : user.Password == body.OldPassword;
+
+            if (!oldOk)
+                return Unauthorized(new { message = "Mật khẩu cũ không đúng" });
+
+            var newHash = BCrypt.Net.BCrypt.HashPassword(body.NewPassword);
+            await db.ExecuteAsync(
+                "UPDATE users SET Password=@p WHERE Id=@Id",
+                new { p = newHash, Id = body.UserId });
+
+            return Ok(new { message = "Đổi mật khẩu thành công" });
+        }
+
+        // GET: api/auth/users
         [HttpGet("users")]
         public async Task<IActionResult> GetUsers()
         {
             using var db = new MySqlConnection(_conn);
             var users = await db.QueryAsync(@"
-                SELECT Id, Username, FullName, Role,
-                       CreatedAt
+                SELECT Id, Username, FullName, Role, CreatedAt
                 FROM users ORDER BY Id");
             return Ok(users);
         }
@@ -81,19 +149,17 @@ namespace VinhkhanhTour.API.Controllers
         public async Task<IActionResult> UpdateUser(int id, [FromBody] UserDto body)
         {
             using var db = new MySqlConnection(_conn);
-
             if (!string.IsNullOrEmpty(body.Password))
             {
+                var newHash = BCrypt.Net.BCrypt.HashPassword(body.Password);
                 await db.ExecuteAsync(@"
-                    UPDATE users SET FullName=@FullName, Role=@Role, Password=@Password
-                    WHERE Id=@Id",
-                    new { body.FullName, body.Role, body.Password, Id = id });
+                    UPDATE users SET FullName=@FullName, Role=@Role, Password=@Password WHERE Id=@Id",
+                    new { body.FullName, body.Role, Password = newHash, Id = id });
             }
             else
             {
                 await db.ExecuteAsync(@"
-                    UPDATE users SET FullName=@FullName, Role=@Role
-                    WHERE Id=@Id",
+                    UPDATE users SET FullName=@FullName, Role=@Role WHERE Id=@Id",
                     new { body.FullName, body.Role, Id = id });
             }
             return Ok(new { message = "Cập nhật thành công" });

@@ -11,7 +11,7 @@ if(sessionStorage.getItem('cms_logged_in') !== 'true') window.location.href='log
 <link rel="stylesheet" href="css/style.css?v=3">
 <script src="https://unpkg.com/lucide@latest"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAMX0XgjmNv2O4Twk_CBBmjzDwopqtuexE&libraries=places&callback=initMap"></script>
+<script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAMX0XgjmNv2O4Twk_CBBmjzDwopqtuexE&libraries=places,visualization&callback=initMap"></script>
 </head>
 <body>
 
@@ -58,6 +58,9 @@ if(sessionStorage.getItem('cms_logged_in') !== 'true') window.location.href='log
     <div class="menu-label">Phân tích</div>
     <div class="menu-item" id="menu-history" onclick="switchPage('page-history', this)">
       <i data-lucide="history"></i> Lịch sử sử dụng
+    </div>
+    <div class="menu-item" id="menu-analytics" onclick="switchPage('page-analytics',this);loadDeepAnalytics()">
+      <i data-lucide="bar-chart-2"></i> Phân tích chuyên sâu
     </div>
   </nav>
   <div class="sidebar-footer">
@@ -299,7 +302,43 @@ if(sessionStorage.getItem('cms_logged_in') !== 'true') window.location.href='log
     </div>
   </main>
 
+  <!-- ════ PHÂN TÍCH CHUYÊN SÂU ════ -->
+  <main class="main-content" id="page-analytics">
+    <div style="display:flex;flex-direction:column;gap:24px">
 
+      <!-- Thời gian nghe trung bình -->
+      <div class="table-wrap">
+        <div class="table-toolbar">
+          <div>
+            <h3>⏱ Thời gian nghe trung bình mỗi POI</h3>
+            <p style="font-size:12px;color:var(--text-muted);margin-top:4px">
+              Tổng hợp từ các lượt phát audio có ghi dữ liệu thời gian
+            </p>
+          </div>
+          <button class="btn btn-ghost btn-sm" onclick="fetchAvgDuration().then(renderAvgDurationTable)">
+            <i data-lucide="refresh-cw"></i> Làm mới
+          </button>
+        </div>
+        <table class="cms-table">
+          <thead>
+            <tr>
+              <th>Địa điểm</th>
+              <th style="text-align:center;width:90px">Số lần phát</th>
+              <th style="text-align:center;width:110px">Thời gian TB</th>
+              <th>Biểu đồ tương đối</th>
+            </tr>
+          </thead>
+          <tbody id="analytics-duration-body"></tbody>
+        </table>
+      </div>
+
+      <!-- Heatmap vị trí người dùng — nội dung render bởi _renderHeatmapShell() trong analytics.js -->
+      <div class="table-wrap" style="padding:20px">
+        <div id="heatmap-container"></div>
+      </div>
+
+    </div>
+  </main>
 
   <!-- ════ NGÔN NGỮ ════ -->
   <main class="main-content" id="page-lang">
@@ -603,7 +642,7 @@ if(sessionStorage.getItem('cms_logged_in') !== 'true') window.location.href='log
 
 <!-- ══ PANEL NGƯỜI DÙNG ══ -->
 <div class="panel-overlay" id="panel-overlay-user" style="display:none" onclick="closeUserPanel()"></div>
-<div class="side-panel" id="user-form-panel" style="width:400px;right:-400px">
+<div class="side-panel" id="user-form-panel" style="width:400px">
   <div class="panel-header">
     <div class="panel-header-left">
       <div class="panel-icon" style="background:#f0fdf4;color:#16a34a"><i data-lucide="user"></i></div>
@@ -697,6 +736,9 @@ if(sessionStorage.getItem('cms_logged_in') !== 'true') window.location.href='log
 <script src="js/pages/audio.js"></script>
 <script src="js/pages/dashboard.js"></script>
 <script src="js/pages/approvals.js"></script>
+
+<!-- Analytics Deep -->
+<script src="js/pages/analytics.js"></script>
 
 <!-- Main Entry -->
 <script src="js/app.js"></script>
