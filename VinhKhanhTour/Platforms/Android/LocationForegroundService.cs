@@ -1,4 +1,4 @@
-﻿using Android.App;
+using Android.App;
 using Android.Content;
 using Android.Content.PM;
 using Android.OS;
@@ -99,7 +99,7 @@ namespace VinhKhanhTour.Platforms.Android
                         UpdateNotification($"Gần: {poi.Name}");
 
                         // Phát thuyết minh (AudioService tự kiểm tra đang phát không)
-                        await _audio.PlayNarrationAsync(poi);
+                        await _audio.PlayNarrationAsync(poi, location.Latitude, location.Longitude);
                     }
                 }
                 catch (Exception ex)

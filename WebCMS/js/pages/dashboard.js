@@ -31,23 +31,44 @@ function renderHistory(filter='') {
     data = data.filter(h => myIds.includes(h.RestaurantId||h.restaurantId));
   }
 
-  if (currentFilter!=='all') data=data.filter(h=>(h.EventType||h.eventType||'').toLowerCase()===currentFilter);
+  // Filter thông minh: Gom nhóm các loại event tương tự
+  if (currentFilter !== 'all') {
+    data = data.filter(h => {
+        const evt = (h.EventType || h.eventType || '').toLowerCase();
+        if (currentFilter === 'poi_visit') {
+            return evt.includes('visit') || evt.includes('enter');
+        }
+        if (currentFilter === 'click') {
+            return evt.includes('click') || evt.includes('view');
+        }
+        return evt === currentFilter;
+    });
+  }
+
   if (filter) data=data.filter(h=>(h.RestaurantName||h.restaurantName||'').toLowerCase().includes(filter.toLowerCase()));
   if (!data.length) { tbody.innerHTML=`<tr><td colspan="4" style="text-align:center;padding:40px;color:var(--text-muted)">Chưa có dữ liệu</td></tr>`; return; }
+  
   tbody.innerHTML = data.map(h => {
     const evt=(h.EventType||h.eventType||'visit').toLowerCase();
     const name=h.RestaurantName||h.restaurantName||'—';
     const time=new Date(h.Timestamp||h.timestamp).toLocaleString('vi-VN');
     
-    let icon = 'activity', action = 'Chưa xác định', color = '#64748b', bg = '#f8fafc';
+    let icon = 'activity', action = 'Tương tác', color = '#64748b', bg = '#f8fafc';
+    
     if(evt.includes('enter') || evt.includes('visit')) {
-        icon = 'navigation'; action = 'Vừa đi ngang qua / Ghé thăm'; color = '#10b981'; bg = '#f0fdf4';
+        icon = 'navigation'; action = 'Khách ghé thăm (GPS)'; color = '#10b981'; bg = '#f0fdf4';
     } else if(evt.includes('click')) {
         icon = 'mouse-pointer'; action = 'Bấm xem chi tiết'; color = '#3b82f6'; bg = '#eff6ff';
     } else if(evt.includes('exit')) {
         icon = 'log-out'; action = 'Rời khỏi khu vực'; color = '#f59e0b'; bg = '#fffbeb';
     } else if(evt.includes('audio') || evt.includes('play')) {
-        icon = 'volume-2'; action = 'Nghe thuyết minh audio'; color = '#8b5cf6'; bg = '#f3e8ff';
+        icon = 'volume-2'; 
+        const langMatch = evt.match(/_(vi|en|zh|ja|ko|fr|ru|de|es)$/);
+        const langSuffix = langMatch ? ` (${langMatch[1].toUpperCase()})` : '';
+        action = evt.includes('started') ? `Bắt đầu nghe${langSuffix}` : `Nghe audio${langSuffix}`; 
+        color = '#8b5cf6'; bg = '#f3e8ff';
+    } else if(evt.includes('tour_complete')) {
+        icon = 'award'; action = 'Hoàn thành Tour'; color = '#f59e0b'; bg = '#fffbeb';
     }
 
     return `<tr>
@@ -74,6 +95,7 @@ function renderDashboardRecent() {
     let action = 'Tương tác';
     if(evt.includes('enter') || evt.includes('visit')) action = 'Ghé thăm';
     else if(evt.includes('click')) action = 'Xem thông tin';
+    else if(evt.includes('audio')) action = 'Nghe audio';
     else if(evt.includes('exit')) action = 'Rời khỏi';
     return `<tr><td><strong>${h.RestaurantName||h.restaurantName||'POI'}</strong></td><td><span class="badge badge-info" style="font-size:11px;background:#f8fafc;color:#475569;border:1px solid #e2e8f0;font-weight:500">${action}</span></td><td style="color:var(--text-muted);font-size:12px">${new Date(h.Timestamp||h.timestamp).toLocaleTimeString('vi-VN')}</td></tr>`
   }).join('')||`<tr><td colspan="3" style="text-align:center;color:var(--text-muted);padding:20px">Chưa có hoạt động</td></tr>`;
@@ -170,18 +192,26 @@ function _renderOwnerWelcome() {
 function renderOwnerStats() {
   const grid = document.getElementById('owner-stats-grid');
   if (!grid) return;
+  
+  // allPois is already filtered to my locations in loadMyLocations
   const myPois = allPois;
-  const myPoisIds = myPois.map(p => p.id||p.Id);
-  const myVisits = historyData.filter(h => myPoisIds.includes(h.RestaurantId||h.restaurantId));
+  const myPoisIds = myPois.map(p => p.id || p.Id);
+  
+  // Define "visit" consistently: Enter or Visit events
+  const myActions = historyData.filter(h => myPoisIds.includes(h.RestaurantId || h.restaurantId));
+  const myVisits = myActions.filter(h => {
+    const evt = (h.EventType || h.eventType || '').toLowerCase();
+    return evt.includes('enter') || evt.includes('visit') || evt === '';
+  });
+
   const today = myVisits.filter(h =>
-    new Date(h.Timestamp||h.timestamp).toDateString() === new Date().toDateString()
+    new Date(h.Timestamp || h.timestamp).toDateString() === new Date().toDateString()
   ).length;
-  const week = myVisits.filter(h => {
-    const d = new Date(h.Timestamp||h.timestamp);
-    const now = new Date();
-    return (now - d) / 864e5 <= 7;
-  }).length;
-  const hasAudio = myPois.filter(p => !!(p.ttsScript||p.TtsScript)).length;
+
+  const now = new Date();
+  const week = myVisits.filter(h => (now - new Date(h.Timestamp || h.timestamp)) / 864e5 <= 7).length;
+  
+  const hasAudio = myPois.filter(p => !!(p.ttsScript || p.TtsScript)).length;
   const audioOk = myPois.length > 0 && hasAudio === myPois.length;
   const userId = parseInt(sessionStorage.getItem('cms_userid') || '0');
 
@@ -189,7 +219,7 @@ function renderOwnerStats() {
     <div class="stat-card">
       <div class="stat-icon blue"><i data-lucide="store"></i></div>
       <div class="stat-info">
-        <p class="text-muted">Quán của tôi</p>
+        <p>Quán của tôi</p>
         <h2 class="stat-val">${myPois.length}</h2>
         <div class="stat-trend" style="color:var(--text-muted)">Địa điểm được gán</div>
       </div>
@@ -197,15 +227,17 @@ function renderOwnerStats() {
     <div class="stat-card">
       <div class="stat-icon orange"><i data-lucide="activity"></i></div>
       <div class="stat-info">
-        <p class="text-muted">Lượt ghé thăm</p>
+        <p>Lượt ghé thăm</p>
         <h2 class="stat-val">${myVisits.length}</h2>
         <div class="stat-trend up">↑ ${today} hôm nay &nbsp;·&nbsp; ${week} tuần này</div>
       </div>
     </div>
     <div class="stat-card" style="cursor:pointer" onclick="setOwnerRequestFilter('pending',this)">
-      <div class="stat-icon" style="background:#fef3c7;color:#d97706"><i data-lucide="clock"></i></div>
+      <div class="stat-icon" style="background:linear-gradient(135deg, #fef3c7 0%, #ffedd5 100%);color:#d97706;border:1px solid rgba(217,119,6,0.1)">
+        <i data-lucide="clock"></i>
+      </div>
       <div class="stat-info">
-        <p class="text-muted">Yêu cầu đang chờ</p>
+        <p>Yêu cầu đang chờ</p>
         <h2 class="stat-val" id="owner-pending-count">—</h2>
         <div class="stat-trend" style="color:#d97706">Nhấn để xem</div>
       </div>
@@ -213,7 +245,7 @@ function renderOwnerStats() {
     <div class="stat-card">
       <div class="stat-icon green"><i data-lucide="mic"></i></div>
       <div class="stat-info">
-        <p class="text-muted">Audio TTS</p>
+        <p>Audio TTS</p>
         <h2 class="stat-val">${hasAudio}<span style="font-size:14px;font-weight:500;color:var(--text-muted)">/${myPois.length}</span></h2>
         <div class="stat-trend ${audioOk ? 'up' : ''}">${audioOk ? '✅ Đầy đủ 3 ngôn ngữ' : '⚠️ Còn thiếu script'}</div>
       </div>
@@ -223,7 +255,7 @@ function renderOwnerStats() {
     fetch(`${API}/approvals/user/${userId}`)
       .then(r => r.json())
       .then(list => {
-        const pending = list.filter(a => (a.Status||a.status) === 'pending').length;
+        const pending = list.filter(a => (a.Status || a.status || 'pending').toLowerCase() === 'pending').length;
         const el = document.getElementById('owner-pending-count');
         if (el) el.textContent = pending;
       }).catch(() => {});

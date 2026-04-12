@@ -31,20 +31,21 @@ namespace VinhKhanhTour.Services
             }
         }
 
-        public async Task RecordPoiVisitAsync(int poiId, double lat = 0, double lng = 0)
+        public async Task RecordPoiVisitAsync(int poiId, string eventType = "poi_visit", double lat = 0, double lng = 0)
         {
             try
             {
                 var evt = new AnalyticsEvent
                 {
-                    EventType = "poi_visit",
+                    EventType = eventType,
                     PoiId = poiId,
                     Lat = lat,
                     Lng = lng,
                     TimestampTicks = DateTime.Now.Ticks
                 };
                 await App.Database.InsertAnalyticsEventAsync(evt);
-                await ApiService.Instance.PostAnalyticAsync(poiId, "poi_visit", lat, lng);
+                bool success = await ApiService.Instance.PostAnalyticAsync(poiId, eventType, lat, lng);
+                if (!success) System.Diagnostics.Debug.WriteLine($"[AnalyticsService] Warning: Could not sync {eventType} to server (POI: {poiId})");
             }
             catch (Exception ex)
             {
@@ -64,7 +65,8 @@ namespace VinhKhanhTour.Services
                     TimestampTicks = DateTime.Now.Ticks
                 };
                 await App.Database.InsertAnalyticsEventAsync(evt);
-                await ApiService.Instance.PostAnalyticAsync(poiId, $"audio_{lang}", 0, 0, durationSeconds);
+                bool success = await ApiService.Instance.PostAnalyticAsync(poiId, $"audio_{lang}", 0, 0, durationSeconds);
+                if (!success) System.Diagnostics.Debug.WriteLine($"[AnalyticsService] Warning: Could not sync Audio event to server (POI: {poiId})");
             }
             catch (Exception ex)
             {
@@ -89,17 +91,42 @@ namespace VinhKhanhTour.Services
         }
 
         /// <summary>
-        /// Trả về top N POI dưới dạng List PoiStats — dùng cho AnalyticsPage
+        /// Trả về top N POI dưới dạng List PoiStats — dùng cho AnalyticsPage.
+        /// Cải thiện: Tự động map tên từ DB/API để tránh hiện POI #ID.
         /// </summary>
         public async Task<List<PoiStats>> GetTopPoisAsync(int topN = 5)
         {
             try
             {
+                // 1. Lấy tất cả sự kiện và lọc các ID hợp lệ (>0)
                 var allEvents = await App.Database.GetAllAnalyticsEventsAsync();
+                var visitEvents = allEvents.Where(e => e.PoiId > 0 && 
+                    (e.EventType == "poi_visit" || e.EventType.StartsWith("audio_"))).ToList();
+
+                if (visitEvents.Count == 0) return new List<PoiStats>();
+
+                // 2. Lấy thông tin quán ăn để map tên
                 var restaurants = await App.Database.GetRestaurantsAsync();
+                
+                // Nếu local DB thiếu thông tin (ví dụ cache bị xóa), sync nhanh từ API
+                var uniqueIds = visitEvents.Select(e => e.PoiId).Distinct().ToList();
+                bool needsSync = uniqueIds.Any(id => !restaurants.Any(r => r.Id == id)) || restaurants.Count == 0;
 
-                var visitEvents = allEvents.Where(e => e.EventType == "poi_visit" || e.EventType.StartsWith("audio_")).ToList();
+                if (needsSync)
+                {
+                    try
+                    {
+                        var apiList = await ApiService.Instance.GetRestaurantsAsync();
+                        if (apiList != null && apiList.Count > 0)
+                        {
+                            foreach (var r in apiList) await App.Database.SaveRestaurantAsync(r);
+                            restaurants = apiList;
+                        }
+                    }
+                    catch { }
+                }
 
+                // 3. Phân tích top POI
                 var grouped = visitEvents
                     .GroupBy(e => e.PoiId)
                     .OrderByDescending(g => g.Count())
@@ -109,18 +136,27 @@ namespace VinhKhanhTour.Services
                 foreach (var g in grouped)
                 {
                     var r = restaurants.FirstOrDefault(x => x.Id == g.Key);
+                    
+                    // Nếu tuyệt đối không tìm được tên (r==null), bỏ qua entry này thay vì hiện ID
+                    if (r == null) continue;
+
                     var audioEvents = g.Where(e => e.EventType.StartsWith("audio_")).ToList();
+                    
                     result.Add(new PoiStats
                     {
                         PoiId = g.Key,
-                        PoiName = r?.Name ?? $"POI #{g.Key}",
+                        PoiName = r.Name,
                         ListenCount = audioEvents.Count,
                         TotalSeconds = audioEvents.Sum(e => e.Value)
                     });
                 }
                 return result;
             }
-            catch { return new List<PoiStats>(); }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[AnalyticsService] GetTopPois: {ex.Message}");
+                return new List<PoiStats>();
+            }
         }
 
         /// <summary>
@@ -132,10 +168,10 @@ namespace VinhKhanhTour.Services
             {
                 var allEvents = await App.Database.GetAllAnalyticsEventsAsync();
 
-                int totalListens = allEvents.Count(e => e.EventType.StartsWith("audio_"));
-                int uniquePois = allEvents.Where(e => e.EventType.StartsWith("audio_"))
+                int totalListens = allEvents.Count(e => e.PoiId > 0 && e.EventType.StartsWith("audio_"));
+                int uniquePois = allEvents.Where(e => e.PoiId > 0 && e.EventType.StartsWith("audio_"))
                                             .Select(e => e.PoiId).Distinct().Count();
-                double totalSec = allEvents.Where(e => e.EventType.StartsWith("audio_"))
+                double totalSec = allEvents.Where(e => e.PoiId > 0 && e.EventType.StartsWith("audio_"))
                                             .Sum(e => e.Value);
                 double avgSec = totalListens > 0 ? totalSec / totalListens : 0;
                 int tourCompletes = allEvents.Count(e => e.EventType == "tour_complete");

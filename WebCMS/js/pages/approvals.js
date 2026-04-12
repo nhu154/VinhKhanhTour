@@ -44,7 +44,7 @@ function renderApprovalList() {
   if (approvalStatusFilter) list = list.filter(a => (a.Status||a.status) === approvalStatusFilter);
 
   if (!list.length) {
-    container.innerHTML = `<div class="empty-state"><i data-lucide="check-circle"></i><p>${approvalStatusFilter === 'pending' ? 'Không có yêu cầu nào đang chờ duyệt 🎉' : 'Chưa có dữ liệu'}</p></div>`;
+    container.innerHTML = `<div class="empty-state"><i data-lucide="check-circle"></i><p>${approvalStatusFilter === 'pending' ? 'Không có yêu cầu nào đang chờ duyệt' : 'Chưa có dữ liệu'}</p></div>`;
     lucide.createIcons(); return;
   }
 

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -14,6 +14,7 @@ namespace VinhKhanhTour.Models
         public string Emoji { get; set; } = "";
         public string Duration { get; set; } = "";
         public double Rating { get; set; }
+        public string ImageUrl { get; set; } = "";
         public List<int> RestaurantIds { get; set; } = new List<int>();
     }
 }

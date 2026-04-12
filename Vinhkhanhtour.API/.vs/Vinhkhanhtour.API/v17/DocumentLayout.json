@@ -3,12 +3,16 @@
   "WorkspaceRootPath": "C:\\Users\\DELL\\source\\repos\\VinhKhanhTour\\Vinhkhanhtour.API\\",
   "Documents": [
     {
-      "AbsoluteMoniker": "D:0:0:{BA0314E5-5DB7-4C22-A520-8BD97B06EE1A}|Vinhkhanhtour.API.csproj|c:\\users\\dell\\source\\repos\\vinhkhanhtour\\vinhkhanhtour.api\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{BA0314E5-5DB7-4C22-A520-8BD97B06EE1A}|Vinhkhanhtour.API.csproj|solutionrelative:program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
       "AbsoluteMoniker": "D:0:0:{BA0314E5-5DB7-4C22-A520-8BD97B06EE1A}|Vinhkhanhtour.API.csproj|c:\\users\\dell\\source\\repos\\vinhkhanhtour\\vinhkhanhtour.api\\controllers\\analyticscontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{BA0314E5-5DB7-4C22-A520-8BD97B06EE1A}|Vinhkhanhtour.API.csproj|solutionrelative:controllers\\analyticscontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{BA0314E5-5DB7-4C22-A520-8BD97B06EE1A}|Vinhkhanhtour.API.csproj|c:\\users\\dell\\source\\repos\\vinhkhanhtour\\vinhkhanhtour.api\\controllers\\restaurantscontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{BA0314E5-5DB7-4C22-A520-8BD97B06EE1A}|Vinhkhanhtour.API.csproj|solutionrelative:controllers\\restaurantscontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{BA0314E5-5DB7-4C22-A520-8BD97B06EE1A}|Vinhkhanhtour.API.csproj|c:\\users\\dell\\source\\repos\\vinhkhanhtour\\vinhkhanhtour.api\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{BA0314E5-5DB7-4C22-A520-8BD97B06EE1A}|Vinhkhanhtour.API.csproj|solutionrelative:program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{BA0314E5-5DB7-4C22-A520-8BD97B06EE1A}|Vinhkhanhtour.API.csproj|c:\\users\\dell\\source\\repos\\vinhkhanhtour\\vinhkhanhtour.api\\appsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}",
@@ -39,10 +43,6 @@
       "RelativeMoniker": "D:0:0:{BA0314E5-5DB7-4C22-A520-8BD97B06EE1A}|Vinhkhanhtour.API.csproj|solutionrelative:controllers\\tourscontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{BA0314E5-5DB7-4C22-A520-8BD97B06EE1A}|Vinhkhanhtour.API.csproj|c:\\users\\dell\\source\\repos\\vinhkhanhtour\\vinhkhanhtour.api\\controllers\\restaurantscontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{BA0314E5-5DB7-4C22-A520-8BD97B06EE1A}|Vinhkhanhtour.API.csproj|solutionrelative:controllers\\restaurantscontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
       "AbsoluteMoniker": "D:0:0:{BA0314E5-5DB7-4C22-A520-8BD97B06EE1A}|Vinhkhanhtour.API.csproj|c:\\users\\dell\\source\\repos\\vinhkhanhtour\\vinhkhanhtour.api\\vinhkhanhtour.api.csproj||{FA3CD31E-987B-443A-9B81-186104E8DAC1}|",
       "RelativeMoniker": "D:0:0:{BA0314E5-5DB7-4C22-A520-8BD97B06EE1A}|Vinhkhanhtour.API.csproj|solutionrelative:vinhkhanhtour.api.csproj||{FA3CD31E-987B-443A-9B81-186104E8DAC1}|"
     },
@@ -57,23 +57,11 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": 5,
+          "SelectedChildIndex": 2,
           "Children": [
             {
               "$type": "Document",
-              "DocumentIndex": 4,
-              "Title": "AudioController.cs",
-              "DocumentMoniker": "C:\\Users\\DELL\\source\\repos\\VinhKhanhTour\\Vinhkhanhtour.API\\Controllers\\AudioController.cs",
-              "RelativeDocumentMoniker": "Controllers\\AudioController.cs",
-              "ToolTip": "C:\\Users\\DELL\\source\\repos\\VinhKhanhTour\\Vinhkhanhtour.API\\Controllers\\AudioController.cs",
-              "RelativeToolTip": "Controllers\\AudioController.cs",
-              "ViewState": "AgIAAEgAAAAAAAAAAAAUwHQAAAABAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-04-10T06:27:39.589Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 2,
+              "DocumentIndex": 3,
               "Title": "appsettings.json",
               "DocumentMoniker": "C:\\Users\\DELL\\source\\repos\\VinhKhanhTour\\Vinhkhanhtour.API\\appsettings.json",
               "RelativeDocumentMoniker": "appsettings.json",
@@ -85,7 +73,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 3,
+              "DocumentIndex": 4,
               "Title": "Vinhkhanhtour.API.http",
               "DocumentMoniker": "C:\\Users\\DELL\\source\\repos\\VinhKhanhTour\\Vinhkhanhtour.API\\Vinhkhanhtour.API.http",
               "RelativeDocumentMoniker": "Vinhkhanhtour.API.http",
@@ -97,20 +85,20 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 1,
+              "DocumentIndex": 0,
               "Title": "AnalyticsController.cs",
               "DocumentMoniker": "C:\\Users\\DELL\\source\\repos\\VinhKhanhTour\\Vinhkhanhtour.API\\Controllers\\AnalyticsController.cs",
               "RelativeDocumentMoniker": "Controllers\\AnalyticsController.cs",
               "ToolTip": "C:\\Users\\DELL\\source\\repos\\VinhKhanhTour\\Vinhkhanhtour.API\\Controllers\\AnalyticsController.cs",
               "RelativeToolTip": "Controllers\\AnalyticsController.cs",
-              "ViewState": "AgIAAH8AAAAAAAAAAAAUwIYAAAAqAAAAAAAAAA==",
+              "ViewState": "AgIAAMUAAAAAAAAAAAAAAMUAAAABAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2026-03-27T15:32:37.65Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 5,
+              "DocumentIndex": 6,
               "Title": "AuthController.cs",
               "DocumentMoniker": "C:\\Users\\DELL\\source\\repos\\VinhKhanhTour\\Vinhkhanhtour.API\\Controllers\\AuthController.cs",
               "RelativeDocumentMoniker": "Controllers\\AuthController.cs",
@@ -122,7 +110,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 0,
+              "DocumentIndex": 2,
               "Title": "Program.cs",
               "DocumentMoniker": "C:\\Users\\DELL\\source\\repos\\VinhKhanhTour\\Vinhkhanhtour.API\\Program.cs",
               "RelativeDocumentMoniker": "Program.cs",
@@ -130,12 +118,35 @@
               "RelativeToolTip": "Program.cs",
               "ViewState": "AgIAABMAAAAAAAAAAAAAABUAAAAaAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-03-27T15:30:17.354Z",
-              "EditorCaption": ""
+              "WhenOpened": "2026-03-27T15:30:17.354Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 6,
+              "DocumentIndex": 1,
+              "Title": "RestaurantsController.cs",
+              "DocumentMoniker": "C:\\Users\\DELL\\source\\repos\\VinhKhanhTour\\Vinhkhanhtour.API\\Controllers\\RestaurantsController.cs",
+              "RelativeDocumentMoniker": "Controllers\\RestaurantsController.cs",
+              "ToolTip": "C:\\Users\\DELL\\source\\repos\\VinhKhanhTour\\Vinhkhanhtour.API\\Controllers\\RestaurantsController.cs",
+              "RelativeToolTip": "Controllers\\RestaurantsController.cs",
+              "ViewState": "AgIAAHUAAAAAAAAAAAAkwKsAAAABAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-03-27T15:31:37.686Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 5,
+              "Title": "AudioController.cs",
+              "DocumentMoniker": "C:\\Users\\DELL\\source\\repos\\VinhKhanhTour\\Vinhkhanhtour.API\\Controllers\\AudioController.cs",
+              "RelativeDocumentMoniker": "Controllers\\AudioController.cs",
+              "ToolTip": "C:\\Users\\DELL\\source\\repos\\VinhKhanhTour\\Vinhkhanhtour.API\\Controllers\\AudioController.cs",
+              "RelativeToolTip": "Controllers\\AudioController.cs",
+              "ViewState": "AgIAAEgAAAAAAAAAAAAUwHQAAAABAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-04-10T06:27:39.589Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 7,
               "Title": "ImageService.cs",
               "DocumentMoniker": "C:\\Users\\DELL\\source\\repos\\VinhKhanhTour\\Vinhkhanhtour.API\\Services\\ImageService.cs",
               "RelativeDocumentMoniker": "Services\\ImageService.cs",
@@ -147,7 +158,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 7,
+              "DocumentIndex": 8,
               "Title": "Approvalcontroller.cs",
               "DocumentMoniker": "C:\\Users\\DELL\\source\\repos\\VinhKhanhTour\\Vinhkhanhtour.API\\Controllers\\Approvalcontroller.cs",
               "RelativeDocumentMoniker": "Controllers\\Approvalcontroller.cs",
@@ -159,7 +170,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 8,
+              "DocumentIndex": 9,
               "Title": "ToursController.cs",
               "DocumentMoniker": "C:\\Users\\DELL\\source\\repos\\VinhKhanhTour\\Vinhkhanhtour.API\\Controllers\\ToursController.cs",
               "RelativeDocumentMoniker": "Controllers\\ToursController.cs",
@@ -168,18 +179,6 @@
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAIYAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2026-03-28T09:48:18.874Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 9,
-              "Title": "RestaurantsController.cs",
-              "DocumentMoniker": "C:\\Users\\DELL\\source\\repos\\VinhKhanhTour\\Vinhkhanhtour.API\\Controllers\\RestaurantsController.cs",
-              "RelativeDocumentMoniker": "Controllers\\RestaurantsController.cs",
-              "ToolTip": "C:\\Users\\DELL\\source\\repos\\VinhKhanhTour\\Vinhkhanhtour.API\\Controllers\\RestaurantsController.cs",
-              "RelativeToolTip": "Controllers\\RestaurantsController.cs",
-              "ViewState": "AgIAAEMAAAAAAAAAAAAcwG8AAAAAAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-03-27T15:31:37.686Z"
             },
             {
               "$type": "Document",

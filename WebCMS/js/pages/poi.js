@@ -313,16 +313,18 @@ async function savePoiData() {
       const getTts = (code) => document.getElementById(`poi-lang-${code}-tts`)?.value || '';
       const poiData = {
         Name: nameVi,
-        Description: getTts('vi'),
+        Description: document.getElementById('poi-description')?.value || getTts('vi'),
         Category: document.getElementById('poi-category').value,
-        Latitude: parseFloat(document.getElementById('poi-lat').value)||0,
-        Longitude: parseFloat(document.getElementById('poi-lng').value)||0,
-        Rating: parseFloat(document.getElementById('poi-rating').value)||4.0,
+        Latitude: parseFloat(document.getElementById('poi-lat').value) || 0,
+        Longitude: parseFloat(document.getElementById('poi-lng').value) || 0,
+        Rating: parseFloat(document.getElementById('poi-rating').value) || 4.0,
         OpenHours: document.getElementById('poi-hours').value,
-        Address: document.getElementById('poi-address').value||'Vĩnh Khánh, Phường 8, Quận 4',
-        Radius: parseInt(document.getElementById('poi-radius').value)||50,
-        ImageUrl: document.getElementById('poi-image-url')?.value||'',
-        TtsScript: getTts('vi'), TtsScriptEn: getTts('en'), TtsScriptZh: getTts('zh'),
+        Address: document.getElementById('poi-address').value || 'Vĩnh Khánh, Phường 8, Quận 4',
+        Radius: parseInt(document.getElementById('poi-radius').value) || 50,
+        ImageUrl: document.getElementById('poi-image-url')?.value || '',
+        TtsScript: getTts('vi'),
+        TtsScriptEn: getTts('en'),
+        TtsScriptZh: getTts('zh'),
       };
       const action = id ? 'update_info' : 'create_poi';
       const locName = nameVi;

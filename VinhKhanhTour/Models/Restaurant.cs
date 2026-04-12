@@ -44,7 +44,7 @@ namespace VinhKhanhTour.Models
         public string TtsScriptZh { get; set; } = string.Empty;
 
         /// <summary>
-        /// Chuỗi JSON chứa Tên & Bản thuyết minh của các ngôn ngữ tự định nghĩa (Nhật, Hàn, Pháp...).
+        /// Chuỗi JSON chứa Tên &amp; Bản thuyết minh của các ngôn ngữ tự định nghĩa (Nhật, Hàn, Pháp...).
         /// Định dạng: {"ja":{"name":"...","tts":"..."},"ko":{"name":"...","tts":"..."}}
         /// </summary>
         public string Translations { get; set; } = "{}";

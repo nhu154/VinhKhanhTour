@@ -60,22 +60,26 @@ namespace VinhKhanhTour.Views
             {
                 var tour = _apiTours[i];
                 int idx = i; // capture for closure
-                string coverImg = i < coverImages.Length ? coverImages[i] : "tour_oc.jpg";
                 string accent = i < accentColors.Length ? accentColors[i] : "#CC1565C0";
                 string shadow = i < shadowColors.Length ? shadowColors[i] : "#1565C0";
                 bool isLast = i == _apiTours.Count - 1;
 
-                var card = BuildTourCard(tour, coverImg, accent, shadow, isLast, idx);
+                var card = BuildTourCard(tour, accent, shadow, isLast, idx);
                 TourCardsContainer.Children.Add(card);
             }
         }
 
-        private Border BuildTourCard(ApiTour tour, string coverImg, string accent, string shadowColor, bool isLast, int idx)
+        private Border BuildTourCard(ApiTour tour, string accent, string shadowColor, bool isLast, int idx)
         {
             var ptsCount = tour.GetRestaurantIds().Count;
             var ptsText = _currentLang == "en" ? $"{ptsCount} spots" : _currentLang == "zh" ? $"{ptsCount}个景点" : $"{ptsCount} điểm";
             var durText = "⏱ " + tour.GetDuration(_currentLang);
             var ratingText = $"⭐ {tour.Rating:F1}";
+
+            // Resolve Image Source: Try API URL, fallback to index-based coverImg, fallback to default
+            string[] coverImages = { "tour_oc.jpg", "tour_nuong.jpg", "tour_vat.jpg", "tour_dacssan.jpg" };
+            string fallbackImg = idx < coverImages.Length ? coverImages[idx] : "tour_oc.jpg";
+            string finalImg = !string.IsNullOrWhiteSpace(tour.ImageUrl) ? tour.ImageUrl : fallbackImg;
 
             // Image grid
             var imageGrid = new Grid { HeightRequest = 160 };
@@ -83,7 +87,7 @@ namespace VinhKhanhTour.Views
             {
                 StrokeShape = new RoundRectangle { CornerRadius = new CornerRadius(20, 20, 0, 0) },
                 StrokeThickness = 0,
-                Content = new Image { Source = coverImg, Aspect = Aspect.AspectFill, HorizontalOptions = LayoutOptions.Fill, VerticalOptions = LayoutOptions.Fill }
+                Content = new Image { Source = finalImg, Aspect = Aspect.AspectFill, HorizontalOptions = LayoutOptions.Fill, VerticalOptions = LayoutOptions.Fill }
             });
             imageGrid.Add(new BoxView
             {
@@ -188,6 +192,7 @@ namespace VinhKhanhTour.Views
                 Description = t.GetDescription(_currentLang),
                 Duration = t.GetDuration(_currentLang),
                 Rating = t.Rating,
+                ImageUrl = t.ImageUrl ?? "",
                 RestaurantIds = t.GetRestaurantIds()
             }));
         }

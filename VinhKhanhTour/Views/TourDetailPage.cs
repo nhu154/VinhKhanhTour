@@ -355,6 +355,14 @@ namespace VinhKhanhTour.Views
             grid.Add(info, 0, 1);
             border.Content = grid;
 
+            // Navigation to Detail Page
+            var tapGesture = new TapGestureRecognizer();
+            tapGesture.Tapped += async (s, e) =>
+            {
+                await Navigation.PushAsync(new RestaurantDetailPage(restaurant));
+            };
+            border.GestureRecognizers.Add(tapGesture);
+
             return border;
         }
     }

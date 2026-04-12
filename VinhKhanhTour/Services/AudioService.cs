@@ -57,7 +57,7 @@ namespace VinhKhanhTour.Services
         /// <summary>
         /// Phát thuyết minh cho một POI. Ngắt ngay POI hiện tại (nếu có) để nhảy sang bài mới.
         /// </summary>
-        public async Task PlayNarrationAsync(Restaurant poi)
+        public async Task PlayNarrationAsync(Restaurant poi, double lat = 0, double lng = 0)
         {
             var script = GetScript(poi, _language);
 
@@ -74,22 +74,17 @@ namespace VinhKhanhTour.Services
                 await StopAsync();
             }
 
-            await PlayCommentaryAsync(poi.Id, script);
+            await PlayCommentaryAsync(poi.Id, script, lat, lng);
         }
 
-        // Lấy TTS script đúng ngôn ngữ từ model Restaurant
-        private static string GetScript(Restaurant poi, string lang) => lang switch
-        {
-            "en" => poi.TtsScriptEn ?? poi.TtsScript ?? "",
-            "zh" => poi.TtsScriptZh ?? poi.TtsScript ?? "",
-            _ => poi.TtsScript ?? "",
-        };
+        // Lấy TTS script đúng ngôn ngữ từ model Restaurant - ĐÃ NÂNG CẤP ĐỘNG
+        private static string GetScript(Restaurant poi, string lang) => poi.GetTtsScript();
 
         // ── Core playback ─────────────────────────────────────────────────────
 
         private readonly SemaphoreSlim _playSemaphore = new SemaphoreSlim(1, 1);
 
-        public async Task PlayCommentaryAsync(int poiId, string ttsScript)
+        public async Task PlayCommentaryAsync(int poiId, string ttsScript, double lat = 0, double lng = 0)
         {
             // Ngắt bài cũ (nếu có)
             await StopAsync();
@@ -101,7 +96,7 @@ namespace VinhKhanhTour.Services
                 _isPlaying = true;
                 _currentPoiId = poiId;
                 PlaybackStateChanged?.Invoke(true);
-                _ = AnalyticsService.Instance.RecordPoiVisitAsync(poiId);
+                if (poiId > 0) _ = AnalyticsService.Instance.RecordPoiVisitAsync(poiId, $"poi_audio_started_{CurrentLanguage}", lat, lng);
 
                 _ttsCts = new CancellationTokenSource();
                 DateTime startTime = DateTime.Now;
@@ -127,7 +122,7 @@ namespace VinhKhanhTour.Services
                 {
                     double durationSeconds = (DateTime.Now - startTime).TotalSeconds;
                     // Phải đảm bảo await thành công Record audio trước khi kết thúc
-                    await AnalyticsService.Instance.RecordAudioPlayedAsync(poiId, CurrentLanguage, durationSeconds);
+                    if (poiId > 0) await AnalyticsService.Instance.RecordAudioPlayedAsync(poiId, CurrentLanguage, durationSeconds);
                     
                     _isPlaying = false;
                     _currentPoiId = -1;
@@ -291,14 +286,10 @@ namespace VinhKhanhTour.Services
             try
             {
                 var locales = await TextToSpeech.Default.GetLocalesAsync();
-                string prefix = lang switch
-                {
-                    "en" => "en",
-                    "zh" => "zh",
-                    _ => "vi"
-                };
                 return locales.FirstOrDefault(l =>
-                    l.Language.StartsWith(prefix, StringComparison.OrdinalIgnoreCase));
+                    l.Language.StartsWith(lang, StringComparison.OrdinalIgnoreCase))
+                    ?? locales.FirstOrDefault(l => 
+                    l.Language.StartsWith("vi", StringComparison.OrdinalIgnoreCase));
             }
             catch { return null; }
         }

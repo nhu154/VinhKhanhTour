@@ -93,32 +93,42 @@ function renderAvgDurationTable() {
   const el = document.getElementById('analytics-duration-body');
   if (!el) return;
   if (!_avgDurationData?.length) {
-    el.innerHTML = `<tr><td colspan="4" style="text-align:center;padding:40px;color:var(--text-muted)">
+    el.innerHTML = `<tr><td colspan="3" style="text-align:center;padding:40px;color:var(--text-muted)">
       <div style="font-size:28px;margin-bottom:8px">🎵</div>
       Chưa có dữ liệu thời gian nghe.<br>
-      <span style="font-size:12px">App cần ghi durationSeconds khi phát audio.</span>
+      <span style="font-size:12px">App cần ghi lại thời lượng khi phát audio.</span>
     </td></tr>`;
     return;
   }
   const maxAvg = Math.max(..._avgDurationData.map(d => d.avgSeconds || d.AvgSeconds || 0), 1);
-  el.innerHTML = _avgDurationData.map((d, i) => {
+  el.innerHTML = _avgDurationData.slice(0, 10).map((d, i) => {
     const name     = d.poiName     || d.PoiName     || `POI #${d.poiId || d.PoiId}`;
     const plays    = d.playCount   || d.PlayCount   || 0;
     const avgSec   = d.avgSeconds  || d.AvgSeconds  || 0;
     const totalSec = d.totalSeconds|| d.TotalSeconds|| 0;
     const pct      = Math.round((avgSec / maxAvg) * 100);
-    const medal    = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i+1}.`;
-    const barColor = avgSec >= 60 ? '#16a34a' : avgSec >= 30 ? '#2563eb' : '#f59e0b';
+    
+    // Determine color based on engagement
+    let color = '#d1d5db'; // muted
+    let label = 'Ngắn';
+    if (avgSec >= 60) { color = '#10b981'; label = 'Sâu'; } // Green (Deep)
+    else if (avgSec >= 30) { color = '#3b82f6'; label = 'Vừa'; } // Blue (Medium)
+    else if (avgSec > 5) { color = '#f59e0b'; label = 'Lướt'; } // Orange (Brief)
+
     return `<tr>
-      <td><span style="margin-right:6px">${medal}</span><span style="font-weight:600;font-size:13px">${name}</span></td>
-      <td style="text-align:center"><span style="font-size:13px;font-weight:500">${plays}</span><span style="font-size:11px;color:var(--text-muted)"> lần</span></td>
-      <td style="text-align:center">
-        <span style="font-size:14px;font-weight:700;color:${barColor}">${fmtSec(avgSec)}</span>
-        <div style="font-size:10px;color:var(--text-muted)">tổng ${fmtSec(totalSec)}</div>
+      <td>
+        <div style="font-weight:700;font-size:13px;color:var(--text-main);margin-bottom:2px">${name}</div>
+        <div style="font-size:11px;color:var(--text-muted)">${plays} lượt · Tổng ${fmtSec(totalSec)}</div>
       </td>
-      <td style="min-width:120px">
-        <div style="background:var(--bg-secondary,#f1f5f9);border-radius:99px;height:8px;overflow:hidden">
-          <div style="height:100%;background:${barColor};border-radius:99px;width:${pct}%;transition:.6s ease"></div>
+      <td style="text-align:center">
+        <span style="font-size:16px;font-weight:800;color:${color}">${fmtSec(avgSec)}</span>
+      </td>
+      <td>
+        <div style="display:flex;align-items:center;gap:8px">
+          <div style="flex:1;height:6px;background:#f1f5f9;border-radius:10px;overflow:hidden">
+            <div style="width:${pct}%;height:100%;background:${color};border-radius:10px;transition:width .8s ease"></div>
+          </div>
+          <span style="font-size:10px;font-weight:700;color:${color};width:32px">${label}</span>
         </div>
       </td>
     </tr>`;
@@ -140,160 +150,73 @@ function _renderHeatmapShell() {
   container.dataset.ready = '1';
 
   container.innerHTML = `
-    <!-- ── Toolbar ── -->
-    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;flex-wrap:wrap;gap:12px">
-      <div>
-        <h3 style="margin:0;display:flex;align-items:center;gap:8px;font-size:16px;font-weight:700">
-          🗺 Heatmap vị trí du khách
-          <span style="font-size:11px;font-weight:500;background:#eff6ff;color:#2563eb;padding:3px 8px;border-radius:20px;border:1px solid #bfdbfe">Vĩnh Khánh · Q4</span>
-        </h3>
-        <p id="heatmap-point-count" style="font-size:12px;color:var(--text-muted);margin:5px 0 0">Đang tải...</p>
-      </div>
+    <div style="position:relative;width:100%;height:100%;background:#e2e8f0;overflow:hidden">
+      
+      <!-- ── Map Wrap ── -->
+      <div id="heatmap-wrap" style="width:100%;height:100%;z-index:1"></div>
 
-      <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
-        <!-- Time range -->
-        <div style="display:flex;gap:4px;background:var(--bg,#f1f5f9);border-radius:8px;padding:3px">
-          <button class="hm-chip hm-day active" data-days="7"  onclick="changeHeatmapDays(7,this)">7 ngày</button>
-          <button class="hm-chip hm-day"        data-days="30" onclick="changeHeatmapDays(30,this)">30 ngày</button>
-          <button class="hm-chip hm-day"        data-days="90" onclick="changeHeatmapDays(90,this)">90 ngày</button>
+      <!-- ── Floating Top Toolbar ── -->
+      <div style="position:absolute;top:20px;left:20px;right:20px;z-index:10;display:flex;justify-content:space-between;align-items:center;pointer-events:none">
+        
+        <!-- Left: Title & Refresh -->
+        <div style="pointer-events:auto;background:rgba(255,255,255,0.85);backdrop-filter:blur(12px);padding:10px 20px;border-radius:16px;box-shadow:0 8px 32px rgba(0,0,0,0.1);border:1px solid rgba(255,255,255,0.5);display:flex;align-items:center;gap:16px">
+          <div>
+            <h3 style="margin:0;font-size:16px;font-weight:800;color:var(--text-main)">🗺 Heatmap Vĩnh Khánh</h3>
+            <p id="heatmap-point-count" style="margin:2px 0 0;font-size:11px;color:var(--text-muted)">Đang tải tối ưu dữ liệu...</p>
+          </div>
+          <button onclick="refreshHeatmap()" title="Làm mới dữ liệu" style="width:36px;height:36px;border-radius:10px;border:1px solid var(--border);background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--text-muted);transition:.2s">
+            <i data-lucide="refresh-cw" style="width:16px;height:16px"></i>
+          </button>
+          <button onclick="clearAllAnalytics()" title="Xóa toàn bộ thống kê" style="width:36px;height:36px;border-radius:10px;border:1px solid rgba(239, 68, 68, 0.2);background:rgba(239, 68, 68, 0.05);cursor:pointer;display:flex;align-items:center;justify-content:center;color:#ef4444;transition:.2s">
+            <i data-lucide="trash-2" style="width:16px;height:16px"></i>
+          </button>
         </div>
 
-        <div style="width:1px;height:24px;background:var(--border)"></div>
-
-        <!-- Layer picker -->
-        <select id="hm-layer-select" onchange="changeHeatmapLayer(this.value)"
-          style="font-size:13px;padding:6px 12px;border-radius:8px;border:1px solid var(--border);background:var(--card);cursor:pointer;color:var(--text-main);font-weight:600;min-width:110px;outline:none;appearance:none;background-image: url('data:image/svg+xml;utf8,<svg width=\"24\" height=\"24\" fill=\"none\" stroke=\"%2394a3b8\" stroke-width=\"2\" viewBox=\"0 0 24 24\" xmlns=\"http://www.w3.org/2000/svg\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"m19 9-7 7-7-7\"></path></svg>');background-repeat:no-repeat;background-position:right 8px center;background-size:14px;padding-right:28px;transition:all .2s">
-          <option value="combined">Tổng hợp</option>
-          <option value="checkin">Check-in</option>
-          <option value="view">Lượt xem tĩnh</option>
-        </select>
-
-        <div style="width:1px;height:24px;background:var(--border)"></div>
-
-        <!-- Toggle buttons -->
-        <button id="btn-toggle-heat" onclick="toggleHeatLayer()"
-          title="Bật/tắt heatmap"
-          style="display:flex;align-items:center;gap:5px;padding:5px 10px;border-radius:8px;border:1px solid var(--border);background:var(--card);cursor:pointer;font-size:12px;font-weight:500;color:var(--text-main);transition:all .2s">
-          🔥 Heatmap <span id="heat-toggle-dot" style="width:8px;height:8px;border-radius:50%;background:#22c55e;display:inline-block"></span>
-        </button>
-        <button id="btn-toggle-poi" onclick="togglePoiLayer()"
-          title="Bật/tắt markers POI"
-          style="display:flex;align-items:center;gap:5px;padding:5px 10px;border-radius:8px;border:1px solid var(--border);background:var(--card);cursor:pointer;font-size:12px;font-weight:500;color:var(--text-main);transition:all .2s">
-          📍 POI <span id="poi-toggle-dot" style="width:8px;height:8px;border-radius:50%;background:#22c55e;display:inline-block"></span>
-        </button>
-
-        <div style="width:1px;height:24px;background:var(--border)"></div>
-
-        <button onclick="refreshHeatmap()" title="Tải lại"
-          style="display:flex;align-items:center;gap:5px;padding:5px 10px;border-radius:8px;border:1px solid var(--border);background:var(--card);cursor:pointer;font-size:12px;color:var(--text-muted)">
-          <i data-lucide="refresh-cw" style="width:13px;height:13px"></i>
-        </button>
-        <button onclick="exportHeatmapCsv()" title="Xuất CSV"
-          style="display:flex;align-items:center;gap:5px;padding:5px 10px;border-radius:8px;border:1px solid var(--border);background:var(--card);cursor:pointer;font-size:12px;color:var(--text-muted)">
-          <i data-lucide="download" style="width:13px;height:13px"></i> CSV
-        </button>
-      </div>
-    </div>
-
-    <!-- ── Layout: map + sidebar ── -->
-    <div style="display:grid;grid-template-columns:1fr 260px;gap:14px;align-items:start">
-
-      <!-- Map -->
-      <div style="position:relative">
-        <div id="heatmap-wrap"
-          style="width:100%;height:500px;border-radius:12px;background:#f1f5f9;overflow:hidden;
-            position:relative;border:1px solid var(--border);box-shadow:inset 0 2px 8px rgba(0,0,0,0.04)">
-        </div>
-
-        <!-- Intensity controls (bottom-left overlay) -->
-        <div style="position:absolute;bottom:14px;left:14px;z-index:10;
-          background:rgba(255,255,255,0.96);border-radius:10px;padding:10px 14px;
-          box-shadow:0 4px 16px rgba(0,0,0,0.12);border:1px solid var(--border);min-width:180px">
-          <div style="font-size:11px;font-weight:700;color:var(--text-muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">Điều chỉnh</div>
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
-            <span style="font-size:11px;color:var(--text-muted);width:52px">Bán kính</span>
-            <input type="range" min="15" max="90" value="45" id="hm-radius-range"
-              oninput="onRadiusChange(this.value)"
-              style="flex:1;accent-color:#2563eb;cursor:pointer">
-            <span id="hm-radius-val" style="font-size:11px;font-weight:600;color:#2563eb;width:28px">45px</span>
+        <!-- Right: Layer & Time Controls -->
+        <div style="pointer-events:auto;background:rgba(255,255,255,0.85);backdrop-filter:blur(12px);padding:6px;border-radius:16px;box-shadow:0 8px 32px rgba(0,0,0,0.1);border:1px solid rgba(255,255,255,0.5);display:flex;align-items:center;gap:6px">
+          
+          <!-- Days Selection -->
+          <div style="display:flex;gap:2px;background:rgba(0,0,0,0.05);border-radius:10px;padding:3px">
+            <button class="hm-chip hm-day active" data-days="7"  onclick="changeHeatmapDays(7,this)">7N</button>
+            <button class="hm-chip hm-day"        data-days="30" onclick="changeHeatmapDays(30,this)">30N</button>
+            <button class="hm-chip hm-day"        data-days="90" onclick="changeHeatmapDays(90,this)">90N</button>
           </div>
-          <div style="display:flex;align-items:center;gap:8px">
-            <span style="font-size:11px;color:var(--text-muted);width:52px">Độ mờ</span>
-            <input type="range" min="20" max="100" value="80" id="hm-opacity-range"
-              oninput="onOpacityChange(this.value)"
-              style="flex:1;accent-color:#2563eb;cursor:pointer">
-            <span id="hm-opacity-val" style="font-size:11px;font-weight:600;color:#2563eb;width:28px">80%</span>
-          </div>
-        </div>
 
-        <!-- Legend (bottom-right overlay) -->
-        <div style="position:absolute;bottom:14px;right:14px;z-index:10;
-          background:rgba(255,255,255,0.96);border-radius:10px;padding:10px 14px;
-          box-shadow:0 4px 16px rgba(0,0,0,0.12);border:1px solid var(--border)">
-          <div style="font-size:11px;font-weight:700;color:var(--text-muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px">Mật độ</div>
-          <div style="display:flex;flex-direction:column;gap:3px">
-            <div style="display:flex;align-items:center;gap:6px">
-              <span style="width:12px;height:12px;border-radius:3px;background:#ef4444;display:inline-block;flex-shrink:0"></span>
-              <span style="font-size:11px;color:var(--text-main)">Rất đông</span>
-            </div>
-            <div style="display:flex;align-items:center;gap:6px">
-              <span style="width:12px;height:12px;border-radius:3px;background:#f97316;display:inline-block;flex-shrink:0"></span>
-              <span style="font-size:11px;color:var(--text-main)">Đông</span>
-            </div>
-            <div style="display:flex;align-items:center;gap:6px">
-              <span style="width:12px;height:12px;border-radius:3px;background:#eab308;display:inline-block;flex-shrink:0"></span>
-              <span style="font-size:11px;color:var(--text-main)">Trung bình</span>
-            </div>
-            <div style="display:flex;align-items:center;gap:6px">
-              <span style="width:12px;height:12px;border-radius:3px;background:#22c55e;display:inline-block;flex-shrink:0"></span>
-              <span style="font-size:11px;color:var(--text-main)">Ít</span>
-            </div>
-            <div style="display:flex;align-items:center;gap:6px">
-              <span style="width:12px;height:12px;border-radius:3px;background:#3b82f6;display:inline-block;flex-shrink:0"></span>
-              <span style="font-size:11px;color:var(--text-main)">Rất ít</span>
-            </div>
-          </div>
+          <div style="width:1px;height:24px;background:rgba(0,0,0,0.1)"></div>
+
+          <!-- Layer Select -->
+          <select id="hm-layer-select" onchange="changeHeatmapLayer(this.value)"
+            style="font-size:12px;padding:6px 12px;border-radius:10px;border:none;background:transparent;cursor:pointer;color:var(--text-main);font-weight:700;outline:none;appearance:none;padding-right:24px;background-image:url('data:image/svg+xml;utf8,<svg width=\"24\" height=\"24\" fill=\"none\" stroke=\"%2394a3b8\" stroke-width=\"2\" viewBox=\"0 0 24 24\" xmlns=\"http://www.w3.org/2000/svg\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"m19 9-7 7-7-7\"></path></svg>');background-repeat:no-repeat;background-position:right center;background-size:14px">
+            <option value="combined">Tổng hợp</option>
+            <option value="checkin">Check-in</option>
+            <option value="view">Lượt nghe</option>
+          </select>
         </div>
       </div>
 
-      <!-- Sidebar stats -->
-      <div style="display:flex;flex-direction:column;gap:10px">
-        <!-- Stats cards -->
-        <div id="hm-stat-total" style="background:var(--card);border-radius:10px;padding:14px;border:1px solid var(--border)">
-          <div style="font-size:11px;color:var(--text-muted);font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Tổng <span id="hm-stat-unit-label">tương tác</span></div>
-          <div style="font-size:26px;font-weight:800;color:#2563eb" class="hm-total-val">—</div>
-          <div style="font-size:11px;color:var(--text-muted);margin-top:2px">trong <span id="hm-stat-days">7</span> ngày qua</div>
-        </div>
-        <div id="hm-stat-hotzone" style="background:var(--card);border-radius:10px;padding:14px;border:1px solid var(--border)">
-          <div style="font-size:11px;color:var(--text-muted);font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Điểm nóng nhất</div>
-          <div style="font-size:14px;font-weight:700;color:var(--text-main)" id="hm-stat-hotname">—</div>
-          <div style="font-size:11px;color:var(--text-muted);margin-top:3px" id="hm-stat-hotweight">—</div>
-        </div>
-
-        <!-- Top 5 list -->
-        <div style="background:var(--card);border-radius:10px;padding:14px;border:1px solid var(--border)">
-          <div style="font-size:11px;color:var(--text-muted);font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Top vùng hoạt động</div>
-          <div id="hm-top-list" style="display:flex;flex-direction:column;gap:6px">
-            <div style="height:12px;background:var(--border);border-radius:4px;animation:pulse 1.5s infinite"></div>
-            <div style="height:12px;background:var(--border);border-radius:4px;animation:pulse 1.5s infinite;width:80%"></div>
-            <div style="height:12px;background:var(--border);border-radius:4px;animation:pulse 1.5s infinite;width:60%"></div>
+      <!-- ── Side Panel (Stats) ── -->
+      <div style="position:absolute;top:100px;right:20px;z-index:10;width:280px;display:flex;flex-direction:column;gap:12px">
+        
+        <!-- Summary Stats Card -->
+        <div style="background:rgba(255,255,255,0.9);backdrop-filter:blur(16px);border-radius:20px;padding:20px;box-shadow:0 12px 40px rgba(0,0,0,0.12);border:1px solid rgba(255,255,255,0.6)">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px">
+            <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted)">Tổng tương tác</div>
+            <div style="background:#dcfce7;color:#15803d;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700">LIVE</div>
           </div>
+          <div style="font-size:32px;font-weight:900;color:#1e3a8a;letter-spacing:-1px" class="hm-total-val">—</div>
+          <div style="font-size:12px;color:var(--text-muted);margin-top:4px">Dữ liệu <span id="hm-stat-days">7</span> ngày qua</div>
+          
+          <div style="margin:16px 0;height:1px;background:linear-gradient(90deg, transparent, rgba(0,0,0,0.06), transparent)"></div>
+          
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);margin-bottom:6px">Khu vực nhộn nhịp nhất</div>
+          <div id="hm-stat-hotname" style="font-size:14px;font-weight:700;color:var(--text-main);margin-bottom:2px">Đang xác định...</div>
+          <div id="hm-stat-hotweight" style="font-size:11px;color:var(--primary);font-weight:600">...</div>
         </div>
 
-        <!-- Hourly mini chart -->
-        <div style="background:var(--card);border-radius:10px;padding:14px;border:1px solid var(--border)">
-          <div style="font-size:11px;color:var(--text-muted);font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Giờ hoạt động cao điểm</div>
-          <canvas id="hm-hour-chart" height="90"></canvas>
-        </div>
-
-        <!-- Info -->
-        <div style="background:#eff6ff;border-radius:10px;padding:12px;border:1px solid #bfdbfe">
-          <div style="font-size:11px;color:#1e40af;line-height:1.6">
-            <i data-lucide="info" style="width:12px;height:12px;display:inline-block;vertical-align:middle;margin-right:4px"></i>
-            GPS ghi ẩn danh mỗi khi du khách di chuyển trong phố. Dữ liệu cập nhật theo thời gian thực.
-          </div>
-        </div>
       </div>
+
+      <!-- Intensity Controls removed per user request -->
+
     </div>`;
 
   // Inject styles
@@ -361,11 +284,16 @@ function initHeatmapMap() {
     // Zoom → adjust heatmap radius
     _gHeatMap.addListener('zoom_changed', () => {
       const z = _gHeatMap.getZoom();
-      const autoR = Math.max(15, Math.min(90, z * 3.5));
+      // Auto-adjust but only if zoom changed significantly and user isn't overriding
+      const autoR = Math.max(15, Math.min(180, z * 4));
       const slider = document.getElementById('hm-radius-range');
-      if (slider) { slider.value = autoR; document.getElementById('hm-radius-val').textContent = `${Math.round(autoR)}px`; }
-      _heatRadius = autoR;
-      if (_heatmapLayer) _heatmapLayer.set('radius', _heatRadius);
+      const valEl = document.getElementById('hm-radius-val');
+      if (slider && !slider.dataset.manual) { 
+        slider.value = autoR; 
+        if (valEl) valEl.textContent = `${Math.round(autoR)}px`; 
+        _heatRadius = autoR;
+        if (_heatmapLayer) _heatmapLayer.set('radius', _heatRadius);
+      }
     });
 
     _drawVKOverlay();
@@ -561,9 +489,6 @@ function _updateSidebarStats() {
   // Top 5
   _renderTopList();
 
-  // Hour chart
-  _renderHourChart();
-
   // Update count text
   const countEl = document.getElementById('heatmap-point-count');
   if (countEl) {
@@ -580,14 +505,21 @@ function _updateSidebarStats() {
 function _findPoiName(pt) {
   const lat = parseFloat(pt.lat||pt.Lat||0);
   const lng = parseFloat(pt.lng||pt.Lng||0);
-  if (typeof allPois === 'undefined') return `Khu vực ngoài tuyến`;
+  if (typeof allPois === 'undefined' || !allPois.length) return `Khu vực ngoài tuyến`;
+  
   let best = null, bestDist = Infinity;
   allPois.forEach(p => {
     const plat = parseFloat(p.latitude||p.Latitude||0);
     const plng = parseFloat(p.longitude||p.Longitude||0);
+    // Simple Euclidean distance for performance; 0.001 deg is roughly 100m
     const d = Math.hypot(lat-plat, lng-plng);
     if (d < bestDist) { bestDist = d; best = p; }
   });
+
+  // Threshold: Nếu khoảng cách > 0.002 (khoảng 200m) thì coi như ở ngoài khu vực tham quan
+  // Điều này ngăn việc test App từ xa làm sai lệch thống kê quán nhộn nhịp nhất.
+  if (bestDist > 0.002) return `Khu vực ngoài tuyến`;
+
   return best?.name||best?.Name||'Khu vực ngoài tuyến';
 }
 
@@ -608,7 +540,7 @@ function _renderTopList() {
 
   const sorted = Object.values(poiGroups).sort((a,b) => b.weight - a.weight).slice(0,5);
   const maxW = sorted[0].weight || 1;
-  const medals = ['🥇','🥈','🥉','4.','5.'];
+  const labels = ['1.','2.','3.','4.','5.'];
 
   el.innerHTML = sorted.map((g,i) => {
     const pct  = Math.min(100, Math.round(g.weight / maxW * 100));
@@ -616,7 +548,7 @@ function _renderTopList() {
     const wStr = Math.round(g.weight);
     return `
       <div class="hm-poi-row" onclick="_panToPoint(${g.lat},${g.lng})">
-        <span style="font-size:13px;width:20px;flex-shrink:0">${medals[i]}</span>
+        <span style="font-size:13px;width:20px;flex-shrink:0">${labels[i]}</span>
         <div style="flex:1;min-width:0">
           <div style="font-size:12px;font-weight:600;color:var(--text-main);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${g.name}</div>
           <div style="height:4px;border-radius:99px;background:var(--border);margin-top:3px;overflow:hidden">
@@ -626,75 +558,6 @@ function _renderTopList() {
         <span style="font-size:11px;color:var(--text-muted);flex-shrink:0;margin-left:4px">${wStr}</span>
       </div>`;
   }).join('');
-}
-
-// Lưu Chart instance ngoài canvas để destroy đúng cách
-let _hmHourChartInstance = null;
-
-function _renderHourChart() {
-  const canvas = document.getElementById('hm-hour-chart');
-  if (!canvas || typeof Chart === 'undefined') return;
-
-  // Destroy instance cũ đúng cách (KHÔNG dùng canvas._hmChart)
-  if (_hmHourChartInstance) {
-    _hmHourChartInstance.destroy();
-    _hmHourChartInstance = null;
-  }
-
-  // Build hourly distribution nếu API trả về field hour/Hour
-  const hours = Array(24).fill(0);
-  (_heatmapData || []).forEach(p => {
-    const h = p.hour ?? p.Hour;
-    if (h !== undefined && h >= 0 && h < 24) {
-      hours[h] += +(p.weight || p.Weight || 1);
-    }
-  });
-
-  // Biểu đồ thực tế phụ thuộc vào hours (nếu không có ai online, mảng rỗng)
-  const chartData = hours;
-
-  const peakHour = chartData.indexOf(Math.max(...chartData));
-  const bgColors = chartData.map((_, i) =>
-    i === peakHour ? '#2563eb' : 'rgba(37,99,235,0.22)'
-  );
-
-  // Dùng aspectRatio thay vì maintainAspectRatio:false để không cần wrapper div có height
-  canvas.removeAttribute('height');
-  canvas.removeAttribute('style');
-
-  _hmHourChartInstance = new Chart(canvas.getContext('2d'), {
-    type: 'bar',
-    data: {
-      labels: Array.from({length: 24}, (_, i) => i % 6 === 0 ? `${i}h` : ''),
-      datasets: [{
-        data: chartData,
-        backgroundColor: bgColors,
-        borderRadius: 3,
-        borderSkipped: false
-      }]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: true,
-      aspectRatio: 2.6,
-      plugins: {
-        legend: { display: false },
-        tooltip: {
-          callbacks: {
-            title: items => `${items[0].dataIndex}:00 – ${items[0].dataIndex + 1}:00`,
-            label: item  => ` ${Math.round(item.raw)} lượt`
-          }
-        }
-      },
-      scales: {
-        y: { display: false, beginAtZero: true },
-        x: {
-          grid: { display: false },
-          ticks: { font: { size: 10 }, color: '#94a3b8', maxRotation: 0 }
-        }
-      }
-    }
-  });
 }
 
 
@@ -773,13 +636,17 @@ function togglePoiLayer() {
 
 function onRadiusChange(val) {
   _heatRadius = +val;
-  document.getElementById('hm-radius-val').textContent = `${val}px`;
+  const valEl = document.getElementById('hm-radius-val');
+  if (valEl) valEl.textContent = `${val}px`;
+  const slider = document.getElementById('hm-radius-range');
+  if (slider) slider.dataset.manual = "true"; // User interaction detected
   if (_heatmapLayer) _heatmapLayer.set('radius', _heatRadius);
 }
 
 function onOpacityChange(val) {
   _heatOpacity = val / 100;
-  document.getElementById('hm-opacity-val').textContent = `${val}%`;
+  const valEl = document.getElementById('hm-opacity-val');
+  if (valEl) valEl.textContent = `${val}%`;
   if (_heatmapLayer) _heatmapLayer.set('opacity', _heatOpacity);
 }
 
@@ -790,6 +657,28 @@ async function refreshHeatmap() {
   _applyHeatLayer();
   _updateSidebarStats();
   if (typeof showToast === 'function') showToast('Đã làm mới heatmap', 'success');
+}
+
+async function clearAllAnalytics() {
+  const ok = await showConfirm(
+    'Hành động dữ dội', 
+    'Bạn có chắc chắn muốn xóa TOÀN BỘ dữ liệu thống kê (Heatmap, Lịch sử, Thời gian nghe) trên Server không?\n\nHành động này không thể hoàn tác!',
+    'danger'
+  );
+  if (!ok) return;
+
+  try {
+    const r = await fetch(`${API}/analytics/clear`, { method: 'DELETE' });
+    if (r.ok) {
+      if (typeof showToast === 'function') showToast('Đã xóa sạch dữ liệu thống kê!', 'success');
+      refreshHeatmap();
+    } else {
+      throw new Error(`Server returned ${r.status}`);
+    }
+  } catch(e) {
+    console.error('[Analytics] clear error:', e);
+    if (typeof showToast === 'function') showToast('Lỗi khi xóa dữ liệu!', 'error');
+  }
 }
 
 function exportHeatmapCsv() {

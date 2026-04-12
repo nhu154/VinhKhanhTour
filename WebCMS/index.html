@@ -110,9 +110,9 @@ if(sessionStorage.getItem('cms_logged_in') !== 'true') window.location.href='log
         <!-- Filter chips -->
         <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap">
           <button class="filter-chip owner-req-chip active" data-filter="all" onclick="setOwnerRequestFilter('all')">Tất cả</button>
-          <button class="filter-chip owner-req-chip" data-filter="pending" onclick="setOwnerRequestFilter('pending')">⏳ Chờ duyệt</button>
-          <button class="filter-chip owner-req-chip" data-filter="approved" onclick="setOwnerRequestFilter('approved')">✅ Đã duyệt</button>
-          <button class="filter-chip owner-req-chip" data-filter="rejected" onclick="setOwnerRequestFilter('rejected')">❌ Từ chối</button>
+          <button class="filter-chip owner-req-chip" data-filter="pending" onclick="setOwnerRequestFilter('pending')">Chờ duyệt</button>
+          <button class="filter-chip owner-req-chip" data-filter="approved" onclick="setOwnerRequestFilter('approved')">Đã duyệt</button>
+          <button class="filter-chip owner-req-chip" data-filter="rejected" onclick="setOwnerRequestFilter('rejected')">Từ chối</button>
         </div>
         <div id="owner-requests-list" style="flex:1;overflow-y:auto;max-height:260px"></div>
       </div>
@@ -181,9 +181,9 @@ if(sessionStorage.getItem('cms_logged_in') !== 'true') window.location.href='log
         <!-- Filter chips nổi dưới toolbar -->
         <div style="position:absolute;top:66px;left:16px;z-index:10;display:flex;gap:6px">
           <button onclick="filterPoiCat('',this)" class="filter-chip active" style="box-shadow:0 2px 8px rgba(0,0,0,0.1)">Tất cả</button>
-          <button onclick="filterPoiCat('Quán ăn',this)" class="filter-chip" style="box-shadow:0 2px 8px rgba(0,0,0,0.1)">🍜 Quán ăn</button>
-          <button onclick="filterPoiCat('WC',this)" class="filter-chip" style="box-shadow:0 2px 8px rgba(0,0,0,0.1)">🚻 WC</button>
-          <button onclick="filterPoiCat('Gửi xe',this)" class="filter-chip" style="box-shadow:0 2px 8px rgba(0,0,0,0.1)">🅿️ Xe</button>
+          <button onclick="filterPoiCat('Quán ăn',this)" class="filter-chip" style="box-shadow:0 2px 8px rgba(0,0,0,0.1)">Quán ăn</button>
+          <button onclick="filterPoiCat('WC',this)" class="filter-chip" style="box-shadow:0 2px 8px rgba(0,0,0,0.1)">WC</button>
+          <button onclick="filterPoiCat('Gửi xe',this)" class="filter-chip" style="box-shadow:0 2px 8px rgba(0,0,0,0.1)">Xe</button>
         </div>
 
         <!-- Map detail popup -->
@@ -234,8 +234,8 @@ if(sessionStorage.getItem('cms_logged_in') !== 'true') window.location.href='log
         </div>
         <div style="display:flex;gap:8px">
           <button class="btn btn-ghost btn-sm filter-chip active" onclick="filterUserRole('',this)">Tất cả</button>
-          <button class="btn btn-ghost btn-sm filter-chip" onclick="filterUserRole('admin',this)">👑 Admin</button>
-          <button class="btn btn-ghost btn-sm filter-chip" onclick="filterUserRole('user',this)">👤 User</button>
+          <button class="btn btn-ghost btn-sm filter-chip" onclick="filterUserRole('admin',this)">Admin</button>
+          <button class="btn btn-ghost btn-sm filter-chip" onclick="filterUserRole('user',this)">User</button>
         </div>
       </div>
       <table class="cms-table">
@@ -275,17 +275,23 @@ if(sessionStorage.getItem('cms_logged_in') !== 'true') window.location.href='log
   <main class="main-content" id="page-history">
     <div class="table-wrap">
       <div class="table-toolbar">
-        <div>
-          <h3>Nhật ký hành trình du khách</h3>
-          <div class="filter-row" style="margin-top:12px;margin-bottom:0">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start">
+          <div>
+            <h3 style="display:flex;align-items:center;gap:10px">
+              Nhật ký hành trình du khách
+              <button class="btn btn-ghost btn-sm" onclick="loadAnalytics()" title="Tải lại dữ liệu">
+                <i data-lucide="refresh-cw" style="width:14px;height:14px"></i>
+              </button>
+            </h3>
+            <div class="filter-row" style="margin-top:12px;margin-bottom:0">
             <div class="filter-chip active" onclick="setFilter('all',this)">Tất cả</div>
-            <div class="filter-chip" onclick="setFilter('geofence_enter',this)">🚶‍♂️ Khách ghé thăm</div>
+            <div class="filter-chip" onclick="setFilter('poi_visit',this)">🚶‍♂️ Khách ghé thăm</div>
             <div class="filter-chip" onclick="setFilter('click',this)">👆 Xem thông tin</div>
           </div>
         </div>
         <div class="search-wrap" style="width:240px">
           <i data-lucide="search"></i>
-          <input type="text" id="history-search" class="form-control" placeholder="Tìm tên quán...">
+          <input type="text" id="history-search" class="form-control" placeholder="Tìm tên quán..." oninput="filterHistory(this.value)">
         </div>
       </div>
       <table class="cms-table">
@@ -302,42 +308,11 @@ if(sessionStorage.getItem('cms_logged_in') !== 'true') window.location.href='log
     </div>
   </main>
 
-  <!-- ════ PHÂN TÍCH CHUYÊN SÂU ════ -->
-  <main class="main-content" id="page-analytics">
-    <div style="display:flex;flex-direction:column;gap:24px">
-
-      <!-- Thời gian nghe trung bình -->
-      <div class="table-wrap">
-        <div class="table-toolbar">
-          <div>
-            <h3>⏱ Thời gian nghe trung bình mỗi POI</h3>
-            <p style="font-size:12px;color:var(--text-muted);margin-top:4px">
-              Tổng hợp từ các lượt phát audio có ghi dữ liệu thời gian
-            </p>
-          </div>
-          <button class="btn btn-ghost btn-sm" onclick="fetchAvgDuration().then(renderAvgDurationTable)">
-            <i data-lucide="refresh-cw"></i> Làm mới
-          </button>
-        </div>
-        <table class="cms-table">
-          <thead>
-            <tr>
-              <th>Địa điểm</th>
-              <th style="text-align:center;width:90px">Số lần phát</th>
-              <th style="text-align:center;width:110px">Thời gian TB</th>
-              <th>Biểu đồ tương đối</th>
-            </tr>
-          </thead>
-          <tbody id="analytics-duration-body"></tbody>
-        </table>
-      </div>
-
-      <!-- Heatmap vị trí người dùng — nội dung render bởi _renderHeatmapShell() trong analytics.js -->
-      <div class="table-wrap" style="padding:20px">
-        <div id="heatmap-container"></div>
-      </div>
-
-    </div>
+  <!-- ════ PHÂN TÍCH CHUYÊN SÂU (IMMERSIVE FULLSCREEN) ════ -->
+  <main class="main-content" id="page-analytics" style="padding:0; overflow:hidden; height:calc(100vh - var(--header-height)); position:relative">
+     <div id="heatmap-container" style="width:100%; height:100%">
+        <!-- Rendered by analytics.js -->
+     </div>
   </main>
 
   <!-- ════ NGÔN NGỮ ════ -->
@@ -420,10 +395,10 @@ if(sessionStorage.getItem('cms_logged_in') !== 'true') window.location.href='log
           <div class="form-group"><label>Giờ mở cửa</label><input type="text" class="form-control" id="poi-hours" placeholder="16:00 - 23:00"></div>
           <div class="form-group"><label>Danh mục</label>
             <select class="form-control" id="poi-category">
-              <option value="Quán ăn">🍜 Quán ăn</option>
-              <option value="WC">🚻 Nhà vệ sinh</option>
-              <option value="Gửi xe">🅿️ Bãi gửi xe</option>
-              <option value="Bán vé">🎫 Quầy bán vé</option>
+              <option value="Quán ăn">Quán ăn</option>
+              <option value="WC">Nhà vệ sinh</option>
+              <option value="Gửi xe">Bãi gửi xe</option>
+              <option value="Bán vé">Quầy bán vé</option>
             </select>
           </div>
         </div>

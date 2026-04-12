@@ -50,11 +50,11 @@ namespace VinhKhanhTour.Services
             }
         }
 
-        public async Task PostAnalyticAsync(int restaurantId, string eventType = "visit", double lat = 0, double lng = 0, double value = 0.0)
+        public async Task<bool> PostAnalyticAsync(int restaurantId, string eventType = "visit", double lat = 0, double lng = 0, double value = 0.0)
         {
             try
             {
-                await _http.PostAsJsonAsync($"{BASE}/analytics", new
+                var res = await _http.PostAsJsonAsync($"{BASE}/analytics", new
                 {
                     RestaurantId = restaurantId,
                     EventType = eventType,
@@ -62,10 +62,12 @@ namespace VinhKhanhTour.Services
                     Lat = lat,
                     Lng = lng
                 });
+                return res.IsSuccessStatusCode;
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"[ApiService] PostAnalytic: {ex.Message}");
+                return false;
             }
         }
 

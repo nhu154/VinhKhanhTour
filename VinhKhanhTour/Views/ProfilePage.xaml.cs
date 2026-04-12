@@ -45,36 +45,33 @@ public partial class ProfilePage : ContentPage
     private void ApplyLanguage()
     {
         var lang = _currentLang;
-        if (_lblPageTitle != null)
-            _lblPageTitle.Text = lang switch { "en" => "My Profile", "zh" => "\u6211\u7684\u4E3B\u9875", _ => "Hồ sơ của tôi" };
-        if (_lblStatVisit != null)
-            _lblStatVisit.Text = lang switch { "en" => "Visited", "zh" => "\u53BB\u8FC7", _ => "Quán đã ghé" };
-        if (_lblStatBadge != null)
-            _lblStatBadge.Text = lang switch { "en" => "Badges", "zh" => "\u5FBD\u7AE0", _ => "Huy hiệu" };
-        if (_lblStatPoints != null)
-            _lblStatPoints.Text = lang switch { "en" => "Points", "zh" => "\u79EF\u5206", _ => "Điểm thưởng" };
-        if (_lblMenuSection != null)
-            _lblMenuSection.Text = lang switch { "en" => "Account", "zh" => "\u8D26\u6237", _ => "Tài khoản" };
-        if (_lblLangSub != null)
-            _lblLangSub.Text = lang switch { "en" => "English", "zh" => "\u4E2D\u6587", _ => "Tiếng Việt" };
-        if (_lblHistorySection != null)
-            _lblHistorySection.Text = lang switch { "en" => "Recent Activity", "zh" => "\u6700\u8FD1\u6D3B\u52A8", _ => "Hoạt động gần đây" };
+        
+        // Dynamic labels with fallback logic
+        if (_lblPageTitle != null) _lblPageTitle.Text = lang switch { "en" => "My Profile", "zh" => "我的主页", "ja" => "マイプロフィール", "ko" => "내 프로필", _ => "Hồ sơ của tôi" };
+        if (_lblStatVisit != null) _lblStatVisit.Text = lang switch { "en" => "Visited", "zh" => "去过", "ja" => "訪問済み", _ => "Quán đã ghé" };
+        if (_lblStatBadge != null) _lblStatBadge.Text = lang switch { "en" => "Badges", "zh" => "徽章", "ja" => "バッジ", _ => "Huy hiệu" };
+        if (_lblStatPoints != null) _lblStatPoints.Text = lang switch { "en" => "Points", "zh" => "积分", "ja" => "ポイント", _ => "Điểm thưởng" };
+        if (_lblMenuSection != null) _lblMenuSection.Text = lang switch { "en" => "Account", "zh" => "账户", "ja" => "アカウント", _ => "Tài khoản" };
+        
+        if (_lblHistorySection != null) _lblHistorySection.Text = lang switch { "en" => "Recent Activity", "zh" => "最近活动", "ja" => "最近の活動", _ => "Hoạt động gần đây" };
 
-        if (_lblFav != null) _lblFav.Text = lang switch { "en" => "Favorite Spots", "zh" => "\u6536\u85CF\u7684\u9910\u5385", _ => "Quán yêu thích" };
-        if (_lblOffers != null) _lblOffers.Text = lang switch { "en" => "My Offers", "zh" => "\u6211\u7684\u4F18\u60E0", _ => "Ưu đãi của tôi" };
-        if (_lblBadgeMoi != null) _lblBadgeMoi.Text = lang switch { "en" => "New", "zh" => "\u65B0", _ => "Mới" };
-        if (_lblLang != null) _lblLang.Text = lang switch { "en" => "System Language", "zh" => "\u7CFB\u7EDF\u8BED\u8A00", _ => "Ngôn ngữ hệ thống" };
-        if (_lblStats != null) _lblStats.Text = lang switch { "en" => "Analytics", "zh" => "\u7EDF\u8BA1\u5206\u6790", _ => "Thống kê phân tích" };
-        if (_lblSettings != null) _lblSettings.Text = lang switch { "en" => "Settings & Privacy", "zh" => "\u8BBE\u7F6E\u4E0E\u9690\u79C1", _ => "Cài đặt & Quyền riêng tư" };
-        // Only update name/role for language if user is NOT authenticated (guest default text)
-        var session = VinhKhanhTour.Services.UserSession.Instance;
-        if (_lblUserName != null && !session.IsAuthenticatedUser)
-            _lblUserName.Text = lang switch { "en" => "Vinh Khanh Tourist", "zh" => "\u6c38\u5e86\u6e38\u5ba2", _ => "Du kh\u00e1ch V\u0129nh Kh\u00e1nh" };
-        if (_lblUserRole != null && !session.IsAuthenticatedUser)
-            _lblUserRole.Text = lang switch { "en" => "\u2728 Guest Explorer", "zh" => "\u2728 \u6e38\u5ba2", _ => "Kh\u00e1ch tham quan" };
-        if (_lblEditBtn != null) _lblEditBtn.Text = lang switch { "en" => "✏\uFE0F Edit", "zh" => "✏\uFE0F \u7F16\u8F91", _ => "Sửa" };
+        if (_lblFav != null) _lblFav.Text = lang switch { "en" => "Favorite Spots", "zh" => "收藏的餐厅", "ja" => "お気に入り", _ => "Quán yêu thích" };
+        if (_lblOffers != null) _lblOffers.Text = lang switch { "en" => "My Offers", "zh" => "我的优惠", "ja" => "オファー", _ => "Ưu đãi của tôi" };
+        if (_lblBadgeMoi != null) _lblBadgeMoi.Text = lang switch { "en" => "New", "zh" => "新", "ja" => "新着", _ => "Mới" };
+        if (_lblLang != null) _lblLang.Text = lang switch { "en" => "System Language", "zh" => "系统语言", "ja" => "システム言語", _ => "Ngôn ngữ hệ thống" };
+        if (_lblStats != null) _lblStats.Text = lang switch { "en" => "Analytics", "zh" => "统计分析", "ja" => "統計", _ => "Thống kê phân tích" };
+        if (_lblSettings != null) _lblSettings.Text = lang switch { "en" => "Settings & Privacy", "zh" => "设置与隐私", "ja" => "設定", _ => "Cài đặt & Quyền riêng tư" };
+        
+        var _session = VinhKhanhTour.Services.UserSession.Instance;
+        if (!_session.IsAuthenticatedUser)
+        {
+            if (_lblUserName != null) _lblUserName.Text = lang switch { "en" => "Vinh Khanh Tourist", "ja" => "ヴィンカン観光客", _ => "Du khách Vĩnh Khánh" };
+            if (_lblUserRole != null) _lblUserRole.Text = lang switch { "en" => "✨ Guest Explorer", "ja" => "✨ ゲストエクスプローラー", _ => "Khách tham quan" };
+        }
+        
+        if (_lblEditBtn != null) _lblEditBtn.Text = lang switch { "en" => "✏️ Edit", "ja" => "✏️ 編集", _ => "Sửa" };
         if (_lblLoading != null && _lblLoading.Text != null && _lblLoading.Text.EndsWith("..."))
-            _lblLoading.Text = lang switch { "en" => "Loading data...", "zh" => "\u52A0\u8F7D\u6570\u636E...", _ => "Đang tải dữ liệu..." };
+            _lblLoading.Text = lang switch { "en" => "Loading data...", "zh" => "加载数据...", "ja" => "読み込み中...", _ => "Đang tải dữ liệu..." };
     }
 
     protected override async void OnAppearing()
@@ -248,7 +245,16 @@ public partial class ProfilePage : ContentPage
 
         _lblStats = new Label { FontSize = 16, FontAttributes = FontAttributes.Bold, TextColor = Color.FromArgb("#0D2137"), VerticalOptions = LayoutOptions.Center };
         var statsItem = MakeMenuItem("\U0001F4CA", _lblStats, null, Color.FromArgb("#00BFA5"));
-        statsItem.GestureRecognizers.Add(new TapGestureRecognizer { Command = new Command(async () => await Navigation.PushModalAsync(new AnalyticsPage())) });
+        statsItem.GestureRecognizers.Add(new TapGestureRecognizer { Command = new Command(() => {
+            if (!VinhKhanhTour.Services.UserSession.Instance.IsAuthenticatedUser)
+            {
+                ShowAuthRequiredPopup();
+            }
+            else
+            {
+                Navigation.PushModalAsync(new AnalyticsPage());
+            }
+        }) });
         menuItems.Add(statsItem);
         menuItems.Add(new BoxView { HeightRequest = 1, Color = Color.FromArgb("#0FFFFFFF"), Margin = new Thickness(80, 0, 20, 0) });
 
@@ -282,8 +288,114 @@ public partial class ProfilePage : ContentPage
         });
 
         scroll.Content = root;
-        Content = scroll;
+
+        // Overlay Grid for Custom Popups
+        var mainGrid = new Grid();
+        mainGrid.Children.Add(scroll);
+        
+        // Popup Overlay (Hidden initially)
+        _popupOverlay = new Grid
+        {
+            BackgroundColor = Color.FromArgb("#AA000000"),
+            IsVisible = false,
+            Opacity = 0
+        };
+        var dismissTap = new TapGestureRecognizer();
+        dismissTap.Tapped += (s, e) => HidePopup();
+        _popupOverlay.GestureRecognizers.Add(dismissTap);
+        
+        mainGrid.Children.Add(_popupOverlay);
+
+        Content = mainGrid;
         ApplyLanguage();
+    }
+
+    private Grid _popupOverlay = null!;
+
+    private void ShowAuthRequiredPopup()
+    {
+        _popupOverlay.Children.Clear();
+        
+        var card = new Border
+        {
+            BackgroundColor = Colors.White,
+            StrokeShape = new RoundRectangle { CornerRadius = 30 },
+            WidthRequest = 320,
+            VerticalOptions = LayoutOptions.Center,
+            HorizontalOptions = LayoutOptions.Center,
+            Padding = new Thickness(24, 32),
+            Shadow = new Shadow { Brush = Colors.Black, Opacity = 0.3f, Radius = 20 }
+        };
+
+        var stack = new VerticalStackLayout { Spacing = 20, HorizontalOptions = LayoutOptions.Center };
+        
+        stack.Add(new Label { Text = "🔐", FontSize = 48, HorizontalOptions = LayoutOptions.Center });
+        
+        stack.Add(new Label 
+        { 
+            Text = "Bạn đã có tài khoản chưa?", 
+            FontSize = 20, 
+            FontAttributes = FontAttributes.Bold, 
+            TextColor = Color.FromArgb("#0D2137"), 
+            HorizontalTextAlignment = TextAlignment.Center 
+        });
+
+        stack.Add(new Label 
+        { 
+            Text = "Tính năng thống kê hành trình dành riêng cho thành viên Vĩnh Khánh Tour để ghi lại lịch sử trải nghiệm của bạn.", 
+            FontSize = 14, 
+            TextColor = Color.FromArgb("#64748B"), 
+            HorizontalTextAlignment = TextAlignment.Center,
+            LineHeight = 1.4
+        });
+
+        var btnLogin = new Button
+        {
+            Text = "Đã có (Đăng nhập)",
+            BackgroundColor = Color.FromArgb("#1565C0"),
+            TextColor = Colors.White,
+            FontAttributes = FontAttributes.Bold,
+            CornerRadius = 15,
+            HeightRequest = 50
+        };
+        btnLogin.Clicked += (s, e) => { HidePopup(); Application.Current!.MainPage = new NavigationPage(new LoginPage()); };
+        
+        var btnReg = new Button
+        {
+            Text = "Chưa có (Đăng ký)",
+            BackgroundColor = Color.FromArgb("#E3F2FD"),
+            TextColor = Color.FromArgb("#1565C0"),
+            FontAttributes = FontAttributes.Bold,
+            CornerRadius = 15,
+            HeightRequest = 50
+        };
+        btnReg.Clicked += async (s, e) => { HidePopup(); await Navigation.PushAsync(new RegisterPage()); };
+
+        var btnCancel = new Label
+        {
+            Text = "Bỏ qua",
+            FontSize = 13,
+            TextColor = Color.FromArgb("#94A3B8"),
+            HorizontalOptions = LayoutOptions.Center,
+            Margin = new Thickness(0, 8, 0, 0)
+        };
+        btnCancel.GestureRecognizers.Add(new TapGestureRecognizer { Command = new Command(() => HidePopup()) });
+
+        stack.Add(btnLogin);
+        stack.Add(btnReg);
+        stack.Add(btnCancel);
+
+        card.Content = stack;
+        _popupOverlay.Children.Add(card);
+
+        _popupOverlay.IsVisible = true;
+        _popupOverlay.FadeTo(1, 200);
+    }
+
+    private async void HidePopup()
+    {
+        await _popupOverlay.FadeTo(0, 150);
+        _popupOverlay.IsVisible = false;
     }
 
     private async Task LoadStatsAsync()

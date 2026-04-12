@@ -24,6 +24,7 @@ namespace VinhKhanhTour.Views
         private Location? _userLocation;
         private Restaurant? _nearestRestaurant;
         private List<Restaurant> _restaurants = new();
+        private List<AppLanguage> _availableLangs = new();
         private readonly Dictionary<int, DateTime> _lastNotified = new();
         private bool _htmlLoaded = false;
         private readonly Dictionary<int, string> _imgCache = new(); // cache base64 anh
@@ -42,6 +43,10 @@ namespace VinhKhanhTour.Views
 
         private string? _tourName = null;
         private string _currentLang = Preferences.Default.Get("app_lang", "vi");
+        private Restaurant? _pendingDirectionPoi; // POI waiting for map to load/refresh
+        private bool _isProcessingPending = false;
+        private bool _mapIsMapReadyForCommands = false;
+        private bool _skipNextRefresh = false; // Flag to prevent OnAppearing from resetting map during jumps
 
         public MapPage() : this(null, null) { }
 
@@ -165,8 +170,18 @@ namespace VinhKhanhTour.Views
             else if (_htmlLoaded && _restaurants.Count > 0)
             {
                 _ = _webView.EvaluateJavaScriptAsync("if(typeof map !== 'undefined' && map) { google.maps.event.trigger(map, 'resize'); }");
-                // Luôn refresh POI từ API mỗi khi vào tab Bản đồ
-                _ = RefreshPoisFromApiAsync();
+                
+                // If we are about to navigate to a specific shop, don't trigger a full data refresh
+                // because it might reset the map (setting _htmlLoaded=false) and break the request.
+                if (_pendingDirectionPoi != null || _skipNextRefresh)
+                {
+                    System.Diagnostics.Debug.WriteLine("[MapPage] Skipping OnAppearing refresh because navigation is pending");
+                    _skipNextRefresh = false;
+                }
+                else
+                {
+                    _ = RefreshPoisFromApiAsync();
+                }
             }
             else if (!_htmlLoaded)
             {
@@ -175,6 +190,23 @@ namespace VinhKhanhTour.Views
 
             _ = RequestLocationPermissionAsync();
             _ = StartLocationTrackingAsync();
+            _ = RefreshLangsAsync();
+        }
+
+        private async Task RefreshLangsAsync()
+        {
+            try
+            {
+                var langs = await ApiService.Instance.GetLanguagesAsync();
+                if (langs.Count > 0 && langs.Count != _availableLangs.Count)
+                {
+                    _availableLangs = langs;
+                    _mapIsMapReadyForCommands = false; // Reset ready state for fresh init if needed
+                    _htmlLoaded = false;
+                    await InitAsync();
+                }
+            }
+            catch { }
         }
 
         private async Task RefreshPoisFromApiAsync()
@@ -276,6 +308,9 @@ namespace VinhKhanhTour.Views
 
                 if (!_htmlLoaded)
                 {
+                    if (_availableLangs == null || _availableLangs.Count == 0)
+                        _availableLangs = await ApiService.Instance.GetLanguagesAsync();
+
                     await FetchImagesAsync();
                     _htmlLoaded = true;
                     var data = BuildJson();
@@ -297,6 +332,12 @@ namespace VinhKhanhTour.Views
 
             switch (uri.Host.ToLower())
             {
+                case "mapready":
+                    _htmlLoaded = true;
+                    _mapIsMapReadyForCommands = true;
+                    System.Diagnostics.Debug.WriteLine("[MapPage] Signal Received: mapready");
+                    CheckPendingDirection();
+                    break;
                 case "locationupdated":
                     if (double.TryParse(q["lat"], System.Globalization.NumberStyles.Float, ic, out double lat) &&
                         double.TryParse(q["lng"], System.Globalization.NumberStyles.Float, ic, out double lng))
@@ -324,6 +365,11 @@ namespace VinhKhanhTour.Views
                     break;
                 case "routerequested":
                     var d = Uri.UnescapeDataString(q["data"] ?? "");
+                    try {
+                        using var doc = JsonDocument.Parse(d);
+                        if (doc.RootElement.TryGetProperty("id", out var idProp))
+                            _ = AnalyticsService.Instance.RecordPoiVisitAsync(idProp.GetInt32(), "click");
+                    } catch { }
                     System.Diagnostics.Debug.WriteLine($"[MapPage] routerequested data={d.Substring(0, Math.Min(d.Length, 60))}");
                     MainThread.BeginInvokeOnMainThread(() => _ = DrawRouteAsync(d));
                     break;
@@ -381,9 +427,11 @@ namespace VinhKhanhTour.Views
         private void OnNavigated(object? sender, WebNavigatedEventArgs e)
         {
             if (e.Result != WebNavigationResult.Success) return;
+            // Note: We don't set _htmlLoaded = true here anymore. 
+            // We wait for JS to call 'maui://mapready' to ensure initMap is complete.
             MainThread.BeginInvokeOnMainThread(async () =>
             {
-                await Task.Delay(2000);
+                await Task.Delay(500); // Small grace period
                 try { await _webView.EvaluateJavaScriptAsync("gps();"); } catch { }
                 _statusLabel.Text = _tourName != null
                     ? $"{_currentLang switch { "en" => "Tour", "zh" => "行程", _ => "Tour" }}: {_tourName} — {_restaurants.Count} {(_currentLang == "vi" ? "điểm" : (_currentLang == "en" ? "spots" : "个景点"))}"
@@ -398,6 +446,16 @@ namespace VinhKhanhTour.Views
                 }
                 catch { }
             });
+        }
+
+        private void CheckPendingDirection()
+        {
+            if (_pendingDirectionPoi != null && !_isProcessingPending)
+            {
+                var target = _pendingDirectionPoi;
+                _pendingDirectionPoi = null;
+                MainThread.BeginInvokeOnMainThread(() => FocusAndDirect(target));
+            }
         }
 
 
@@ -566,13 +624,17 @@ namespace VinhKhanhTour.Views
             lines.Add("<div id='proximityAlert'><div id='proximityCard'><div class='pcBanner'></div><div class='pcBody'><div class='pcIcon' id='pcIconEl'>📍</div><div class='pcInfo'><div class='pcBadge' id='pcBadgeEl'>GẦN BẠN</div><div class='pcName' id='pcNameEl'></div><div class='pcDesc' id='pcDescEl'></div></div></div><div class='pcActions'><button class='pcDismiss' onclick='closeProximity()'>Đóng</button><button class='pcNav' onclick='navFromProximity()'>Chỉ đường</button></div></div></div>");
 
             lines.Add("<div id='headerRow'>");
-            string initialFlag = _currentLang == "en" ? "🇺🇸" : (_currentLang == "zh" ? "🇨🇳" : "🇻🇳");
+            
+            var currentLangObj = _availableLangs.FirstOrDefault(l => l.Code == _currentLang) ?? _availableLangs.FirstOrDefault();
+            string initialFlag = currentLangObj?.Flag ?? "🌐";
+            
             lines.Add("  <div id='searchBar'><span id='btnSearch'>🔍</span><input id='searchInput' type='text' placeholder='Tìm quán ăn...' oninput='onSearch(this.value)' onfocus='showResults()'/><button id='btnClearSearch' onclick='clearSearch()'>✕</button></div>");
             lines.Add("  <div id='langBtn' onclick='toggleLang()'><span id='currFlag'>" + initialFlag + "</span>");
             lines.Add("    <div id='langDropdown'>");
-            lines.Add("      <div class='ldItem' onclick='chgL(\"vi\", event)'>🇻🇳 Tiếng Việt</div>");
-            lines.Add("      <div class='ldItem' onclick='chgL(\"en\", event)'>🇺🇸 English</div>");
-            lines.Add("      <div class='ldItem' onclick='chgL(\"zh\", event)'>🇨🇳 中文</div>");
+            foreach (var l in _availableLangs)
+            {
+                lines.Add($"      <div class='ldItem' onclick='chgL(\"{l.Code}\", event)'>{l.Flag} {l.Name}</div>");
+            }
             lines.Add("    </div>");
             lines.Add("  </div>");
             lines.Add("</div>");
@@ -664,10 +726,10 @@ namespace VinhKhanhTour.Views
             lines.Add("function menuNav(id,ev){ev.stopPropagation();var r=ALL.find(function(x){return x.id===id;});if(!r)return;cur=r;document.getElementById('menuSheet').classList.remove('open');reqR();}");
 
             lines.Add("document.addEventListener('click',function(e){var sr=document.getElementById('searchResults');if(sr&&!sr.contains(e.target)&&e.target.id!=='searchInput')sr.style.display='none';var lb=document.getElementById('langBtn');var ld=document.getElementById('langDropdown');if(ld&&!lb.contains(e.target))ld.style.display='none';});");
-            lines.Add("function initMap(){try{var mapDiv=document.getElementById('map');if(!mapDiv)return;var mapOptions={center:CTR,zoom:16,mapTypeControl:false,streetViewControl:false,fullscreenControl:false,zoomControl:true,zoomControlOptions:{position:google.maps.ControlPosition.LEFT_CENTER},scrollwheel:true,gestureHandling:'greedy',clickableIcons:false,mapTypeId:'roadmap',disableDoubleClickZoom:true};map=new google.maps.Map(mapDiv,mapOptions);if(ALL&&ALL.length>0){ALL.forEach(function(r){var mk=new google.maps.Marker({position:{lat:r.lat,lng:r.lng},map:map,title:r.name});mk.addListener('click',function(){pick(r);});});}map.addListener('click',function(){closeS();});map.addListener('dblclick',function(e){ toast(cL==='vi'?'Đã dịch chuyển tới đây!':(cL==='en'?'Teleported here!':'已传送到这里！')); sPos(e.latLng.lat(),e.latLng.lng()); });google.maps.event.trigger(map, 'resize');setTimeout(gps,1000); applyLang(); }catch(e){console.error(e);}}");
+            lines.Add("function initMap(){try{var mapDiv=document.getElementById('map');if(!mapDiv)return;var mapOptions={center:CTR,zoom:16,mapTypeControl:false,streetViewControl:false,fullscreenControl:false,zoomControl:true,zoomControlOptions:{position:google.maps.ControlPosition.LEFT_CENTER},scrollwheel:true,gestureHandling:'greedy',clickableIcons:false,mapTypeId:'roadmap',disableDoubleClickZoom:true};map=new google.maps.Map(mapDiv,mapOptions);if(ALL&&ALL.length>0){ALL.forEach(function(r){var mk=new google.maps.Marker({position:{lat:r.lat,lng:r.lng},map:map,title:r.name});mk.addListener('click',function(){pick(r);});});}map.addListener('click',function(){closeS();});map.addListener('dblclick',function(e){ toast(cL==='vi'?'Đã dịch chuyển tới đây!':(cL==='en'?'Teleported here!':'已传送到这里！')); sPos(e.latLng.lat(),e.latLng.lng()); });google.maps.event.trigger(map, 'resize');setTimeout(gps,1000); applyLang(); window.location.href='maui://mapready'; }catch(e){console.error(e); window.location.href='maui://mapready';}}");
             lines.Add("</script>");
             lines.Add("<script src='https://maps.googleapis.com/maps/api/js?key=" + KEY + "'></script>");
-            lines.Add("<script>window.addEventListener('load',function(){setTimeout(initMap,100);});</script>");
+            lines.Add("<script>window.addEventListener('load',function(){setTimeout(initMap,200);});</script>");
             lines.Add("</body></html>");
 
             return string.Join("\n", lines);
@@ -708,7 +770,73 @@ namespace VinhKhanhTour.Views
                 VisitedAt = DateTime.Now,
                 Username = VinhKhanhTour.Services.UserSession.Instance.Username ?? string.Empty
             });
-            _ = ApiService.Instance.PostAnalyticAsync(nearest.Id, "geofence_enter", location.Latitude, location.Longitude);
+            _ = ApiService.Instance.PostAnalyticAsync(nearest.Id, "poi_visit", location.Latitude, location.Longitude);
+        }
+
+        public async void FocusAndDirect(Restaurant r)
+        {
+            if (r == null) return;
+            
+            // 1. If map is not loaded OR not ready for commands yet, queue it
+            if (!_htmlLoaded || !_mapIsMapReadyForCommands)
+            {
+                System.Diagnostics.Debug.WriteLine($"[MapPage] Queueing direction for {r.Name} (Loaded={_htmlLoaded}, Ready={_mapIsMapReadyForCommands})");
+                _pendingDirectionPoi = r;
+                _skipNextRefresh = true; // Avoid reload during jump
+                if (!_htmlLoaded) await InitAsync();
+                return;
+            }
+
+            if (_isProcessingPending) return;
+
+            try
+            {
+                _isProcessingPending = true;
+                _skipNextRefresh = true;
+
+                await MainThread.InvokeOnMainThreadAsync(async () =>
+                {
+                    // Center and show POI sheet
+                    await _webView.EvaluateJavaScriptAsync($"if(typeof pick === 'function') {{ var target = ALL.find(x => x.id === {r.Id}); if(target) pick(target); }} else if(typeof selectSearchResult === 'function') {{ selectSearchResult({r.Id}); }}");
+                    
+                    // Show status toast
+                    await _webView.EvaluateJavaScriptAsync($"if(typeof toast === 'function') toast('{(_currentLang == "vi" ? "Đang định vị và tìm đường..." : "Locating and finding route...")}')");
+
+                    // 2. Trigger directions routing
+                    var routeData = new { id = r.Id, lat = r.Latitude, lng = r.Longitude, name = r.Name };
+                    string json = System.Text.Json.JsonSerializer.Serialize(routeData);
+                    
+                    // Networking in background
+                    bool routeSuccess = await Task.Run(async () => await DrawRouteAsync(json));
+
+                    if (routeSuccess)
+                    {
+                        // 3. Prompt for commentary AFTER route is shown on map
+                        bool answer = await DisplayAlert(
+                            _currentLang == "vi" ? "Thuyết minh" : "Commentary",
+                            _currentLang == "vi" ? "Bạn có muốn nghe thuyết minh về địa điểm này không?" : "Would you like to hear the commentary for this location?",
+                            _currentLang == "vi" ? "Có, phát ngay" : "Yes, play now",
+                            _currentLang == "vi" ? "Để sau" : "Maybe later");
+
+                        if (answer)
+                        {
+                            await SpeakAsync(r);
+                        }
+                    }
+                    else
+                    {
+                        await _webView.EvaluateJavaScriptAsync($"if(typeof toast === 'function') toast('{(_currentLang == "vi" ? "Lỗi: Không tìm thấy đường đi" : "Error: No route found")}')");
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[MapPage] FocusAndDirect error: {ex.Message}");
+            }
+            finally
+            {
+                _isProcessingPending = false;
+            }
         }
 
         public void LoadTourPois(List<Restaurant> restaurants, string tourName)
@@ -766,7 +894,7 @@ namespace VinhKhanhTour.Views
             });
         }
 
-        private async Task DrawRouteAsync(string json)
+        private async Task<bool> DrawRouteAsync(string json)
         {
             var loc = _userLocation ?? new Location(10.7615, 106.7045); // Fallback to Vinh Khanh Center
             bool usingFallback = _userLocation == null;
@@ -774,14 +902,12 @@ namespace VinhKhanhTour.Views
             {
                 var opts = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
                 var info = JsonSerializer.Deserialize<RouteRequest>(json, opts);
-                if (info == null) return;
-                System.Diagnostics.Debug.WriteLine($"[MapPage] DrawRouteAsync called → dest={info?.Lat},{info?.Lng} usingFallback={usingFallback}");
+                if (info == null) return false;
+
                 var ic = System.Globalization.CultureInfo.InvariantCulture;
                 var origin = $"{loc.Latitude.ToString(ic)},{loc.Longitude.ToString(ic)}";
                 var dest = $"{info.Lat.ToString(ic)},{info.Lng.ToString(ic)}";
 
-                // mode=walking + avoid=ferries → đường đi bộ thực tế, không qua sông/phà
-                // alternatives=false → chỉ lấy 1 đường tốt nhất
                 var url = $"https://maps.googleapis.com/maps/api/directions/json?origin={origin}&destination={dest}&mode=walking&avoid=ferries&alternatives=false&language={_currentLang}&key={KEY}";
 
                 // Cảnh báo nếu đang dùng vị trí trung tâm thay GPS thật
@@ -789,11 +915,11 @@ namespace VinhKhanhTour.Views
                 {
                     var warnMsg = _currentLang switch
                     {
-                        "en" => "⚠️ GPS unavailable – routing from area center",
-                        "zh" => "⚠️ GPS 不可用，从区域中心导航",
-                        _ => "⚠️ Chưa có GPS – chỉ đường từ trung tâm khu vực"
+                        "en" => "⚠️ GPS unavailable",
+                        "zh" => "⚠️ GPS 不可用",
+                        _ => "⚠️ Chưa có GPS"
                     };
-                    await MainThread.InvokeOnMainThreadAsync(() => _statusLabel.Text = warnMsg);
+                    MainThread.BeginInvokeOnMainThread(() => _statusLabel.Text = warnMsg);
                 }
 
                 using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(10) };
@@ -804,15 +930,14 @@ namespace VinhKhanhTour.Views
                 System.Diagnostics.Debug.WriteLine($"[MapPage] Directions API status={status}");
                 if (status != "OK")
                 {
-                    System.Diagnostics.Debug.WriteLine($"[MapPage] ⚠️ Directions API status: {status}");
                     var errMsg = _currentLang switch
                     {
-                        "en" => "Could not find a walking route",
-                        "zh" => "无法找到步行路线",
-                        _ => "Không tìm được đường đi bộ"
+                        "en" => "No walking route",
+                        "zh" => "无法找到路线",
+                        _ => "Lỗi chỉ đường"
                     };
-                    await MainThread.InvokeOnMainThreadAsync(() => _statusLabel.Text = errMsg);
-                    return;
+                    MainThread.BeginInvokeOnMainThread(() => _statusLabel.Text = errMsg);
+                    return false;
                 }
 
                 var route = root.GetProperty("routes")[0];
@@ -882,12 +1007,13 @@ namespace VinhKhanhTour.Views
                 await MainThread.InvokeOnMainThreadAsync(async () =>
                 {
                     await _webView.EvaluateJavaScriptAsync($"drawPremiumRoute({segmentsStr}, '{name}', '{dTxtEsc}', '{tTxtEsc}', '{imgEsc}');");
-                    System.Diagnostics.Debug.WriteLine("[MapPage] Route drawn OK: new premium logic combined payload");
                 });
+                return true;
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"[MapPage] ❌ DrawRouteAsync error: {ex.Message}");
+                return false;
             }
         }
 
