@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using MySql.Data.MySqlClient;
 using Dapper;
+using VinhkhanhTour.API.Services;
 
 namespace VinhkhanhTour.API.Controllers
 {
@@ -31,9 +32,12 @@ namespace VinhkhanhTour.API.Controllers
     public class AuthController : ControllerBase
     {
         private readonly string _conn;
-        public AuthController(IConfiguration config)
+        private readonly LogService _log;
+
+        public AuthController(IConfiguration config, LogService log)
         {
             _conn = config.GetConnectionString("DefaultConnection")!;
+            _log = log;
         }
 
         // POST: api/auth/login
@@ -71,6 +75,8 @@ namespace VinhkhanhTour.API.Controllers
             if (!passwordOk)
                 return Unauthorized(new { message = "Sai tài khoản hoặc mật khẩu" });
 
+            await _log.LogAction(user.Id, user.FullName, "LOGIN", "CMS");
+
             return Ok(new
             {
                 success = true,
@@ -97,6 +103,7 @@ namespace VinhkhanhTour.API.Controllers
                 "INSERT INTO users (Username, Password, FullName, Role) VALUES (@Username, @Password, @FullName, @Role)",
                 new { body.Username, Password = hashedPassword, body.FullName, body.Role });
 
+            await _log.LogAction(Request, "REGISTER_USER", body.Username);
             return Ok(new { message = "Đăng ký thành công" });
         }
 
@@ -130,6 +137,7 @@ namespace VinhkhanhTour.API.Controllers
                 "UPDATE users SET Password=@p WHERE Id=@Id",
                 new { p = newHash, Id = body.UserId });
 
+            await _log.LogAction(Request, "CHANGE_PASSWORD", user.Username);
             return Ok(new { message = "Đổi mật khẩu thành công" });
         }
 
@@ -162,6 +170,7 @@ namespace VinhkhanhTour.API.Controllers
                     UPDATE users SET FullName=@FullName, Role=@Role WHERE Id=@Id",
                     new { body.FullName, body.Role, Id = id });
             }
+            await _log.LogAction(Request, "UPDATE_USER", body.Username ?? $"ID {id}");
             return Ok(new { message = "Cập nhật thành công" });
         }
 
@@ -170,7 +179,9 @@ namespace VinhkhanhTour.API.Controllers
         public async Task<IActionResult> DeleteUser(int id)
         {
             using var db = new MySqlConnection(_conn);
+            var user = await db.QueryFirstOrDefaultAsync<UserDto>("SELECT Username FROM users WHERE Id=@Id", new { Id = id });
             await db.ExecuteAsync("DELETE FROM users WHERE Id=@Id", new { Id = id });
+            await _log.LogAction(Request, "DELETE_USER", user?.Username ?? $"User {id}");
             return Ok(new { message = "Đã xóa người dùng" });
         }
     }

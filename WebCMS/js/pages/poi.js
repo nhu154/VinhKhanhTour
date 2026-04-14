@@ -383,7 +383,7 @@ async function savePoiData() {
   try {
     const method = id ? 'PUT' : 'POST';
     const url = id ? `${API}/restaurants/${id}` : `${API}/restaurants`;
-    const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    const res = await fetch(url, { method, headers: getAdminHeaders(), body: JSON.stringify(body) });
     if (res.ok) {
       showToast(id ? '✅ Cập nhật thành công!' : '✅ Tạo điểm mới thành công!', 'success');
       closePoiForm(); 
@@ -409,7 +409,7 @@ async function deletePoiData() {
   if (!id) return;
   if (!(await showConfirm('Xóa địa điểm', '⚠️ Bạn có chắc chắn muốn xóa địa điểm này? Thao tác không thể hoàn tác.', 'danger'))) return;
   try {
-    const res = await fetch(`${API}/restaurants/${id}`, { method: 'DELETE' });
+    const res = await fetch(`${API}/restaurants/${id}`, { method: 'DELETE', headers: getAdminHeaders() });
     if (res.ok) { showToast('🗑️ Đã xóa thành công', 'success'); closePoiForm(); await loadPois(); renderStatsCards(); }
   } catch(e) { showToast('❌ Lỗi khi xóa', 'danger'); }
 }

@@ -1,4 +1,4 @@
-﻿using VinhkhanhTour.API.Services;
+using VinhkhanhTour.API.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -8,6 +8,7 @@ builder.Services.AddSwaggerGen();
 
 // Đăng ký services dùng chung
 builder.Services.AddScoped<ImageService>();
+builder.Services.AddScoped<LogService>();
 
 builder.Services.AddCors(options =>
 {

@@ -25,7 +25,7 @@ namespace VinhKhanhTour.Views
             NavigationPage.SetHasNavigationBar(this, false);
 
             // Record manual click interaction
-            _ = AnalyticsService.Instance.RecordPoiVisitAsync(_restaurant.Id, "click");
+            _ = AnalyticsService.RecordPoiVisitAsync(_restaurant.Id, "click");
 
             CreateUI();
         }
@@ -61,7 +61,11 @@ namespace VinhKhanhTour.Views
 
             var nameCard = new Border { BackgroundColor = Colors.White, StrokeThickness = 0, StrokeShape = new RoundRectangle { CornerRadius = 24 }, Padding = 24, Shadow = new Shadow { Brush = Color.FromArgb("#000000"), Opacity = 0.1f, Radius = 15, Offset = new Point(0, 4) } };
             var nameStack = new VerticalStackLayout { Spacing = 8 };
-            nameStack.Add(new Label { Text = _restaurant.Name, FontSize = 26, FontAttributes = FontAttributes.Bold, TextColor = Color.FromArgb("#0D2137") });
+
+            // ── FIX: Localize Name & Rating ──
+            var rName = _restaurant.GetName(_currentLang);
+            nameStack.Add(new Label { Text = rName, FontSize = 26, FontAttributes = FontAttributes.Bold, TextColor = Color.FromArgb("#0D2137") });
+
             var metaRow = new HorizontalStackLayout { Spacing = 12 };
             metaRow.Add(new Label { Text = $"⭐ {_restaurant.Rating:0.0}", FontSize = 14, FontAttributes = FontAttributes.Bold, TextColor = Color.FromArgb("#FFB300"), VerticalOptions = LayoutOptions.Center });
             var status = GetOpenStatus(_restaurant.OpenHours);
@@ -71,21 +75,70 @@ namespace VinhKhanhTour.Views
             infoSection.Add(nameCard);
 
             // Quick Actions (Professional Text-Only Buttons)
-            var actionRow = new Grid { ColumnDefinitions = { new ColumnDefinition(GridLength.Star), new ColumnDefinition(GridLength.Star) }, RowDefinitions = { new RowDefinition { Height = GridLength.Auto }, new RowDefinition { Height = GridLength.Auto } }, RowSpacing = 12, ColumnSpacing = 12 };
-            
-            actionRow.Add(CreateProfessionalButton(_currentLang switch { "en" => "DIRECTIONS", "zh" => "导航", _ => "DẪN ĐƯỜNG" }, async () => await DirectToMap(), Color.FromArgb("#1565C0"), Colors.White), 0, 0);
-            actionRow.Add(CreateProfessionalButton(_currentLang switch { "en" => "CALL", "zh" => "电话", _ => "GỌI ĐIỆN" }, () => Launcher.OpenAsync("tel:0937916159"), Color.FromArgb("#F1F5F9"), Color.FromArgb("#1565C0")), 1, 0);
-            actionRow.Add(CreateProfessionalButton(_restaurant.IsFavorite ? (_currentLang == "en" ? "SAVED" : (_currentLang == "zh" ? "已收藏" : "ĐÃ LƯU")) : (_currentLang == "en" ? "SAVE" : (_currentLang == "zh" ? "收藏" : "LƯU")), async () => { _restaurant.IsFavorite = !_restaurant.IsFavorite; await App.Database.UpdateRestaurantAsync(_restaurant); CreateUI(); }, _restaurant.IsFavorite ? Color.FromArgb("#E91E63") : Color.FromArgb("#F1F5F9"), _restaurant.IsFavorite ? Colors.White : Color.FromArgb("#64748B")), 0, 1);
-            actionRow.Add(CreateProfessionalButton(_currentLang switch { "en" => "SHARE", "zh" => "分享", _ => "CHIA SẺ" }, () => Share.RequestAsync(new ShareTextRequest { Title = _restaurant.Name, Text = $"{_restaurant.Name} - {_restaurant.Address}", Uri = "https://vinhkhanhtour.com" }), Color.FromArgb("#F1F5F9"), Color.FromArgb("#64748B")), 1, 1);
-            
+            var actionRow = new Grid
+            {
+                ColumnDefinitions = { new ColumnDefinition(GridLength.Star), new ColumnDefinition(GridLength.Star) },
+                RowDefinitions = {
+                    new RowDefinition { Height = GridLength.Auto },
+                    new RowDefinition { Height = GridLength.Auto },
+                    new RowDefinition { Height = GridLength.Auto }
+                },
+                RowSpacing = 12,
+                ColumnSpacing = 12
+            };
+
+            // Row 0: Dẫn đường + Gọi điện
+            actionRow.Add(CreateProfessionalButton(_currentLang switch { "en" => "DIRECTIONS", "zh" => "导航", "ja" => "経路", "ko" => "길찾기", _ => "DẪN ĐƯỜNG" }, async () => await DirectToMap(), Color.FromArgb("#1565C0"), Colors.White), 0, 0);
+            actionRow.Add(CreateProfessionalButton(_currentLang switch { "en" => "CALL", "zh" => "电话", "ja" => "電話", "ko" => "전화", _ => "GỌI ĐIỆN" }, () => Launcher.OpenAsync("tel:0937916159"), Color.FromArgb("#F1F5F9"), Color.FromArgb("#1565C0")), 1, 0);
+
+            // Row 1: Lưu + Chia sẻ
+            var saveText = _restaurant.IsFavorite
+                ? (_currentLang switch { "en" => "SAVED", "zh" => "已收藏", "ja" => "保存済み", "ko" => "저장됨", _ => "ĐÃ LƯU" })
+                : (_currentLang switch { "en" => "SAVE", "zh" => "收藏", "ja" => "保存", "ko" => "저장", _ => "LƯU" });
+            actionRow.Add(CreateProfessionalButton(saveText, async () => { _restaurant.IsFavorite = !_restaurant.IsFavorite; await App.Database.UpdateRestaurantAsync(_restaurant); CreateUI(); }, _restaurant.IsFavorite ? Color.FromArgb("#E91E63") : Color.FromArgb("#F1F5F9"), _restaurant.IsFavorite ? Colors.White : Color.FromArgb("#64748B")), 0, 1);
+            actionRow.Add(CreateProfessionalButton(_currentLang switch { "en" => "SHARE", "zh" => "分享", "ja" => "共有", "ko" => "공유", _ => "CHIA SẺ" }, () => Share.RequestAsync(new ShareTextRequest { Title = rName, Text = $"{rName} - {_restaurant.Address}", Uri = "https://vinhkhanhtour.com" }), Color.FromArgb("#F1F5F9"), Color.FromArgb("#64748B")), 1, 1);
+
+            // Row 2: Audio HD (premium) + Khung ảnh (premium)
+            var hasPremium = TicketService.Instance.HasValidTicket;
+
+            actionRow.Add(CreateProfessionalButton(
+                _currentLang switch { "en" => hasPremium ? "🎧 AUDIO HD" : "🔒 AUDIO HD", "zh" => hasPremium ? "🎧 音频" : "🔒 音频", _ => hasPremium ? "🎧 AUDIO HD" : "🔒 AUDIO HD" },
+                async () =>
+                {
+                    if (TicketService.Instance.CanAccessPremiumAudio)
+                        await Navigation.PushAsync(new AudioGuidePage(_restaurant));
+                    else
+                        await Navigation.PushAsync(new PremiumGatePage("Audio HD"));
+                },
+                hasPremium ? Color.FromArgb("#1A237E") : Color.FromArgb("#F1F5F9"),
+                hasPremium ? Colors.White : Color.FromArgb("#94A3B8")), 0, 2);
+
+            actionRow.Add(CreateProfessionalButton(
+                _currentLang switch { "en" => hasPremium ? "📸 PHOTO" : "🔒 PHOTO", "zh" => hasPremium ? "📸 拍照" : "🔒 拍照", _ => hasPremium ? "📸 KHUNG ẢNH" : "🔒 KHUNG ẢNH" },
+                async () =>
+                {
+                    if (TicketService.Instance.CanAccessPhotoFrame)
+                        await Navigation.PushAsync(new PhotoFramePage(_restaurant));
+                    else
+                        await Navigation.PushAsync(new PremiumGatePage("Khung ảnh AR"));
+                },
+                hasPremium ? Color.FromArgb("#880E4F") : Color.FromArgb("#F1F5F9"),
+                hasPremium ? Colors.White : Color.FromArgb("#94A3B8")), 1, 2);
+
             infoSection.Add(actionRow);
 
             // Details
             var detailsCard = new Border { BackgroundColor = Colors.White, StrokeShape = new RoundRectangle { CornerRadius = 24 }, StrokeThickness = 0, Padding = 24, Shadow = new Shadow { Brush = Color.FromArgb("#000000"), Opacity = 0.05f, Radius = 10, Offset = new Point(0, 2) } };
             var detailsStack = new VerticalStackLayout { Spacing = 20 };
             detailsStack.Add(CreateInfoRow(ADDR_PATH, _restaurant.Address));
-            detailsStack.Add(CreateInfoRow(DESC_PATH, _restaurant.Description));
-            detailsStack.Add(CreateInfoRow(TIME_PATH, _restaurant.OpenHours));
+
+            var rDesc = _restaurant.GetDescription(_currentLang);
+            detailsStack.Add(CreateInfoRow(DESC_PATH, rDesc));
+
+            var lblHours = _currentLang switch { "en" => "Daily", "zh" => "每天", "ja" => "毎日", "ko" => "매일", _ => "Hàng ngày" };
+            var displayHours = string.IsNullOrWhiteSpace(_restaurant.OpenHours) ? lblHours : _restaurant.OpenHours;
+            detailsStack.Add(CreateInfoRow(TIME_PATH, displayHours));
+
             detailsCard.Content = detailsStack;
             infoSection.Add(detailsCard);
 
@@ -94,12 +147,78 @@ namespace VinhKhanhTour.Views
             scrollView.Content = contentLayout;
             mainLayout.Add(scrollView, 0, 0);
 
-            // Footer
-            var footer = new Border { BackgroundColor = Colors.White, Padding = new Thickness(24, 16, 24, 32), VerticalOptions = LayoutOptions.End };
-            var goBtn = new Border { HeightRequest = 58, Background = new LinearGradientBrush { StartPoint = new Point(0, 0), EndPoint = new Point(1, 0), GradientStops = new GradientStopCollection { new GradientStop(Color.FromArgb("#1565C0"), 0), new GradientStop(Color.FromArgb("#42A5F5"), 1) } }, StrokeShape = new RoundRectangle { CornerRadius = 20 }, Shadow = new Shadow { Brush = Color.FromArgb("#1565C0"), Opacity = 0.4f, Radius = 12, Offset = new Point(0, 5) } };
-            goBtn.Content = new Label { Text = _currentLang switch { "en" => "GET DIRECTIONS ON MAP", "zh" => "在地图上获取路线", _ => "CHỈ ĐƯỜNG" }, TextColor = Colors.White, FontAttributes = FontAttributes.Bold, FontSize = 14, CharacterSpacing = 1, HorizontalOptions = LayoutOptions.Center, VerticalOptions = LayoutOptions.Center };
+            // Footer — 2 nút: Chỉ đường + Đặt chỗ
+            var footer = new Border { BackgroundColor = Colors.White, Padding = new Thickness(20, 12, 20, 32), VerticalOptions = LayoutOptions.End };
+
+            var goBtn = new Border
+            {
+                HeightRequest = 56,
+                Background = new LinearGradientBrush
+                {
+                    StartPoint = new Point(0, 0),
+                    EndPoint = new Point(1, 0),
+                    GradientStops = new GradientStopCollection
+                    {
+                        new GradientStop(Color.FromArgb("#1565C0"), 0),
+                        new GradientStop(Color.FromArgb("#42A5F5"), 1)
+                    }
+                },
+                StrokeShape = new RoundRectangle { CornerRadius = 18 },
+                StrokeThickness = 0,
+                Shadow = new Shadow { Brush = Color.FromArgb("#1565C0"), Opacity = 0.35f, Radius = 12, Offset = new Point(0, 5) }
+            };
+            goBtn.Content = new Label
+            {
+                Text = _currentLang switch { "en" => "🗺️  DIRECTIONS", "zh" => "🗺️  导航", "ja" => "🗺️  ナビ", "ko" => "🗺️  길찾기", _ => "🗺️  CHỈ ĐƯỜNG" },
+                TextColor = Colors.White,
+                FontAttributes = FontAttributes.Bold,
+                FontSize = 15,
+                CharacterSpacing = 1,
+                HorizontalOptions = LayoutOptions.Center,
+                VerticalOptions = LayoutOptions.Center
+            };
             goBtn.GestureRecognizers.Add(new TapGestureRecognizer { Command = new Command(async () => await DirectToMap()) });
-            footer.Content = goBtn;
+
+            var bookBtn = new Border
+            {
+                HeightRequest = 56,
+                Background = new LinearGradientBrush
+                {
+                    StartPoint = new Point(0, 0),
+                    EndPoint = new Point(1, 0),
+                    GradientStops = new GradientStopCollection
+                    {
+                        new GradientStop(Color.FromArgb("#E91E63"), 0),
+                        new GradientStop(Color.FromArgb("#F06292"), 1)
+                    }
+                },
+                StrokeShape = new RoundRectangle { CornerRadius = 18 },
+                StrokeThickness = 0,
+                Shadow = new Shadow { Brush = Color.FromArgb("#E91E63"), Opacity = 0.35f, Radius = 12, Offset = new Point(0, 5) }
+            };
+            bookBtn.Content = new Label
+            {
+                Text = _currentLang switch { "en" => "🍽️  BOOK", "zh" => "🍽️  预约", "ja" => "🍽️  予約", "ko" => "🍽️  예약", _ => "🍽️  ĐẶT CHỖ" },
+                TextColor = Colors.White,
+                FontAttributes = FontAttributes.Bold,
+                FontSize = 15,
+                CharacterSpacing = 1,
+                HorizontalOptions = LayoutOptions.Center,
+                VerticalOptions = LayoutOptions.Center
+            };
+            bookBtn.GestureRecognizers.Add(new TapGestureRecognizer
+            {
+                Command = new Command(async () => await Navigation.PushAsync(new BookingPage(_restaurant)))
+            });
+
+            var footerGrid = new Grid
+            {
+                ColumnDefinitions = { new ColumnDefinition(GridLength.Star), new ColumnDefinition(GridLength.Star) },
+                ColumnSpacing = 12,
+                Children = { goBtn, bookBtn }
+            };
+            Grid.SetColumn(bookBtn, 1);
+            footer.Content = footerGrid;
             mainLayout.Add(footer, 0, 1);
             Content = mainLayout;
         }
@@ -113,13 +232,13 @@ namespace VinhKhanhTour.Views
                 StrokeShape = new RoundRectangle { CornerRadius = 12 },
                 StrokeThickness = 0,
                 Padding = new Thickness(12, 0),
-                Content = new Label 
-                { 
-                    Text = label, 
-                    TextColor = textColor, 
-                    FontSize = 13, 
-                    FontAttributes = FontAttributes.Bold, 
-                    HorizontalOptions = LayoutOptions.Center, 
+                Content = new Label
+                {
+                    Text = label,
+                    TextColor = textColor,
+                    FontSize = 13,
+                    FontAttributes = FontAttributes.Bold,
+                    HorizontalOptions = LayoutOptions.Center,
                     VerticalOptions = LayoutOptions.Center,
                     CharacterSpacing = 0.5
                 }
@@ -148,11 +267,19 @@ namespace VinhKhanhTour.Views
                     var start = TimeSpan.Parse(parts[0].Trim());
                     var end = TimeSpan.Parse(parts[1].Trim());
                     bool isOpen = (start < end) ? (now >= start && now <= end) : (now >= start || now <= end);
-                    string text = isOpen ? (_currentLang switch { "en" => "OPEN NOW", "zh" => "正在营业", _ => "ĐANG MỞ CỬA" }) : (_currentLang switch { "en" => "CLOSED", "zh" => "已休息", _ => "ĐÃ ĐÓNG CỬA" });
-                    if (!isOpen) text += $" • {(_currentLang == "en" ? "Opens" : (_currentLang == "zh" ? "营业于" : "Mở lúc"))} {parts[0].Trim()}";
+                    string text = isOpen
+                        ? (_currentLang switch { "en" => "OPEN NOW", "zh" => "正在营业", "ja" => "営業中", "ko" => "현재 영업 중", _ => "ĐANG MỞ CỬA" })
+                        : (_currentLang switch { "en" => "CLOSED", "zh" => "已休息", "ja" => "準備中", "ko" => "영업 종료", _ => "ĐÃ ĐÓNG CỬA" });
+
+                    if (!isOpen)
+                    {
+                        var lblOpensAt = _currentLang switch { "en" => "Opens", "zh" => "营业于", "ja" => "開店", "ko" => "영업 시작", _ => "Mở lúc" };
+                        text += $" • {lblOpensAt} {parts[0].Trim()}";
+                    }
                     return (isOpen, text);
                 }
-            } catch { }
+            }
+            catch { }
             return (true, hours);
         }
 

@@ -43,6 +43,7 @@ namespace VinhKhanhTour.Services
             await _database.CreateTableAsync<VisitHistory>();
             await _database.CreateTableAsync<AnalyticsEvent>();
             await _database.CreateTableAsync<User>();
+            await _database.CreateTableAsync<Booking>();
         }
 
         // ── Auth ───────────────────────────────────────────────────
@@ -94,10 +95,44 @@ namespace VinhKhanhTour.Services
         public Task<int> ClearVisitHistoryAsync()
             => _database.DeleteAllAsync<VisitHistory>();
 
+        // ── Booking ────────────────────────────────────────────────
+
+        public Task<int> SaveBookingAsync(Booking booking)
+            => _database.InsertAsync(booking);
+
+        public Task<int> UpdateBookingAsync(Booking booking)
+            => _database.UpdateAsync(booking);
+
+        public Task<List<Booking>> GetAllBookingsAsync()
+            => _database.Table<Booking>()
+                        .OrderByDescending(b => b.CreatedAtTicks)
+                        .ToListAsync();
+
+        public Task<List<Booking>> GetBookingsByRestaurantAsync(int restaurantId)
+            => _database.Table<Booking>()
+                        .Where(b => b.RestaurantId == restaurantId)
+                        .OrderByDescending(b => b.CreatedAtTicks)
+                        .ToListAsync();
+
+        public Task<List<Booking>> GetPendingBookingsAsync()
+            => _database.Table<Booking>()
+                        .Where(b => b.SyncStatus == "pending")
+                        .ToListAsync();
+
+        public async Task<Booking?> GetBookingByIdAsync(int id)
+            => await _database.Table<Booking>()
+                               .FirstOrDefaultAsync(b => b.Id == id);
+
+        public Task<int> DeleteBookingAsync(int id)
+            => _database.DeleteAsync<Booking>(id);
+
         // ── Analytics ──────────────────────────────────────────────
 
         public Task<int> InsertAnalyticsEventAsync(AnalyticsEvent e)
             => _database.InsertAsync(e);
+
+        public Task<int> UpdateAnalyticsEventAsync(AnalyticsEvent e)
+            => _database.UpdateAsync(e);
 
         public Task<List<AnalyticsEvent>> GetAnalyticsEventsAsync(string eventType)
             => _database.Table<AnalyticsEvent>()

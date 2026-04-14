@@ -13,11 +13,12 @@ namespace VinhKhanhTour.Services
         public static AudioService Instance => _instance ??= new AudioService();
 
         // ── Google Cloud TTS config ────────────────────────────────────────────
+        private static readonly JsonSerializerOptions _jsonOpts = new() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
         private const string GOOGLE_TTS_API_KEY = "AIzaSyAMX0XgjmNv2O4Twk_CBBmjzDwopqtuexE";
         private const string GOOGLE_TTS_URL =
             "https://texttospeech.googleapis.com/v1/text:synthesize?key=" + GOOGLE_TTS_API_KEY;
 
-        // Giọng theo ngôn ngữ
+        // Giọng theo ngôn ngữ — các ngôn ngữ được hỗ trợ sẵn
         private static readonly Dictionary<string, (string voice, string lang, string gender)> VoiceMap = new()
         {
             ["vi"] = ("vi-VN-Wavenet-A", "vi-VN", "FEMALE"),
@@ -77,7 +78,7 @@ namespace VinhKhanhTour.Services
             await PlayCommentaryAsync(poi.Id, script, lat, lng);
         }
 
-        // Lấy TTS script đúng ngôn ngữ từ model Restaurant - ĐÃ NÂNG CẤP ĐỘNG
+        // Lấy TTS script đúng ngôn ngữ từ model Restaurant
         private static string GetScript(Restaurant poi, string lang) => poi.GetTtsScript();
 
         // ── Core playback ─────────────────────────────────────────────────────
@@ -89,14 +90,13 @@ namespace VinhKhanhTour.Services
             // Ngắt bài cũ (nếu có)
             await StopAsync();
 
-            // Chờ bài cũ dọn dẹp xong hoàn toàn trạng thái và record API
             await _playSemaphore.WaitAsync();
             try
             {
                 _isPlaying = true;
                 _currentPoiId = poiId;
                 PlaybackStateChanged?.Invoke(true);
-                if (poiId > 0) _ = AnalyticsService.Instance.RecordPoiVisitAsync(poiId, $"poi_audio_started_{CurrentLanguage}", lat, lng);
+                if (poiId > 0) _ = AnalyticsService.RecordPoiVisitAsync(poiId, $"poi_audio_started_{CurrentLanguage}", lat, lng);
 
                 _ttsCts = new CancellationTokenSource();
                 DateTime startTime = DateTime.Now;
@@ -121,9 +121,8 @@ namespace VinhKhanhTour.Services
                 finally
                 {
                     double durationSeconds = (DateTime.Now - startTime).TotalSeconds;
-                    // Phải đảm bảo await thành công Record audio trước khi kết thúc
-                    if (poiId > 0) await AnalyticsService.Instance.RecordAudioPlayedAsync(poiId, CurrentLanguage, durationSeconds);
-                    
+                    if (poiId > 0) await AnalyticsService.RecordAudioPlayedAsync(poiId, CurrentLanguage, durationSeconds);
+
                     _isPlaying = false;
                     _currentPoiId = -1;
                     CurrentTrack = null;
@@ -142,11 +141,9 @@ namespace VinhKhanhTour.Services
 
             if (_isPlaying)
             {
-                try { await TextToSpeech.Default.SpeakAsync("", new SpeechOptions()); }
+                try { await TextToSpeech.Default.SpeakAsync("", new()); }
                 catch { /* ignore */ }
             }
-            // Không set _isPlaying = false ở đây vì việc đó thuộc trách nhiệm của finally block trong hàm PlayCommentaryAsync,
-            // để đảm bảo nó tính thời gian và record xong rồi mới clean up data!
             await Task.Delay(100);
         }
 
@@ -159,19 +156,39 @@ namespace VinhKhanhTour.Services
 
         private async Task PlayGoogleTtsAsync(string script, CancellationToken token)
         {
-            var (voiceName, langCode, gender) = VoiceMap.TryGetValue(_language, out var v)
-                ? v : ("vi-VN-Wavenet-A", "vi-VN", "FEMALE");
+            // ── FIX: Tách rõ ràng việc resolve voice để tránh voiceName bị sai ──
+            string voiceName, langCode, gender;
 
-            if (!VoiceMap.ContainsKey(_language))
-                langCode = _language.Length == 2
-                    ? $"{_language}-{_language.ToUpper()}"
-                    : _language;
+            if (VoiceMap.TryGetValue(_language, out var v))
+            {
+                // Ngôn ngữ có sẵn trong bảng → dùng thẳng
+                (voiceName, langCode, gender) = v;
+            }
+            else
+            {
+                // Ngôn ngữ động (thêm từ CMS) không có trong VoiceMap
+                // Tự suy ra langCode theo chuẩn BCP-47, dùng Wavenet-A generic
+                if (_language.Length == 2)
+                {
+                    // Ví dụ: "it" → "it-IT", "pt" → "pt-PT"
+                    var upper = _language.ToUpper();
+                    langCode = $"{_language}-{upper}";
+                    voiceName = $"{_language}-{upper}-Wavenet-A";
+                }
+                else
+                {
+                    // Đã là dạng đầy đủ như "pt-BR"
+                    langCode = _language;
+                    voiceName = $"{_language}-Wavenet-A";
+                }
+                gender = "FEMALE";
+                System.Diagnostics.Debug.WriteLine($"[AudioService] Ngôn ngữ '{_language}' dùng voice generic: {voiceName}");
+            }
 
             CurrentTrack = $"Google TTS ({_language.ToUpper()})";
 
-            using var md5 = System.Security.Cryptography.MD5.Create();
-            var hashBytes = md5.ComputeHash(Encoding.UTF8.GetBytes(script + _language));
-            var hashString = BitConverter.ToString(hashBytes).Replace("-", "").ToLowerInvariant();
+            byte[] hashBytes = System.Security.Cryptography.MD5.HashData(Encoding.UTF8.GetBytes(script + _language));
+            string hashString = Convert.ToHexString(hashBytes).ToLowerInvariant();
             var tempPath = Path.Combine(FileSystem.CacheDirectory,
                 $"gtts_{_currentPoiId}_{_language}_{hashString}.mp3");
 
@@ -185,10 +202,22 @@ namespace VinhKhanhTour.Services
                 };
 
                 using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(15) };
-                var json = JsonSerializer.Serialize(requestBody);
+                var json = JsonSerializer.Serialize(requestBody, _jsonOpts);
                 var content = new StringContent(json, Encoding.UTF8, "application/json");
-                var response = await http.PostAsync(GOOGLE_TTS_URL, content, token);
-                response.EnsureSuccessStatusCode();
+
+                HttpResponseMessage response;
+                try
+                {
+                    response = await http.PostAsync(GOOGLE_TTS_URL, content, token);
+                    response.EnsureSuccessStatusCode();
+                }
+                catch (Exception ex)
+                {
+                    // ── FIX: Nếu voice không tồn tại (ngôn ngữ mới) → fallback Maui TTS ──
+                    System.Diagnostics.Debug.WriteLine($"[AudioService] Google TTS thất bại cho '{_language}': {ex.Message}. Fallback Maui TTS.");
+                    await PlayMauiTtsAsync(script, token);
+                    return;
+                }
 
                 var responseJson = await response.Content.ReadAsStringAsync(token);
                 using var doc = JsonDocument.Parse(responseJson);
@@ -229,7 +258,7 @@ namespace VinhKhanhTour.Services
                 }
                 catch { }
                 finally { try { player.Release(); } catch { } }
-            });
+            }, token);
 #elif IOS
             return Task.Run(() =>
             {
@@ -252,7 +281,7 @@ namespace VinhKhanhTour.Services
                     System.Threading.Thread.Sleep(100);
 
                 try { player.Stop(); player.Dispose(); } catch { }
-            });
+            }, token);
 #else
             throw new PlatformNotSupportedException();
 #endif
@@ -286,9 +315,10 @@ namespace VinhKhanhTour.Services
             try
             {
                 var locales = await TextToSpeech.Default.GetLocalesAsync();
+                // ── FIX: Thử match đúng ngôn ngữ trước, fallback vi nếu không có ──
                 return locales.FirstOrDefault(l =>
                     l.Language.StartsWith(lang, StringComparison.OrdinalIgnoreCase))
-                    ?? locales.FirstOrDefault(l => 
+                    ?? locales.FirstOrDefault(l =>
                     l.Language.StartsWith("vi", StringComparison.OrdinalIgnoreCase));
             }
             catch { return null; }

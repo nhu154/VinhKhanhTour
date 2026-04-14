@@ -10,7 +10,8 @@
 		<SingleProject>true</SingleProject>
 		<ImplicitUsings>enable</ImplicitUsings>
 		<Nullable>enable</Nullable>
-		<JavaMaximumHeapSize>1G</JavaMaximumHeapSize>
+		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+		<JavaMaximumHeapSize>2G</JavaMaximumHeapSize>
 
 		<ApplicationTitle>VinhKhanhTour</ApplicationTitle>
 		<ApplicationId>com.companyname.vinhkhanhtour</ApplicationId>
@@ -64,25 +65,5 @@
 		<PackageReference Include="SQLitePCLRaw.bundle_green" Version="2.1.11" />
 	</ItemGroup>
 
-	<ItemGroup>
-		<Compile Update="WelcomePage.xaml.cs">
-			<DependentUpon>WelcomePage.xaml</DependentUpon>
-		</Compile>
-	</ItemGroup>
-
-	<ItemGroup>
-		<MauiXaml Update="Analyticspage.xaml">
-		  <Generator>MSBuild:Compile</Generator>
-		</MauiXaml>
-		<MauiXaml Update="MainTabbedPage.xaml">
-			<Generator>MSBuild:Compile</Generator>
-		</MauiXaml>
-		<MauiXaml Update="ProfilePage.xaml">
-			<Generator>MSBuild:Compile</Generator>
-		</MauiXaml>
-		<MauiXaml Update="WelcomePage.xaml">
-			<Generator>MSBuild:Compile</Generator>
-		</MauiXaml>
-	</ItemGroup>
 
 </Project>

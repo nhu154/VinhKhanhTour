@@ -33,11 +33,13 @@ namespace VinhkhanhTour.API.Controllers
     {
         private readonly string _conn;
         private readonly ImageService _img;
+        private readonly LogService _log;
 
-        public RestaurantsController(IConfiguration config, ImageService img)
+        public RestaurantsController(IConfiguration config, ImageService img, LogService log)
         {
             _conn = config.GetConnectionString("DefaultConnection")!;
             _img = img;
+            _log = log;
         }
 
         [HttpGet]
@@ -78,6 +80,7 @@ namespace VinhkhanhTour.API.Controllers
                 (@Name, @Description, @Category, @Latitude, @Longitude, @Address, @ImageUrl, @Rating, @OpenHours, @AudioFile, @TtsScript, @TtsScriptEn, @TtsScriptZh, @Translations, @Radius, @IsAdsPopup, @AudioUrl);
                 SELECT LAST_INSERT_ID();",
                 body);
+            await _log.LogAction(Request, "CREATE_POI", body.Name);
             return Ok(new { message = "Thêm thành công", id });
         }
 
@@ -97,6 +100,7 @@ namespace VinhkhanhTour.API.Controllers
                 Radius=@Radius, IsAdsPopup=@IsAdsPopup, AudioUrl=@AudioUrl
                 WHERE Id=@Id",
                 body);
+            await _log.LogAction(Request, "UPDATE_POI", body.Name);
             return Ok(new { message = "Cập nhật thành công" });
         }
 
@@ -104,7 +108,9 @@ namespace VinhkhanhTour.API.Controllers
         public async Task<IActionResult> Delete(int id)
         {
             using var db = new MySqlConnection(_conn);
+            var name = await db.ExecuteScalarAsync<string>("SELECT Name FROM restaurants WHERE Id=@Id", new { Id = id });
             await db.ExecuteAsync("DELETE FROM restaurants WHERE Id=@Id", new { Id = id });
+            await _log.LogAction(Request, "DELETE_POI", name ?? $"POI {id}");
             return Ok(new { message = "Xóa thành công" });
         }
     }

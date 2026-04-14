@@ -152,7 +152,7 @@ if(sessionStorage.getItem('cms_logged_in') !== 'true') window.location.href='log
         </div>
       </div>
       <table class="cms-table">
-        <thead><tr><th>Địa điểm</th><th>Hành động</th><th>Thời gian</th></tr></thead>
+        <thead><tr><th>Thông tin</th><th>Thao tác</th><th>Thời gian</th></tr></thead>
         <tbody id="dashboard-recent-tbody"></tbody>
       </table>
     </div>
@@ -273,34 +273,52 @@ if(sessionStorage.getItem('cms_logged_in') !== 'true') window.location.href='log
 
   <!-- ════ LỊCH SỬ ════ -->
   <main class="main-content" id="page-history">
-    <div class="table-wrap">
-      <div class="table-toolbar">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start">
-          <div>
-            <h3 style="display:flex;align-items:center;gap:10px">
-              Nhật ký hành trình du khách
-              <button class="btn btn-ghost btn-sm" onclick="loadAnalytics()" title="Tải lại dữ liệu">
-                <i data-lucide="refresh-cw" style="width:14px;height:14px"></i>
-              </button>
-            </h3>
-            <div class="filter-row" style="margin-top:12px;margin-bottom:0">
-            <div class="filter-chip active" onclick="setFilter('all',this)">Tất cả</div>
-            <div class="filter-chip" onclick="setFilter('poi_visit',this)">🚶‍♂️ Khách ghé thăm</div>
-            <div class="filter-chip" onclick="setFilter('click',this)">👆 Xem thông tin</div>
-          </div>
+    <div class="card" style="margin-bottom:20px; padding:20px 24px">
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:20px">
+        <div>
+          <h2 style="font-size:20px; font-weight:800; color:var(--text-main); letter-spacing:-0.5px">Nhật ký hệ thống</h2>
+          <p style="font-size:13px; color:var(--text-muted); margin-top:2px">Theo dõi toàn bộ thao tác quản trị trên toàn hệ thống</p>
         </div>
-        <div class="search-wrap" style="width:240px">
-          <i data-lucide="search"></i>
-          <input type="text" id="history-search" class="form-control" placeholder="Tìm tên quán..." oninput="filterHistory(this.value)">
+        <div style="display:flex; gap:10px">
+          <button class="btn btn-ghost" onclick="refreshDashboard()" title="Làm mới">
+            <i data-lucide="refresh-cw"></i> Làm mới
+          </button>
+          <button class="btn btn-danger-outline" onclick="clearDashboardHistory()">
+            <i data-lucide="trash-2"></i> Xóa nhật ký
+          </button>
         </div>
       </div>
+      
+      <div style="display:flex; align-items:center; justify-content:space-between; gap:20px; padding-top:16px; border-top:1px solid var(--border)">
+        <div class="filter-row" style="margin:0">
+          <div class="filter-chip active" onclick="setFilter('all',this)">
+            <i data-lucide="layers" style="width:14px;height:14px"></i> Tất cả
+          </div>
+          <div class="filter-chip" onclick="setFilter('POI',this)">
+            <i data-lucide="map-pin" style="width:14px;height:14px"></i> Địa điểm
+          </div>
+          <div class="filter-chip" onclick="setFilter('TOUR',this)">
+            <i data-lucide="navigation" style="width:14px;height:14px"></i> Tour
+          </div>
+          <div class="filter-chip" onclick="setFilter('USER',this)">
+            <i data-lucide="users" style="width:14px;height:14px"></i> Admin
+          </div>
+        </div>
+        <div class="search-wrap" style="width:300px">
+          <i data-lucide="search"></i>
+          <input type="text" id="history-search" class="form-control" placeholder="Tìm kiếm hành động, người dùng..." oninput="filterHistory(this.value)">
+        </div>
+      </div>
+    </div>
+
+    <div class="table-wrap">
       <table class="cms-table">
         <thead>
           <tr>
-            <th style="width:40px;text-align:center"></th>
-            <th>Hành động của du khách</th>
-            <th>Tại địa điểm (POI)</th>
-            <th>Thời gian</th>
+            <th style="width:60px; text-align:center">Icon</th>
+            <th>Hành động</th>
+            <th>Đối tượng tác động</th>
+            <th>Thời gian thực hiện</th>
           </tr>
         </thead>
         <tbody id="history-tbody"></tbody>
@@ -499,8 +517,27 @@ if(sessionStorage.getItem('cms_logged_in') !== 'true') window.location.href='log
       <div class="form-group"><label>Rating ⭐</label><input type="number" step="0.1" min="1" max="5" class="form-control" id="tour-rating" value="4.0"></div>
     </div>
     <div class="lang-block vi">
+      <div class="lang-label"><span>🇻🇳 Tiếng Việt (mặc định)</span></div>
       <div class="form-group"><label>Tên Tour</label><input type="text" class="form-control" id="tour-name" placeholder="Tour Ăn Ốc"></div>
       <div class="form-group" style="margin:0"><label>Mô tả</label><textarea class="form-control" id="tour-desc" rows="2"></textarea></div>
+    </div>
+
+    <div class="lang-block en" style="margin-top:10px">
+      <div class="lang-label"><span>🇺🇸 English</span></div>
+      <div class="form-group"><label>Tour Name (EN)</label><input type="text" class="form-control" id="tour-name-en" placeholder="Snail Food Tour"></div>
+      <div class="form-group" style="margin:0"><label>Description (EN)</label><textarea class="form-control" id="tour-desc-en" rows="2" placeholder="Top 3 famous snail restaurants..."></textarea></div>
+    </div>
+
+    <div class="lang-block zh" style="margin-top:10px">
+      <div class="lang-label"><span>🇨🇳 中文</span></div>
+      <div class="form-group"><label>旅游名称 (ZH)</label><input type="text" class="form-control" id="tour-name-zh" placeholder="螺蛳美食之旅"></div>
+      <div class="form-group" style="margin:0"><label>描述 (ZH)</label><textarea class="form-control" id="tour-desc-zh" rows="2" placeholder="永庆最著名的3家螺蛳餐厅..."></textarea></div>
+    </div>
+
+    <div class="lang-block ko" style="margin-top:10px">
+      <div class="lang-label"><span>🇰🇷 한국어</span></div>
+      <div class="form-group"><label>투어 이름 (KO)</label><input type="text" class="form-control" id="tour-name-ko" placeholder="달팽이 음식 투어"></div>
+      <div class="form-group" style="margin:0"><label>설명 (KO)</label><textarea class="form-control" id="tour-desc-ko" rows="2" placeholder="빈칸 거리 유명 달팽이 식당 3곳..."></textarea></div>
     </div>
 
     <div class="form-group" style="margin-top:12px">
@@ -583,11 +620,8 @@ if(sessionStorage.getItem('cms_logged_in') !== 'true') window.location.href='log
     <div style="margin-bottom:16px">
       <label style="font-size:12px;font-weight:600;color:var(--text-muted);display:block;margin-bottom:8px">Chọn nhanh:</label>
       <div style="display:flex;gap:6px;flex-wrap:wrap">
-        <button class="btn btn-ghost btn-sm" onclick="quickLang('ja','日本語','🇯🇵')">🇯🇵 Nhật</button>
-        <button class="btn btn-ghost btn-sm" onclick="quickLang('ko','한국어','🇰🇷')">🇰🇷 Hàn</button>
-        <button class="btn btn-ghost btn-sm" onclick="quickLang('fr','Français','🇫🇷')">🇫🇷 Pháp</button>
-        <button class="btn btn-ghost btn-sm" onclick="quickLang('de','Deutsch','🇩🇪')">🇩🇪 Đức</button>
-        <button class="btn btn-ghost btn-sm" onclick="quickLang('es','Español','🇪🇸')">🇪🇸 TBN</button>
+        <button class="btn btn-ghost btn-sm" onclick="quickLang('ja','Tiếng Nhật','🇯🇵')">🇯🇵 Tiếng Nhật</button>
+        <button class="btn btn-ghost btn-sm" onclick="quickLang('ko','Tiếng Hàn','🇰🇷')">🇰🇷 Tiếng Hàn</button>
       </div>
     </div>
   </div>

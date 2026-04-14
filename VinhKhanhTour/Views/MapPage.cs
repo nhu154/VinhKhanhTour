@@ -13,7 +13,7 @@ using System.Net.Http;
 
 namespace VinhKhanhTour.Views
 {
-    public class MapPage : ContentPage
+    public partial class MapPage : ContentPage
     {
         private readonly WebView _webView;
         private readonly Label _statusLabel;
@@ -22,7 +22,6 @@ namespace VinhKhanhTour.Views
         private Button _btnExitTour = null!;
         private readonly GeofencingService _geofencing = new();
         private Location? _userLocation;
-        private Restaurant? _nearestRestaurant;
         private List<Restaurant> _restaurants = new();
         private List<AppLanguage> _availableLangs = new();
         private readonly Dictionary<int, DateTime> _lastNotified = new();
@@ -47,6 +46,7 @@ namespace VinhKhanhTour.Views
         private bool _isProcessingPending = false;
         private bool _mapIsMapReadyForCommands = false;
         private bool _skipNextRefresh = false; // Flag to prevent OnAppearing from resetting map during jumps
+        private bool _isActiveMap = false;
 
         public MapPage() : this(null, null) { }
 
@@ -166,11 +166,13 @@ namespace VinhKhanhTour.Views
         protected override void OnAppearing()
         {
             base.OnAppearing();
+            _isActiveMap = true;
+            VinhKhanhTour.Services.UserSession.Instance.IsTourActive = true;
             if (_tourName != null) { }
             else if (_htmlLoaded && _restaurants.Count > 0)
             {
                 _ = _webView.EvaluateJavaScriptAsync("if(typeof map !== 'undefined' && map) { google.maps.event.trigger(map, 'resize'); }");
-                
+
                 // If we are about to navigate to a specific shop, don't trigger a full data refresh
                 // because it might reset the map (setting _htmlLoaded=false) and break the request.
                 if (_pendingDirectionPoi != null || _skipNextRefresh)
@@ -191,6 +193,12 @@ namespace VinhKhanhTour.Views
             _ = RequestLocationPermissionAsync();
             _ = StartLocationTrackingAsync();
             _ = RefreshLangsAsync();
+        }
+
+        protected override void OnDisappearing()
+        {
+            base.OnDisappearing();
+            _isActiveMap = false;
         }
 
         private async Task RefreshLangsAsync()
@@ -290,11 +298,11 @@ namespace VinhKhanhTour.Views
                     status = await Permissions.RequestAsync<Permissions.LocationWhenInUse>();
                     if (status != PermissionStatus.Granted)
                     {
-                        _statusLabel.Text = _currentLang switch { "en" => "GPS permission required", "zh" => "需要 GPS 权限", _ => "Cần cấp quyền GPS để tiếp tục" };
+                        _statusLabel.Text = _currentLang switch { "en" => "GPS permission required", "zh" => "需要 GPS 权限", "ja" => "GPS権限が必要です", "ko" => "GPS 권한이 필요합니다", _ => "Cần cấp quyền GPS để tiếp tục" };
                         return;
                     }
                 }
-                _statusLabel.Text = _currentLang switch { "en" => "GPS ready", "zh" => "GPS 已准备好", _ => "GPS sẵn sàng" };
+                _statusLabel.Text = _currentLang switch { "en" => "GPS ready", "zh" => "GPS 已准备好", "ja" => "GPS準備完了", "ko" => "GPS 준비 완료", _ => "GPS sẵn sàng" };
             }
             catch { }
         }
@@ -343,12 +351,12 @@ namespace VinhKhanhTour.Views
                         double.TryParse(q["lng"], System.Globalization.NumberStyles.Float, ic, out double lng))
                     {
                         var newLoc = new Location(lat, lng);
-                        
+
                         // Lọc GPS: Chỉ gửi lên hệ thống và đổi mốc nếu khách di chuyển quá 6 mét
-                        if (_userLocation == null || Location.CalculateDistance(_userLocation, newLoc, DistanceUnits.Kilometers) * 1000 >= 6)
+                        if (_userLocation == null || Microsoft.Maui.Devices.Sensors.Location.CalculateDistance(_userLocation, newLoc, DistanceUnits.Kilometers) * 1000 >= 6)
                         {
-                            _ = VinhKhanhTour.Services.AnalyticsService.Instance.RecordGpsPointAsync(lat, lng);
-                            _userLocation = newLoc; // Lưu mốc gốc mới để lần tiếp theo đo từ đây tiến tới
+                            _ = AnalyticsService.RecordGpsPointAsync(lat, lng);
+                            _userLocation = newLoc;
                         }
 
                         MainThread.BeginInvokeOnMainThread(async () =>
@@ -365,11 +373,13 @@ namespace VinhKhanhTour.Views
                     break;
                 case "routerequested":
                     var d = Uri.UnescapeDataString(q["data"] ?? "");
-                    try {
+                    try
+                    {
                         using var doc = JsonDocument.Parse(d);
                         if (doc.RootElement.TryGetProperty("id", out var idProp))
-                            _ = AnalyticsService.Instance.RecordPoiVisitAsync(idProp.GetInt32(), "click");
-                    } catch { }
+                            _ = AnalyticsService.RecordPoiVisitAsync(idProp.GetInt32(), "click");
+                    }
+                    catch { }
                     System.Diagnostics.Debug.WriteLine($"[MapPage] routerequested data={d.Substring(0, Math.Min(d.Length, 60))}");
                     MainThread.BeginInvokeOnMainThread(() => _ = DrawRouteAsync(d));
                     break;
@@ -393,9 +403,9 @@ namespace VinhKhanhTour.Views
                         if (Application.Current?.MainPage is MainTabbedPage tabbed)
                             tabbed.UpdateLanguage(lang);
 
-                        _statusLabel.Text = lang switch { "en" => "Map is ready", "zh" => "地图已准备好", _ => "Bản đồ sẵn sàng" };
+                        _statusLabel.Text = lang switch { "en" => "Map is ready", "zh" => "地图已准备好", "ja" => "地図の準備ができました", "ko" => "지도 준비 완료", _ => "Bản đồ sẵn sàng" };
                         if (_btnExitTour.IsVisible)
-                            _btnExitTour.Text = lang switch { "en" => "← Exit Tour", "zh" => "← 退出行程", _ => "← Thoát Tour" };
+                            _btnExitTour.Text = lang switch { "en" => "← Exit Tour", "zh" => "← 退出行程", "ja" => "← ツアー終了", "ko" => "← 투어 종료", _ => "← Thoát Tour" };
                     });
                     break;
                 case "speakpoi":
@@ -550,6 +560,7 @@ namespace VinhKhanhTour.Views
             // Bottom Sheets
             lines.Add(".botSheet{position:fixed;bottom:0;left:0;right:0;z-index:9500;background:rgba(255,255,255,0.98);backdrop-filter:blur(20px);border-radius:28px 28px 0 0;box-shadow:0 -8px 30px rgba(21,101,192,0.15);transform:translateY(100%);transition:transform 0.4s cubic-bezier(0.2,0.8,0.2,1);display:flex;flex-direction:column;border-top:1px solid rgba(21,101,192,0.15)}");
             lines.Add(".botSheet.open{transform:translateY(0)}");
+            lines.Add(".botSheet.open.minim{transform:translateY(calc(100% - 90px));}");
             lines.Add(".dragBar{width:40px;height:5px;background:rgba(21,101,192,0.25);border-radius:4px;margin:12px auto}");
 
             // Menu Sheet
@@ -601,6 +612,7 @@ namespace VinhKhanhTour.Views
             lines.Add(".rvl{font-size:24px;font-weight:800;color:#64B5F6}");
             lines.Add(".rll{font-size:12px;color:#5A7A9A;margin-top:4px;text-transform:uppercase;letter-spacing:1px}");
             lines.Add(".ben{width:100%;height:56px;background:rgba(233,30,99,0.15);color:#F06292;border:1px solid rgba(233,30,99,0.3);border-radius:18px;font-size:16px;font-weight:700;}");
+            lines.Add(".bmin{position:absolute;top:12px;right:16px;background:rgba(21,101,192,0.1);color:#1565C0;border:none;border-radius:16px;padding:6px 14px;font-size:13px;font-weight:700;z-index:2;cursor:pointer;}");
 
             // Custom proximity notification overlay (replaces system alert)
             lines.Add("#proximityAlert{position:fixed;top:0;left:0;right:0;bottom:0;z-index:99999;display:none;align-items:flex-end;justify-content:center;padding:0 0 120px 0;pointer-events:none;}");
@@ -621,13 +633,13 @@ namespace VinhKhanhTour.Views
 
             lines.Add("<div id='map'></div>");
             lines.Add("<div id='tst'></div>");
-            lines.Add("<div id='proximityAlert'><div id='proximityCard'><div class='pcBanner'></div><div class='pcBody'><div class='pcIcon' id='pcIconEl'>📍</div><div class='pcInfo'><div class='pcBadge' id='pcBadgeEl'>GẦN BẠN</div><div class='pcName' id='pcNameEl'></div><div class='pcDesc' id='pcDescEl'></div></div></div><div class='pcActions'><button class='pcDismiss' onclick='closeProximity()'>Đóng</button><button class='pcNav' onclick='navFromProximity()'>Chỉ đường</button></div></div></div>");
+            lines.Add("<div id='proximityAlert'><div id='proximityCard'><div class='pcBanner'></div><div class='pcBody'><div class='pcIcon' id='pcIconEl'>📍</div><div class='pcInfo'><div class='pcBadge' id='pcBadgeEl'>GẦN BẠN</div><div class='pcName' id='pcNameEl'></div><div class='pcDesc' id='pcDescEl'></div></div></div><div class='pcActions'><button class='pcDismiss' id='pcBtnClose' onclick='closeProximity()'>Đóng</button><button class='pcNav' id='pcBtnNav' onclick='navFromProximity()'>Chỉ đường</button></div></div></div>");
 
             lines.Add("<div id='headerRow'>");
-            
+
             var currentLangObj = _availableLangs.FirstOrDefault(l => l.Code == _currentLang) ?? _availableLangs.FirstOrDefault();
             string initialFlag = currentLangObj?.Flag ?? "🌐";
-            
+
             lines.Add("  <div id='searchBar'><span id='btnSearch'>🔍</span><input id='searchInput' type='text' placeholder='Tìm quán ăn...' oninput='onSearch(this.value)' onfocus='showResults()'/><button id='btnClearSearch' onclick='clearSearch()'>✕</button></div>");
             lines.Add("  <div id='langBtn' onclick='toggleLang()'><span id='currFlag'>" + initialFlag + "</span>");
             lines.Add("    <div id='langDropdown'>");
@@ -655,7 +667,8 @@ namespace VinhKhanhTour.Views
             lines.Add("</div>");
 
             lines.Add("<div class='botSheet' id='rs'>");
-            lines.Add("  <div class='dragBar'></div>");
+            lines.Add("  <button class='bmin' onclick='toggleNavSheet()' id='txMin'>⬇ Ẩn bớt</button>");
+            lines.Add("  <div class='dragBar' onclick='toggleNavSheet()'></div>");
             lines.Add("  <div class='rrw'><div class='ric' id='ricImg'>📍</div><div><div class='rnm' id='rnm'></div><div class='rsb' id='txWalk'>🚶 Chỉ đường đi bộ</div></div></div>");
             lines.Add("  <div class='rst'><div class='rsc'><div class='rvl' id='rdst'></div><div class='rll' id='txDist'>Khoảng cách</div></div><div class='rsc'><div class='rvl' id='rtim'></div><div class='rll' id='txDur'>Thời gian</div></div></div>");
             lines.Add("  <button class='ben' onclick='endR()' id='txEnd'>✕ Dừng chỉ đường</button>");
@@ -666,24 +679,26 @@ namespace VinhKhanhTour.Views
             lines.Add("var ALL=" + data + ";");
             lines.Add("var CTR={lat:10.7615,lng:106.7045};");
             lines.Add("var L={");
-            lines.Add("  vi:{search:'Tìm quán ăn...',plist:'Danh sách điểm đến',nodata:'Không tìm thấy quán',cat:'QUÁN ĂN - VĨNH KHÁNH',dir:'Mở dẫn đường',dist:'KHOẢNG CÁCH',dur:'THỜI GIAN',end:'✕ KẾT THÚC DẪN ĐƯỜNG',walk:'🚶 Chỉ đường đi bộ'},");
-            lines.Add("  en:{search:'Search spots...',plist:'Destinations list',nodata:'No spots found',cat:'STREET FOOD - VINH KHANH',dir:'Get Directions',dist:'DISTANCE',dur:'DURATION',end:'✕ EXIT NAVIGATION',walk:'🚶 Walking directions'},");
-            lines.Add("  zh:{search:'搜索餐厅...',plist:'目的地列表',nodata:'未找到餐厅',cat:'美食街 - 永庆',dir:'获取路线',dist:'距离',dur:'持续时间',end:'✕ 退出导航',walk:'🚶 步行路线'}");
+            lines.Add("  vi:{search:'Tìm quán ăn...',plist:'Danh sách điểm đến',nodata:'Không tìm thấy quán',cat:'QUÁN ĂN - VĨNH KHÁNH',dir:'Chỉ đường',dist:'KHOẢNG CÁCH',dur:'THỜI GIAN',end:'✕ DỪNG CHỈ ĐƯỜNG',walk:'🚶 Chỉ đường đi bộ',near:'GẦN BẠN',close:'Đóng',min:'Ẩn bớt',exp:'Mở rộng'},");
+            lines.Add("  en:{search:'Search spots...',plist:'Destinations list',nodata:'No spots found',cat:'STREET FOOD - VINH KHANH',dir:'Get Directions',dist:'DISTANCE',dur:'DURATION',end:'✕ EXIT NAVIGATION',walk:'🚶 Walking directions',near:'NEAR YOU',close:'Close',min:'Hide',exp:'Expand'},");
+            lines.Add("  zh:{search:'搜索餐厅...',plist:'目的地列表',nodata:'未找到餐厅',cat:'美食街 - 永庆',dir:'获取路线',dist:'距离',dur:'持续时间',end:'✕ 退出导航',walk:'🚶 步行路线',near:'就在附近',close:'关闭',min:'隐藏',exp:'展开'},");
+            lines.Add("  ja:{search:'スポットを検索...',plist:'目的地リスト',nodata:'スポットが見つかりません',cat:'グルメ街 - ヴィンカン',dir:'ルート案内',dist:'距離',dur:'時間',end:'✕ ナビを終了',walk:'🚶 徒歩ルート',near:'近くにあります',close:'閉じる',min:'隠す',exp:'展開'},");
+            lines.Add("  ko:{search:'식당 검색...',plist:'목적지 목록',nodata:'검색 결과가 없습니다',cat:'음식 거리 - 빈칸',dir:'길 찾기',dist:'거리',dur:'시간',end:'✕ 길 안내 종료',walk:'🚶 도보 길 안내',near:'근처에 있음',close:'닫기',min:'숨기기',exp:'확장'}");
             lines.Add("};");
-
+            lines.Add("function toggleNavSheet(){var rs=document.getElementById('rs'); rs.classList.toggle('minim'); document.getElementById('txMin').textContent=(rs.classList.contains('minim')?'⬆ ':'⬇ ')+(rs.classList.contains('minim')?L[cL].exp:L[cL].min);}");
             lines.Add("function toggleLang(){ var d=document.getElementById('langDropdown'); d.style.display=d.style.display==='flex'?'none':'flex'; }");
-            lines.Add("function chgL(l,ev){ if(ev)ev.stopPropagation(); cL=l; document.getElementById('currFlag').textContent=l==='vi'?'🇻🇳':(l==='en'?'🇺🇸':'🇨🇳'); document.getElementById('langDropdown').style.display='none'; applyLang(); window.location.href='maui://changelang?lang='+l; }");
-            lines.Add("function applyLang(){ var t=L[cL]; document.getElementById('searchInput').placeholder=t.search; document.getElementById('txPList').textContent=t.plist; document.getElementById('txCat').textContent=t.cat; document.getElementById('txDirText').textContent=t.dir; document.getElementById('txDist').textContent=t.dist; document.getElementById('txDur').textContent=t.dur; document.getElementById('txEnd').textContent=t.end; document.getElementById('txWalk').textContent=t.walk; if(document.getElementById('menuSheet').classList.contains('open')) renderMenuList(); }");
+            lines.Add("function chgL(l,ev){ if(ev)ev.stopPropagation(); cL=l; var flags={'vi':'🇻🇳','en':'🇺🇸','zh':'🇨🇳','ja':'🇯🇵','ko':'🇰🇷'}; document.getElementById('currFlag').textContent=flags[l]||'🌐'; document.getElementById('langDropdown').style.display='none'; applyLang(); window.location.href='maui://changelang?lang='+l; }");
+            lines.Add("function applyLang(){ var t=L[cL]; document.getElementById('searchInput').placeholder=t.search; document.getElementById('txPList').textContent=t.plist; document.getElementById('txCat').textContent=t.cat; document.getElementById('txDirText').textContent=t.dir; document.getElementById('txDist').textContent=t.dist; document.getElementById('txDur').textContent=t.dur; document.getElementById('txEnd').textContent=t.end; document.getElementById('txWalk').textContent=t.walk; document.getElementById('pcBadgeEl').textContent=t.near; document.getElementById('pcBtnClose').textContent=t.close; document.getElementById('pcBtnNav').textContent=t.dir; var rs=document.getElementById('rs'); document.getElementById('txMin').textContent=(rs.classList.contains('minim')?'⬆ ':'⬇ ')+(rs.classList.contains('minim')?t.exp:t.min); if(document.getElementById('menuSheet').classList.contains('open')) renderMenuList(); }");
 
             lines.Add("function st(r){return r.toFixed(1);}");
             lines.Add("function toast(m){var t=document.getElementById('tst');t.textContent=m;t.style.display='block';setTimeout(function(){t.style.display='none';},2500);}");
-            lines.Add("function toU(){if(uP)map.panTo(uP);else toast(cL==='vi'?'Đang tìm GPS...':(cL==='en'?'Waiting for GPS...':'正在搜索 GPS...'));}");
+            lines.Add("function toU(){if(uP)map.panTo(uP);else{var msg={'vi':'Đang tìm GPS...','en':'Waiting for GPS...','zh':'正在搜索 GPS...','ja':'GPS検索中...','ko':'GPS 검색 중...'};toast(msg[cL]||'GPS...');}}");
             lines.Add("function pick(r){cur=r;map.panTo({lat:r.lat,lng:r.lng});opS(r);}");
             lines.Add("function opS(r){var si=document.getElementById('simg'),sp=document.getElementById('sph');var foodEmoji='🍽️';if(r.name.includes('Oc'))foodEmoji='🦪';else if(r.name.includes('Bun')||r.name.includes('Pho'))foodEmoji='🍜';if(r.img){si.src=r.img;si.style.display='block';sp.style.display='none';}else{si.style.display='none';sp.innerHTML=foodEmoji;sp.style.display='flex';}document.getElementById('snm').textContent=r.name;document.getElementById('srt').innerHTML='⭐ '+st(r.rating);document.getElementById('sde').textContent=r.desc;document.getElementById('sad').textContent=r.addr;document.getElementById('shr').textContent=r.hours;var fb=document.getElementById('txFavBtn');if(fb){fb.innerHTML=r.fav?'❤️':'🤍';}document.getElementById('sheet').classList.add('open');}");
             lines.Add("function toggleFav(id,ev){if(ev)ev.stopPropagation(); window.location.href='maui://togglefav?id='+id;}");
             lines.Add("function closeS(){document.getElementById('sheet').classList.remove('open');document.getElementById('menuSheet').classList.remove('open');cur=null;}");
             lines.Add("function reqR(){if(!cur){return;}if(!uP){toast('Đang lấy vị trí trung tâm do không có GPS');}window.location.href='maui://routerequested?data='+encodeURIComponent(JSON.stringify({id:cur.id,lat:cur.lat,lng:cur.lng,name:cur.name}))}");
-            lines.Add("function shwR(n,d,t,img){document.getElementById('rnm').textContent=n;document.getElementById('rdst').textContent=d;document.getElementById('rtim').textContent=t;var ric=document.getElementById('ricImg');ric.innerHTML=img?'<img src=\"'+img+'\">':'📍';document.getElementById('rs').classList.add('open');document.getElementById('sheet').classList.remove('open');}");
+            lines.Add("function shwR(n,d,t,img){document.getElementById('rnm').textContent=n;document.getElementById('rdst').textContent=d;document.getElementById('rtim').textContent=t;var ric=document.getElementById('ricImg');ric.innerHTML=img?'<img src=\"'+img+'\">':'📍';var rs=document.getElementById('rs');rs.classList.remove('minim');document.getElementById('txMin').textContent='⬇ '+L[cL].min;rs.classList.add('open');document.getElementById('sheet').classList.remove('open');}");
             lines.Add("var _segs=[],_rb=null,_rn='',_rd='',_rt='',_ri='';");
             lines.Add("function endR(){_segs.forEach(function(p){p.setMap(null);});_segs=[];if(rLn){rLn.setMap(null);rLn=null;}if(rLnBg){rLnBg.setMap(null);rLnBg=null;}if(rtMks){rtMks.forEach(function(m){m.setMap(null);});rtMks=[];}if(rtWin){rtWin.close();}document.getElementById('rs').classList.remove('open');}");
             lines.Add("function drawPremiumRoute(segsArray, n, d, t, img) {");
@@ -726,7 +741,7 @@ namespace VinhKhanhTour.Views
             lines.Add("function menuNav(id,ev){ev.stopPropagation();var r=ALL.find(function(x){return x.id===id;});if(!r)return;cur=r;document.getElementById('menuSheet').classList.remove('open');reqR();}");
 
             lines.Add("document.addEventListener('click',function(e){var sr=document.getElementById('searchResults');if(sr&&!sr.contains(e.target)&&e.target.id!=='searchInput')sr.style.display='none';var lb=document.getElementById('langBtn');var ld=document.getElementById('langDropdown');if(ld&&!lb.contains(e.target))ld.style.display='none';});");
-            lines.Add("function initMap(){try{var mapDiv=document.getElementById('map');if(!mapDiv)return;var mapOptions={center:CTR,zoom:16,mapTypeControl:false,streetViewControl:false,fullscreenControl:false,zoomControl:true,zoomControlOptions:{position:google.maps.ControlPosition.LEFT_CENTER},scrollwheel:true,gestureHandling:'greedy',clickableIcons:false,mapTypeId:'roadmap',disableDoubleClickZoom:true};map=new google.maps.Map(mapDiv,mapOptions);if(ALL&&ALL.length>0){ALL.forEach(function(r){var mk=new google.maps.Marker({position:{lat:r.lat,lng:r.lng},map:map,title:r.name});mk.addListener('click',function(){pick(r);});});}map.addListener('click',function(){closeS();});map.addListener('dblclick',function(e){ toast(cL==='vi'?'Đã dịch chuyển tới đây!':(cL==='en'?'Teleported here!':'已传送到这里！')); sPos(e.latLng.lat(),e.latLng.lng()); });google.maps.event.trigger(map, 'resize');setTimeout(gps,1000); applyLang(); window.location.href='maui://mapready'; }catch(e){console.error(e); window.location.href='maui://mapready';}}");
+            lines.Add("function initMap(){try{var mapDiv=document.getElementById('map');if(!mapDiv)return;var mapOptions={center:CTR,zoom:16,mapTypeControl:false,streetViewControl:false,fullscreenControl:false,zoomControl:true,zoomControlOptions:{position:google.maps.ControlPosition.LEFT_CENTER},scrollwheel:true,gestureHandling:'greedy',clickableIcons:false,mapTypeId:'roadmap',disableDoubleClickZoom:true};map=new google.maps.Map(mapDiv,mapOptions);if(ALL&&ALL.length>0){ALL.forEach(function(r){var mk=new google.maps.Marker({position:{lat:r.lat,lng:r.lng},map:map,title:r.name});mk.addListener('click',function(){pick(r);});});}map.addListener('click',function(){closeS();});map.addListener('dblclick',function(e){var tp={'vi':'Đã dịch chuyển tới đây!','en':'Teleported here!','zh':'已传送到这里！','ja':'ここに移動しました!','ko':'여기로 이동했습니다!'};toast(tp[cL]||tp.vi); sPos(e.latLng.lat(),e.latLng.lng()); });google.maps.event.trigger(map, 'resize');setTimeout(gps,1000); applyLang(); window.location.href='maui://mapready'; }catch(e){console.error(e); window.location.href='maui://mapready';}}");
             lines.Add("</script>");
             lines.Add("<script src='https://maps.googleapis.com/maps/api/js?key=" + KEY + "'></script>");
             lines.Add("<script>window.addEventListener('load',function(){setTimeout(initMap,200);});</script>");
@@ -742,16 +757,17 @@ namespace VinhKhanhTour.Views
             double minDist = double.MaxValue;
             foreach (var r in _restaurants)
             {
-                double d = _geofencing.CalculateDistance(location.Latitude, location.Longitude, r.Latitude, r.Longitude);
+                double d = GeofencingService.CalculateDistance(location.Latitude, location.Longitude, r.Latitude, r.Longitude);
                 if (d < minDist) { minDist = d; nearest = r; }
             }
             if (nearest == null) return;
-            _nearestRestaurant = nearest;
+            // _nearestRestaurant = nearest;
 
-            string langNear = _currentLang switch { "en" => "Nearest", "zh" => "最近", _ => "Gần nhất" };
+            string langNear = _currentLang switch { "en" => "Nearest", "zh" => "最近", "ja" => "最近", "ko" => "가장 가까운", _ => "Gần nhất" };
             MainThread.BeginInvokeOnMainThread(() => _statusLabel.Text = $"{langNear}: {nearest.Name} ({minDist:F0}m)");
 
             if (minDist > 5) return; // Chỉ tự phát audio khi nằm sát vùng 5m
+            if (!VinhKhanhTour.Services.UserSession.Instance.IsAuthenticatedUser || !_isActiveMap) return;
             if (_lastNotified.TryGetValue(nearest.Id, out DateTime last) &&
                 (DateTime.Now - last).TotalMinutes < COOLDOWN) return;
             _lastNotified[nearest.Id] = DateTime.Now;
@@ -776,7 +792,7 @@ namespace VinhKhanhTour.Views
         public async void FocusAndDirect(Restaurant r)
         {
             if (r == null) return;
-            
+
             // 1. If map is not loaded OR not ready for commands yet, queue it
             if (!_htmlLoaded || !_mapIsMapReadyForCommands)
             {
@@ -796,11 +812,11 @@ namespace VinhKhanhTour.Views
 
                 await MainThread.InvokeOnMainThreadAsync(async () =>
                 {
-                    // Center and show POI sheet
-                    await _webView.EvaluateJavaScriptAsync($"if(typeof pick === 'function') {{ var target = ALL.find(x => x.id === {r.Id}); if(target) pick(target); }} else if(typeof selectSearchResult === 'function') {{ selectSearchResult({r.Id}); }}");
-                    
-                    // Show status toast
-                    await _webView.EvaluateJavaScriptAsync($"if(typeof toast === 'function') toast('{(_currentLang == "vi" ? "Đang định vị và tìm đường..." : "Locating and finding route...")}')");
+                // Center and show POI sheet
+                await _webView.EvaluateJavaScriptAsync($"if(typeof pick === 'function') {{ var target = ALL.find(x => x.id === {r.Id}); if(target) pick(target); }} else if(typeof selectSearchResult === 'function') {{ selectSearchResult({r.Id}); }}");
+
+                // Show status toast
+                await _webView.EvaluateJavaScriptAsync($"if(typeof toast === 'function') toast('{(_currentLang == "vi" ? "Đang định vị và tìm đường..." : (_currentLang == "zh" ? "正在定位..." : (_currentLang == "ja" ? "ルート検索中..." : (_currentLang == "ko" ? "경로 탐색 중..." : "Locating and finding route..."))))}')");
 
                     // 2. Trigger directions routing
                     var routeData = new { id = r.Id, lat = r.Latitude, lng = r.Longitude, name = r.Name };

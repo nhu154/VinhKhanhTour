@@ -4,6 +4,7 @@ using Android.Content.PM;
 using Android.OS;
 using Android.Webkit;
 using VinhKhanhTour.Platforms.Android;
+using System.Runtime.Versioning;
 
 namespace VinhKhanhTour
 {
@@ -51,6 +52,7 @@ namespace VinhKhanhTour
 
         // ── Foreground Service control ────────────────────────────────
 
+        [SupportedOSPlatform("android26.0")]
         private void StartLocationService()
         {
             if (_serviceIntent != null) return; // đã start rồi

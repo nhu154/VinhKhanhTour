@@ -12,7 +12,7 @@ function switchPage(pageId, navEl) {
     'page-poi':             'Bản đồ & Quản lý địa điểm',
     'page-tour':            'Quản lý hành trình Tour',
     'page-trans':           'Quản lý nội dung đa ngữ',
-    'page-history':         'Nhật ký hành trình khách hàng',
+    'page-history':         'Lịch sử sử dụng',
     'page-lang':            'Quản lý ngôn ngữ',
     'page-approvals':       'Phê duyệt yêu cầu',
     'page-users':           'Quản lý người dùng',

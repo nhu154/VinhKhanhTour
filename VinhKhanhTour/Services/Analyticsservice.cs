@@ -9,7 +9,7 @@ namespace VinhKhanhTour.Services
 
         private AnalyticsService() { }
 
-        public async Task RecordGpsPointAsync(double lat, double lng)
+        public static async Task RecordGpsPointAsync(double lat, double lng)
         {
             try
             {
@@ -31,7 +31,7 @@ namespace VinhKhanhTour.Services
             }
         }
 
-        public async Task RecordPoiVisitAsync(int poiId, string eventType = "poi_visit", double lat = 0, double lng = 0)
+        public static async Task RecordPoiVisitAsync(int poiId, string eventType = "poi_visit", double lat = 0, double lng = 0)
         {
             try
             {
@@ -53,7 +53,7 @@ namespace VinhKhanhTour.Services
             }
         }
 
-        public async Task RecordAudioPlayedAsync(int poiId, string lang, double durationSeconds)
+        public static async Task RecordAudioPlayedAsync(int poiId, string lang, double durationSeconds)
         {
             try
             {
@@ -74,13 +74,13 @@ namespace VinhKhanhTour.Services
             }
         }
 
-        public async Task<List<AnalyticsEvent>> GetAllEventsAsync()
+        public static async Task<List<AnalyticsEvent>> GetAllEventsAsync()
         {
             try { return await App.Database.GetAllAnalyticsEventsAsync(); }
-            catch { return new List<AnalyticsEvent>(); }
+            catch { return []; }
         }
 
-        public async Task<int> GetTotalVisitsAsync()
+        public static async Task<int> GetTotalVisitsAsync()
         {
             try
             {
@@ -92,23 +92,22 @@ namespace VinhKhanhTour.Services
 
         /// <summary>
         /// Trả về top N POI dưới dạng List PoiStats — dùng cho AnalyticsPage.
-        /// Cải thiện: Tự động map tên từ DB/API để tránh hiện POI #ID.
         /// </summary>
-        public async Task<List<PoiStats>> GetTopPoisAsync(int topN = 5)
+        public static async Task<List<PoiStats>> GetTopPoisAsync(int topN = 5)
         {
             try
             {
                 // 1. Lấy tất cả sự kiện và lọc các ID hợp lệ (>0)
                 var allEvents = await App.Database.GetAllAnalyticsEventsAsync();
-                var visitEvents = allEvents.Where(e => e.PoiId > 0 && 
+                var visitEvents = allEvents.Where(e => e.PoiId > 0 &&
                     (e.EventType == "poi_visit" || e.EventType.StartsWith("audio_"))).ToList();
 
-                if (visitEvents.Count == 0) return new List<PoiStats>();
+                if (visitEvents.Count == 0) return [];
 
                 // 2. Lấy thông tin quán ăn để map tên
                 var restaurants = await App.Database.GetRestaurantsAsync();
-                
-                // Nếu local DB thiếu thông tin (ví dụ cache bị xóa), sync nhanh từ API
+
+                // Nếu local DB thiếu thông tin, sync nhanh từ API
                 var uniqueIds = visitEvents.Select(e => e.PoiId).Distinct().ToList();
                 bool needsSync = uniqueIds.Any(id => !restaurants.Any(r => r.Id == id)) || restaurants.Count == 0;
 
@@ -136,16 +135,17 @@ namespace VinhKhanhTour.Services
                 foreach (var g in grouped)
                 {
                     var r = restaurants.FirstOrDefault(x => x.Id == g.Key);
-                    
-                    // Nếu tuyệt đối không tìm được tên (r==null), bỏ qua entry này thay vì hiện ID
-                    if (r == null) continue;
+
+                    // ── FIX: Không bỏ qua entry khi không tìm được tên ──
+                    // Dùng tên fallback thay vì continue, để thống kê luôn hiển thị đủ
+                    string poiName = r?.Name ?? $"Địa điểm #{g.Key}";
 
                     var audioEvents = g.Where(e => e.EventType.StartsWith("audio_")).ToList();
-                    
+
                     result.Add(new PoiStats
                     {
                         PoiId = g.Key,
-                        PoiName = r.Name,
+                        PoiName = poiName,
                         ListenCount = audioEvents.Count,
                         TotalSeconds = audioEvents.Sum(e => e.Value)
                     });
@@ -155,14 +155,14 @@ namespace VinhKhanhTour.Services
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"[AnalyticsService] GetTopPois: {ex.Message}");
-                return new List<PoiStats>();
+                return [];
             }
         }
 
         /// <summary>
         /// Tổng hợp thống kê — trả về object với đúng tên property mà AnalyticsPage dùng
         /// </summary>
-        public async Task<AnalyticsSummary> GetSummaryAsync()
+        public static async Task<AnalyticsSummary> GetSummaryAsync()
         {
             try
             {
@@ -190,7 +190,7 @@ namespace VinhKhanhTour.Services
             }
         }
 
-        public async Task ClearAllAsync()
+        public static async Task ClearAllAsync()
         {
             try
             {
@@ -205,7 +205,7 @@ namespace VinhKhanhTour.Services
     }
 
     /// <summary>
-    /// Model tổng hợp thống kê — dùng để tránh lỗi tên tuple
+    /// Model tổng hợp thống kê
     /// </summary>
     public class AnalyticsSummary
     {

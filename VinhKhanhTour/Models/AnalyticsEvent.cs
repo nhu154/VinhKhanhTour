@@ -1,4 +1,4 @@
-﻿using SQLite;
+using SQLite;
 
 namespace VinhKhanhTour.Models
 {
@@ -25,6 +25,8 @@ namespace VinhKhanhTour.Models
 
         
         public double Lng { get; set; }
+
+        public bool IsSynced { get; set; } = false;
 
         [Ignore]
         public DateTime Timestamp

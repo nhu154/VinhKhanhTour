@@ -109,3 +109,11 @@ function renderDialog({ title, message, type, confirmText, hideCancel, showInput
     document.querySelector('.dialog-overlay').onclick = () => close(onCancel);
   }
 }
+
+function getAdminHeaders() {
+  return {
+    'Content-Type': 'application/json',
+    'X-Admin-Id': sessionStorage.getItem('cms_userid') || '0',
+    'X-Admin-Name': sessionStorage.getItem('cms_username') || 'Unknown'
+  };
+}

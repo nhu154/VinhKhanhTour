@@ -42,11 +42,13 @@ namespace VinhkhanhTour.API.Controllers
     {
         private readonly string _conn;
         private readonly ImageService _img;
+        private readonly LogService _log;
 
-        public ApprovalsController(IConfiguration config, ImageService img)
+        public ApprovalsController(IConfiguration config, ImageService img, LogService log)
         {
             _conn = config.GetConnectionString("DefaultConnection")!;
             _img = img;
+            _log = log;
         }
 
         [HttpGet]
@@ -114,6 +116,8 @@ namespace VinhkhanhTour.API.Controllers
                     return Ok(new { message = $"Đã duyệt nhưng lỗi khi áp dụng: {ex.Message}" });
                 }
             }
+
+            await _log.LogAction(Request, body.Status == "approved" ? "APPROVE_REQ" : "REJECT_REQ", req.LocationName, body.AdminNote);
 
             return Ok(new { message = body.Status == "approved" ? "✅ Đã duyệt và áp dụng!" : "❌ Đã từ chối" });
         }

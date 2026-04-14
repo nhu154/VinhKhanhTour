@@ -50,6 +50,41 @@ namespace VinhKhanhTour.Models
         public string Translations { get; set; } = "{}";
 
 
+        public string GetDescription(string lang)
+        {
+            if (lang == "en" && !string.IsNullOrWhiteSpace(TtsScriptEn)) return TtsScriptEn;
+            if (lang == "zh" && !string.IsNullOrWhiteSpace(TtsScriptZh)) return TtsScriptZh;
+            
+            // Check dynamic langs
+            if (!string.IsNullOrWhiteSpace(Translations) && Translations != "{}")
+            {
+                try {
+                    var extraLangs = System.Text.Json.JsonSerializer.Deserialize<System.Collections.Generic.Dictionary<string, System.Collections.Generic.Dictionary<string, string>>>(Translations);
+                    if (extraLangs != null && extraLangs.TryGetValue(lang, out var langData)) {
+                        if (langData.TryGetValue("tts", out var dynamicTts) && !string.IsNullOrWhiteSpace(dynamicTts)) return dynamicTts;
+                    }
+                } catch { }
+            }
+            return Description;
+        }
+
+        public string GetName(string lang)
+        {
+            if (lang == "en") return Name; // Should have NameEn in DB, but currently Name is unified
+            
+            // Check dynamic langs
+            if (!string.IsNullOrWhiteSpace(Translations) && Translations != "{}")
+            {
+                try {
+                    var extraLangs = System.Text.Json.JsonSerializer.Deserialize<System.Collections.Generic.Dictionary<string, System.Collections.Generic.Dictionary<string, string>>>(Translations);
+                    if (extraLangs != null && extraLangs.TryGetValue(lang, out var langData)) {
+                        if (langData.TryGetValue("name", out var dynamicName) && !string.IsNullOrWhiteSpace(dynamicName)) return dynamicName;
+                    }
+                } catch { }
+            }
+            return Name;
+        }
+
         // ── Helper ────────────────────────────────────────────────────────────
 
         /// <summary>

@@ -12,11 +12,13 @@ namespace VinhkhanhTour.API.Controllers
     {
         private readonly string _conn;
         private readonly ImageService _img;
+        private readonly LogService _log;
 
-        public ToursController(IConfiguration config, ImageService img)
+        public ToursController(IConfiguration config, ImageService img, LogService log)
         {
             _conn = config.GetConnectionString("DefaultConnection")!;
             _img = img;
+            _log = log;
         }
 
         [HttpGet]
@@ -27,9 +29,13 @@ namespace VinhkhanhTour.API.Controllers
                 SELECT Id, Name,
                        COALESCE(NameEn, '') as NameEn,
                        COALESCE(NameZh, '') as NameZh,
+                       COALESCE(NameJa, '') as NameJa,
+                       COALESCE(NameKo, '') as NameKo,
                        COALESCE(Description, '') as Description,
                        COALESCE(DescEn, '') as DescEn,
                        COALESCE(DescZh, '') as DescZh,
+                       COALESCE(DescJa, '') as DescJa,
+                       COALESCE(DescKo, '') as DescKo,
                        COALESCE(Duration, '45 phút') as Duration,
                        COALESCE(Rating, 4.0) as Rating,
                        COALESCE(Emoji, '🍜') as Emoji,
@@ -49,9 +55,13 @@ namespace VinhkhanhTour.API.Controllers
                 SELECT Id, Name,
                        COALESCE(NameEn, '') as NameEn,
                        COALESCE(NameZh, '') as NameZh,
+                       COALESCE(NameJa, '') as NameJa,
+                       COALESCE(NameKo, '') as NameKo,
                        COALESCE(Description, '') as Description,
                        COALESCE(DescEn, '') as DescEn,
                        COALESCE(DescZh, '') as DescZh,
+                       COALESCE(DescJa, '') as DescJa,
+                       COALESCE(DescKo, '') as DescKo,
                        COALESCE(Duration, '45 phút') as Duration,
                        COALESCE(Rating, 4.0) as Rating,
                        COALESCE(Emoji, '🍜') as Emoji,
@@ -70,8 +80,8 @@ namespace VinhkhanhTour.API.Controllers
             var imgUrl = _img.SaveIfBase64(body.GetValueOrDefault("ImageUrl", "")?.ToString(), "tour");
 
             await db.ExecuteAsync(@"
-                INSERT INTO tours (Name, NameEn, NameZh, Description, DescEn, DescZh, Duration, Rating, Emoji, ImageUrl, IsActive, Pois)
-                VALUES (@Name, @NameEn, @NameZh, @Description, @DescEn, @DescZh, @Duration, @Rating, @Emoji, @ImageUrl, @IsActive, @Pois)",
+                INSERT INTO tours (Name, NameEn, NameZh, NameKo, Description, DescEn, DescZh, DescKo, Duration, Rating, Emoji, ImageUrl, IsActive, Pois)
+                VALUES (@Name, @NameEn, @NameZh, @NameKo, @Description, @DescEn, @DescZh, @DescKo, @Duration, @Rating, @Emoji, @ImageUrl, @IsActive, @Pois)",
                 new
                 {
                     Name = body.GetValueOrDefault("Name", "")?.ToString(),
@@ -88,6 +98,8 @@ namespace VinhkhanhTour.API.Controllers
                     IsActive = true,
                     Pois = body.GetValueOrDefault("Pois", "[]")?.ToString()
                 });
+            var name = body.GetValueOrDefault("Name", "")?.ToString();
+            await _log.LogAction(Request, "CREATE_TOUR", name);
             return Ok(new { message = "Tạo tour thành công" });
         }
 
@@ -120,6 +132,8 @@ namespace VinhkhanhTour.API.Controllers
                     ImageUrl = imgUrl,
                     Pois = body.GetValueOrDefault("Pois", "[]")?.ToString()
                 });
+            var tourName = body.GetValueOrDefault("Name", "")?.ToString();
+            await _log.LogAction(Request, "UPDATE_TOUR", tourName);
             return Ok(new { message = "Cập nhật tour thành công" });
         }
 
@@ -127,7 +141,9 @@ namespace VinhkhanhTour.API.Controllers
         public async Task<IActionResult> Delete(int id)
         {
             using var db = new MySqlConnection(_conn);
+            var name = await db.ExecuteScalarAsync<string>("SELECT Name FROM tours WHERE Id=@Id", new { Id = id });
             await db.ExecuteAsync("DELETE FROM tours WHERE Id=@Id", new { Id = id });
+            await _log.LogAction(Request, "DELETE_TOUR", name ?? $"Tour {id}");
             return Ok(new { message = "Xóa tour thành công" });
         }
     }

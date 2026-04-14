@@ -193,7 +193,7 @@ async function reviewApproval(id, status, note) {
   try {
     const res = await fetch(`${API}/approvals/${id}/review`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAdminHeaders(),
       body: JSON.stringify({ Status: status, AdminNote: note, ReviewedBy: 1 })
     });
     const data = await res.json();
@@ -227,7 +227,7 @@ async function submitForApproval(poiData, action, locationId, locationName) {
 
   const res = await fetch(`${API}/approvals`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: getAdminHeaders(),
     body: JSON.stringify(body)
   });
   return res.ok;

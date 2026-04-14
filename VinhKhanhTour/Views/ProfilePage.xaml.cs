@@ -29,10 +29,12 @@ public partial class ProfilePage : ContentPage
     private Label _lblUserName = null!;
     private Label _lblUserRole = null!;
     private Label _lblEditBtn = null!;
+    private Label _lblTicket = null!;
+    private Label _lblJournal = null!;
+    private Label _lblBookings = null!;
 
     public ProfilePage()
     {
-        InitializeComponent();
         BuildUI();
     }
 
@@ -45,33 +47,36 @@ public partial class ProfilePage : ContentPage
     private void ApplyLanguage()
     {
         var lang = _currentLang;
-        
+
         // Dynamic labels with fallback logic
         if (_lblPageTitle != null) _lblPageTitle.Text = lang switch { "en" => "My Profile", "zh" => "我的主页", "ja" => "マイプロフィール", "ko" => "내 프로필", _ => "Hồ sơ của tôi" };
-        if (_lblStatVisit != null) _lblStatVisit.Text = lang switch { "en" => "Visited", "zh" => "去过", "ja" => "訪問済み", _ => "Quán đã ghé" };
-        if (_lblStatBadge != null) _lblStatBadge.Text = lang switch { "en" => "Badges", "zh" => "徽章", "ja" => "バッジ", _ => "Huy hiệu" };
-        if (_lblStatPoints != null) _lblStatPoints.Text = lang switch { "en" => "Points", "zh" => "积分", "ja" => "ポイント", _ => "Điểm thưởng" };
-        if (_lblMenuSection != null) _lblMenuSection.Text = lang switch { "en" => "Account", "zh" => "账户", "ja" => "アカウント", _ => "Tài khoản" };
-        
-        if (_lblHistorySection != null) _lblHistorySection.Text = lang switch { "en" => "Recent Activity", "zh" => "最近活动", "ja" => "最近の活動", _ => "Hoạt động gần đây" };
+        if (_lblStatVisit != null) _lblStatVisit.Text = lang switch { "en" => "Visited", "zh" => "去过", "ja" => "訪問済み", "ko" => "방문함", _ => "Quán đã ghé" };
+        if (_lblStatBadge != null) _lblStatBadge.Text = lang switch { "en" => "Badges", "zh" => "徽章", "ja" => "バッジ", "ko" => "배지", _ => "Huy hiệu" };
+        if (_lblStatPoints != null) _lblStatPoints.Text = lang switch { "en" => "Points", "zh" => "积分", "ja" => "ポイント", "ko" => "포인트", _ => "Điểm thưởng" };
+        if (_lblMenuSection != null) _lblMenuSection.Text = lang switch { "en" => "Account", "zh" => "账户", "ja" => "アカウント", "ko" => "계정", _ => "Tài khoản" };
 
-        if (_lblFav != null) _lblFav.Text = lang switch { "en" => "Favorite Spots", "zh" => "收藏的餐厅", "ja" => "お気に入り", _ => "Quán yêu thích" };
-        if (_lblOffers != null) _lblOffers.Text = lang switch { "en" => "My Offers", "zh" => "我的优惠", "ja" => "オファー", _ => "Ưu đãi của tôi" };
-        if (_lblBadgeMoi != null) _lblBadgeMoi.Text = lang switch { "en" => "New", "zh" => "新", "ja" => "新着", _ => "Mới" };
-        if (_lblLang != null) _lblLang.Text = lang switch { "en" => "System Language", "zh" => "系统语言", "ja" => "システム言語", _ => "Ngôn ngữ hệ thống" };
-        if (_lblStats != null) _lblStats.Text = lang switch { "en" => "Analytics", "zh" => "统计分析", "ja" => "統計", _ => "Thống kê phân tích" };
-        if (_lblSettings != null) _lblSettings.Text = lang switch { "en" => "Settings & Privacy", "zh" => "设置与隐私", "ja" => "設定", _ => "Cài đặt & Quyền riêng tư" };
-        
+        if (_lblHistorySection != null) _lblHistorySection.Text = lang switch { "en" => "Recent Activity", "zh" => "最近活动", "ja" => "最近の活動", "ko" => "최근 활동", _ => "Hoạt động gần đây" };
+
+        if (_lblFav != null) _lblFav.Text = lang switch { "en" => "Favorite Spots", "zh" => "收藏的餐厅", "ja" => "お気に入り", "ko" => "즐겨찾기", _ => "Quán yêu thích" };
+        if (_lblOffers != null) _lblOffers.Text = lang switch { "en" => "My Offers", "zh" => "我的优惠", "ja" => "オファー", "ko" => "내 제안", _ => "Ưu đãi của tôi" };
+        if (_lblBadgeMoi != null) _lblBadgeMoi.Text = lang switch { "en" => "New", "zh" => "新", "ja" => "新着", "ko" => "새로운", _ => "Mới" };
+        if (_lblLang != null) _lblLang.Text = lang switch { "en" => "System Language", "zh" => "系统语言", "ja" => "システム言語", "ko" => "시스템 언어", _ => "Ngôn ngữ hệ thống" };
+        if (_lblStats != null) _lblStats.Text = lang switch { "en" => "Analytics", "zh" => "统计分析", "ja" => "統計", "ko" => "통계 분석", _ => "Thống kê phân tích" };
+        if (_lblSettings != null) _lblSettings.Text = lang switch { "en" => "Settings & Privacy", "zh" => "设置与隐私", "ja" => "設定", "ko" => "설정 및 개인정보", _ => "Cài đặt & Quyền riêng tư" };
+        if (_lblTicket != null) _lblTicket.Text = lang switch { "en" => "My Ticket", "zh" => "我的票", "ja" => "チケット", "ko" => "내 티켓", _ => "Vé của tôi" };
+        if (_lblJournal != null) _lblJournal.Text = lang switch { "en" => "Food Journal", "zh" => "美食日记", "ja" => "食日記", "ko" => "푸드 저널", _ => "Nhật ký ẩm thực" };
+        if (_lblBookings != null) _lblBookings.Text = lang switch { "en" => "My Bookings", "zh" => "我的预约", "ja" => "予約履歴", "ko" => "내 예약", _ => "Đặt chỗ của tôi" };
+
         var _session = VinhKhanhTour.Services.UserSession.Instance;
         if (!_session.IsAuthenticatedUser)
         {
-            if (_lblUserName != null) _lblUserName.Text = lang switch { "en" => "Vinh Khanh Tourist", "ja" => "ヴィンカン観光客", _ => "Du khách Vĩnh Khánh" };
-            if (_lblUserRole != null) _lblUserRole.Text = lang switch { "en" => "✨ Guest Explorer", "ja" => "✨ ゲストエクスプローラー", _ => "Khách tham quan" };
+            if (_lblUserName != null) _lblUserName.Text = lang switch { "en" => "Vinh Khanh Tourist", "ja" => "ヴィンカン観光客", "ko" => "빈칸 관광객", _ => "Du khách Vĩnh Khánh" };
+            if (_lblUserRole != null) _lblUserRole.Text = lang switch { "en" => "✨ Guest Explorer", "ja" => "✨ ゲストエクスプローラー", "ko" => "✨ 게스트 탐험가", _ => "Khách tham quan" };
         }
-        
-        if (_lblEditBtn != null) _lblEditBtn.Text = lang switch { "en" => "✏️ Edit", "ja" => "✏️ 編集", _ => "Sửa" };
+
+        if (_lblEditBtn != null) _lblEditBtn.Text = lang switch { "en" => "✏️ Edit", "ja" => "✏️ 編集", "ko" => "✏️ 편집", _ => "Sửa" };
         if (_lblLoading != null && _lblLoading.Text != null && _lblLoading.Text.EndsWith("..."))
-            _lblLoading.Text = lang switch { "en" => "Loading data...", "zh" => "加载数据...", "ja" => "読み込み中...", _ => "Đang tải dữ liệu..." };
+            _lblLoading.Text = lang switch { "en" => "Loading data...", "zh" => "加载数据...", "ja" => "読み込み中...", "ko" => "데이터 로딩 중...", _ => "Đang tải dữ liệu..." };
     }
 
     protected override async void OnAppearing()
@@ -79,6 +84,8 @@ public partial class ProfilePage : ContentPage
         base.OnAppearing();
         await LoadStatsAsync();
     }
+
+
 
     private void BuildUI()
     {
@@ -245,21 +252,62 @@ public partial class ProfilePage : ContentPage
 
         _lblStats = new Label { FontSize = 16, FontAttributes = FontAttributes.Bold, TextColor = Color.FromArgb("#0D2137"), VerticalOptions = LayoutOptions.Center };
         var statsItem = MakeMenuItem("\U0001F4CA", _lblStats, null, Color.FromArgb("#00BFA5"));
-        statsItem.GestureRecognizers.Add(new TapGestureRecognizer { Command = new Command(() => {
-            if (!VinhKhanhTour.Services.UserSession.Instance.IsAuthenticatedUser)
-            {
-                ShowAuthRequiredPopup();
-            }
-            else
-            {
-                Navigation.PushModalAsync(new AnalyticsPage());
-            }
-        }) });
+        statsItem.GestureRecognizers.Add(new TapGestureRecognizer
+        {
+            Command = new Command(() => {
+                if (!VinhKhanhTour.Services.UserSession.Instance.IsAuthenticatedUser)
+                {
+                    ShowAuthRequiredPopup();
+                }
+                else
+                {
+                    Navigation.PushModalAsync(new AnalyticsPage());
+                }
+            })
+        });
         menuItems.Add(statsItem);
         menuItems.Add(new BoxView { HeightRequest = 1, Color = Color.FromArgb("#0FFFFFFF"), Margin = new Thickness(80, 0, 20, 0) });
 
         _lblSettings = new Label { FontSize = 16, FontAttributes = FontAttributes.Bold, TextColor = Color.FromArgb("#0D2137"), VerticalOptions = LayoutOptions.Center };
         menuItems.Add(MakeMenuItem("\u2699", _lblSettings, null, Color.FromArgb("#9E9E9E")));
+
+        // ── Vé của tôi ────────────────────────────────────────────────────
+        menuItems.Add(new BoxView { HeightRequest = 1, Color = Color.FromArgb("#0FFFFFFF"), Margin = new Thickness(80, 0, 20, 0) });
+        _lblTicket = new Label { FontSize = 16, FontAttributes = FontAttributes.Bold, TextColor = Color.FromArgb("#0D2137"), VerticalOptions = LayoutOptions.Center };
+        var ticketBadgeLabel = VinhKhanhTour.Services.TicketService.Instance.HasValidTicket
+            ? new Label { Text = "✅ Đang dùng", FontSize = 11, TextColor = Color.FromArgb("#2E7D32"), FontAttributes = FontAttributes.Bold }
+            : new Label { Text = "HOT 🔥", FontSize = 11, TextColor = Color.FromArgb("#FF6F00"), FontAttributes = FontAttributes.Bold };
+        var ticketItem = MakeMenuItem("🎫", _lblTicket, ticketBadgeLabel, Color.FromArgb("#FF6F00"));
+        ticketItem.GestureRecognizers.Add(new TapGestureRecognizer
+        { Command = new Command(async () => await Navigation.PushAsync(new MyTicketPage())) });
+        menuItems.Add(ticketItem);
+
+        // ── Nhật ký ẩm thực ───────────────────────────────────────────────
+        menuItems.Add(new BoxView { HeightRequest = 1, Color = Color.FromArgb("#0FFFFFFF"), Margin = new Thickness(80, 0, 20, 0) });
+        _lblJournal = new Label { FontSize = 16, FontAttributes = FontAttributes.Bold, TextColor = Color.FromArgb("#0D2137"), VerticalOptions = LayoutOptions.Center };
+        var journalBadge = VinhKhanhTour.Services.TicketService.Instance.HasValidTicket
+            ? null
+            : new Label { Text = "🔒 Premium", FontSize = 11, TextColor = Color.FromArgb("#64748B"), FontAttributes = FontAttributes.Bold };
+        var journalItem = MakeMenuItem("📓", _lblJournal, journalBadge, Color.FromArgb("#4CAF50"));
+        journalItem.GestureRecognizers.Add(new TapGestureRecognizer
+        {
+            Command = new Command(async () =>
+            {
+                if (VinhKhanhTour.Services.TicketService.Instance.HasValidTicket)
+                    await Navigation.PushAsync(new FoodJournalPage());
+                else
+                    await Navigation.PushAsync(new PremiumGatePage("Nhật ký ẩm thực"));
+            })
+        });
+        menuItems.Add(journalItem);
+
+        // ── Đặt chỗ của tôi ───────────────────────────────────────────────
+        menuItems.Add(new BoxView { HeightRequest = 1, Color = Color.FromArgb("#0FFFFFFF"), Margin = new Thickness(80, 0, 20, 0) });
+        _lblBookings = new Label { FontSize = 16, FontAttributes = FontAttributes.Bold, TextColor = Color.FromArgb("#0D2137"), VerticalOptions = LayoutOptions.Center };
+        var bookingItem = MakeMenuItem("📋", _lblBookings, null, Color.FromArgb("#1565C0"));
+        bookingItem.GestureRecognizers.Add(new TapGestureRecognizer
+        { Command = new Command(async () => await Navigation.PushAsync(new BookingHistoryPage())) });
+        menuItems.Add(bookingItem);
 
         menuSection.Add(MakeCard(menuItems));
         root.Add(menuSection);
@@ -292,7 +340,7 @@ public partial class ProfilePage : ContentPage
         // Overlay Grid for Custom Popups
         var mainGrid = new Grid();
         mainGrid.Children.Add(scroll);
-        
+
         // Popup Overlay (Hidden initially)
         _popupOverlay = new Grid
         {
@@ -303,7 +351,7 @@ public partial class ProfilePage : ContentPage
         var dismissTap = new TapGestureRecognizer();
         dismissTap.Tapped += (s, e) => HidePopup();
         _popupOverlay.GestureRecognizers.Add(dismissTap);
-        
+
         mainGrid.Children.Add(_popupOverlay);
 
         Content = mainGrid;
@@ -314,8 +362,9 @@ public partial class ProfilePage : ContentPage
 
     private void ShowAuthRequiredPopup()
     {
+        var lang = _currentLang;
         _popupOverlay.Children.Clear();
-        
+
         var card = new Border
         {
             BackgroundColor = Colors.White,
@@ -328,30 +377,30 @@ public partial class ProfilePage : ContentPage
         };
 
         var stack = new VerticalStackLayout { Spacing = 20, HorizontalOptions = LayoutOptions.Center };
-        
+
         stack.Add(new Label { Text = "🔐", FontSize = 48, HorizontalOptions = LayoutOptions.Center });
-        
-        stack.Add(new Label 
-        { 
-            Text = "Bạn đã có tài khoản chưa?", 
-            FontSize = 20, 
-            FontAttributes = FontAttributes.Bold, 
-            TextColor = Color.FromArgb("#0D2137"), 
-            HorizontalTextAlignment = TextAlignment.Center 
+
+        stack.Add(new Label
+        {
+            Text = lang switch { "en" => "Do you have an account?", "zh" => "你已经有账号了吗？", "ja" => "アカウントをお持ちですか？", "ko" => "계정이 있으신가요?", _ => "Bạn đã có tài khoản chưa?" },
+            FontSize = 20,
+            FontAttributes = FontAttributes.Bold,
+            TextColor = Color.FromArgb("#0D2137"),
+            HorizontalTextAlignment = TextAlignment.Center
         });
 
-        stack.Add(new Label 
-        { 
-            Text = "Tính năng thống kê hành trình dành riêng cho thành viên Vĩnh Khánh Tour để ghi lại lịch sử trải nghiệm của bạn.", 
-            FontSize = 14, 
-            TextColor = Color.FromArgb("#64748B"), 
+        stack.Add(new Label
+        {
+            Text = lang switch { "en" => "Journey tracking is reserved for Vinh Khanh Tour members to record your experience history.", "zh" => "行程统计功能仅限永庆旅游会员，用于记录您的体验历史。", "ja" => "ジャーニートラッキングは、体験履歴を記録するためにヴィンカンツアーメンバー専用となっています。", "ko" => "여정 추적은 귀하의 경험 기록을 위해 빈칸 투어 회원 전용입니다.", _ => "Tính năng thống kê hành trình dành riêng cho thành viên Vĩnh Khánh Tour để ghi lại lịch sử trải nghiệm của bạn." },
+            FontSize = 14,
+            TextColor = Color.FromArgb("#64748B"),
             HorizontalTextAlignment = TextAlignment.Center,
             LineHeight = 1.4
         });
 
         var btnLogin = new Button
         {
-            Text = "Đã có (Đăng nhập)",
+            Text = lang switch { "en" => "Login Now", "zh" => "立即登录", "ja" => "今すぐログイン", "ko" => "지금 로그인", _ => "Đã có (Đăng nhập)" },
             BackgroundColor = Color.FromArgb("#1565C0"),
             TextColor = Colors.White,
             FontAttributes = FontAttributes.Bold,
@@ -359,10 +408,10 @@ public partial class ProfilePage : ContentPage
             HeightRequest = 50
         };
         btnLogin.Clicked += (s, e) => { HidePopup(); Application.Current!.MainPage = new NavigationPage(new LoginPage()); };
-        
+
         var btnReg = new Button
         {
-            Text = "Chưa có (Đăng ký)",
+            Text = lang switch { "en" => "Register", "zh" => "注册", "ja" => "登録", "ko" => "등록", _ => "Chưa có (Đăng ký)" },
             BackgroundColor = Color.FromArgb("#E3F2FD"),
             TextColor = Color.FromArgb("#1565C0"),
             FontAttributes = FontAttributes.Bold,
@@ -373,7 +422,7 @@ public partial class ProfilePage : ContentPage
 
         var btnCancel = new Label
         {
-            Text = "Bỏ qua",
+            Text = lang switch { "en" => "Skip", "zh" => "跳过", "ja" => "スキップ", "ko" => "건너뛰기", _ => "Bỏ qua" },
             FontSize = 13,
             TextColor = Color.FromArgb("#94A3B8"),
             HorizontalOptions = LayoutOptions.Center,
@@ -414,8 +463,11 @@ public partial class ProfilePage : ContentPage
 
             var uniqueIds = visits.Select(v => v.RestaurantId).Distinct().ToList();
             _visitCountLabel.Text = uniqueIds.Count.ToString();
-            _pointsLabel.Text = (uniqueIds.Count * 15).ToString();
-            _tourCountLabel.Text = (uniqueIds.Count / 2).ToString();
+
+            // Lấy điểm thưởng và huy hiệu thật từ TicketService
+            var ts = VinhKhanhTour.Services.TicketService.Instance;
+            _pointsLabel.Text = ts.Points.ToString();
+            _tourCountLabel.Text = ts.GetUnlockedBadges().Count.ToString();
 
             var recentDistinct = visits.GroupBy(v => v.RestaurantId)
                 .Select(g => g.OrderByDescending(v => v.VisitedAt).First())
@@ -426,7 +478,15 @@ public partial class ProfilePage : ContentPage
 
             if (recentDistinct.Count == 0)
             {
-                _visitHistoryLayout.Children.Add(new Label { Text = "Chưa có dấu chân nào.\nHãy khám phá Vĩnh Khánh ngay!", FontSize = 14, LineHeight = 1.4, TextColor = Color.FromArgb("#8ba0b2"), HorizontalOptions = LayoutOptions.Center, HorizontalTextAlignment = TextAlignment.Center, Margin = new Thickness(0, 30, 0, 30) });
+                var emptyMsg = _currentLang switch
+                {
+                    "en" => "No tracks yet.\nExplore Vinh Khanh now!",
+                    "zh" => "还没有足迹。\n现在就开始探索永庆吧！",
+                    "ja" => "まだ足跡がありません。\n今すぐヴィンカンを探索しましょう！",
+                    "ko" => "아직 흔적이 없습니다.\n지금 바로 빈칸을 탐험해보세요!",
+                    _ => "Chưa có dấu chân nào.\nHãy khám phá Vĩnh Khánh ngay!"
+                };
+                _visitHistoryLayout.Children.Add(new Label { Text = emptyMsg, FontSize = 14, LineHeight = 1.4, TextColor = Color.FromArgb("#8ba0b2"), HorizontalOptions = LayoutOptions.Center, HorizontalTextAlignment = TextAlignment.Center, Margin = new Thickness(0, 30, 0, 30) });
                 return;
             }
 
@@ -552,13 +612,16 @@ public partial class ProfilePage : ContentPage
         return "\U0001F958";
     }
 
-    private static string TimeAgo(DateTime dt)
+    private string TimeAgo(DateTime dt)
     {
         var d = DateTime.Now - dt;
-        if (d.TotalMinutes < 1) return "Vừa truy cập";
-        if (d.TotalHours < 1) return $"{(int)d.TotalMinutes} phút trước";
-        if (d.TotalDays < 1) return $"{(int)d.TotalHours} giờ trước";
-        if (d.TotalDays < 7) return $"{(int)d.TotalDays} ngày trước";
-        return dt.ToString("dd/MM/yyyy");
+        return _currentLang switch
+        {
+            "en" => d.TotalMinutes < 1 ? "Just now" : (d.TotalHours < 1 ? $"{(int)d.TotalMinutes}m ago" : (d.TotalDays < 1 ? $"{(int)d.TotalHours}h ago" : $"{(int)d.TotalDays}d ago")),
+            "zh" => d.TotalMinutes < 1 ? "刚刚" : (d.TotalHours < 1 ? $"{(int)d.TotalMinutes}分钟前" : (d.TotalDays < 1 ? $"{(int)d.TotalHours}小时前" : $"{(int)d.TotalDays}天前")),
+            "ja" => d.TotalMinutes < 1 ? "たった今" : (d.TotalHours < 1 ? $"{(int)d.TotalMinutes}分前" : (d.TotalDays < 1 ? $"{(int)d.TotalHours}時間前" : $"{(int)d.TotalDays}日前")),
+            "ko" => d.TotalMinutes < 1 ? "방금 전" : (d.TotalHours < 1 ? $"{(int)d.TotalMinutes}분 전" : (d.TotalDays < 1 ? $"{(int)d.TotalHours}시간 전" : $"{(int)d.TotalDays}일 전")),
+            _ => d.TotalMinutes < 1 ? "Vừa truy cập" : (d.TotalHours < 1 ? $"{(int)d.TotalMinutes} phút trước" : (d.TotalDays < 1 ? $"{(int)d.TotalHours} giờ trước" : (d.TotalDays < 7 ? $"{(int)d.TotalDays} ngày trước" : dt.ToString("dd/MM/yyyy"))))
+        };
     }
 }

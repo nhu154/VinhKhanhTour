@@ -7,14 +7,35 @@ namespace VinhKhanhTour.Views
     public class TourDetailPage : ContentPage
     {
         private Tour _tour;
+        private string _currentLang = Preferences.Default.Get("app_lang", "vi");
+        private Label _lblBack = null!;
+        private Label _lblTourName = null!;
+        private Label _lblTourDesc = null!;
+        private Label _lblDuration = null!;
+        private Label _lblSpotsCount = null!;
+        private Label _lblSectionTitle = null!;
+        private Label _lblStartTour = null!;
 
         public TourDetailPage(Tour tour)
         {
             _tour = tour;
             Title = tour.Name;
-            NavigationPage.SetHasNavigationBar(this, false); // Giao diện viền mỏng immersive
+            NavigationPage.SetHasNavigationBar(this, false);
             BackgroundColor = Color.FromArgb("#F0F6FF");
             CreateUI();
+            UpdateLanguage(_currentLang);
+        }
+
+        public void UpdateLanguage(string lang)
+        {
+            _currentLang = lang;
+            if (_lblBack != null) _lblBack.Text = lang switch { "en" => "← Back", "zh" => "← 返回", "ja" => "← 戻る", "ko" => "← 뒤로", _ => "← Trở về" };
+            if (_lblSectionTitle != null) _lblSectionTitle.Text = lang switch { "en" => "Food Journey", "zh" => "美食之旅", "ja" => "美食の旅", "ko" => "음식 여정", _ => "Hành trình ẩm thực" };
+            if (_lblStartTour != null) _lblStartTour.Text = lang switch { "en" => "Start GPS Navigation", "zh" => "开始导航", "ja" => "ナビを開始", "ko" => "네비게이션 시작", _ => "Bắt đầu dẫn đường" };
+            
+            // Re-render tour-specific info if labels are available
+            if (_lblTourName != null) _lblTourName.Text = _tour.Name; 
+            if (_lblTourDesc != null) _lblTourDesc.Text = _tour.Description;
         }
 
         private async void CreateUI()
@@ -92,7 +113,8 @@ namespace VinhKhanhTour.Views
                 VerticalOptions = LayoutOptions.Start,
                 Margin = new Thickness(20, 50, 0, 0)
             };
-            backBtn.Content = new Label { Text = "← Trở về", TextColor = Colors.White, FontAttributes = FontAttributes.Bold };
+            _lblBack = new Label { Text = "← Trở về", TextColor = Colors.White, FontAttributes = FontAttributes.Bold };
+            backBtn.Content = _lblBack;
             backBtn.GestureRecognizers.Add(new TapGestureRecognizer { Command = new Command(async () => await Navigation.PopAsync()) });
             headerGrid.Add(backBtn);
 
@@ -116,25 +138,30 @@ namespace VinhKhanhTour.Views
 
             headerContent.Add(tagLine);
 
-            headerContent.Add(new Label
+            _lblTourName = new Label
             {
                 Text = _tour.Name,
                 FontSize = 28,
                 FontAttributes = FontAttributes.Bold,
                 TextColor = Colors.White,
                 CharacterSpacing = 1
-            });
-            headerContent.Add(new Label
+            };
+            headerContent.Add(_lblTourName);
+            _lblTourDesc = new Label
             {
                 Text = _tour.Description,
                 FontSize = 14,
                 TextColor = Color.FromArgb("#FFFFFF99"),
                 LineHeight = 1.4
-            });
+            };
+            headerContent.Add(_lblTourDesc);
 
             var statsRow = new HorizontalStackLayout { Spacing = 20, Margin = new Thickness(0, 12, 0, 0) };
-            statsRow.Add(CreateStatNode("⏱", _tour.Duration));
-            statsRow.Add(CreateStatNode("📍", $"{tourRestaurants.Count} địa điểm"));
+            _lblDuration = new Label { Text = _tour.Duration, FontSize = 12, TextColor = Color.FromArgb("#5A7A9A"), FontAttributes = FontAttributes.Bold };
+            statsRow.Add(CreateStatNode("⏱", _lblDuration));
+            
+            _lblSpotsCount = new Label { Text = $"{tourRestaurants.Count} địa điểm", FontSize = 12, TextColor = Color.FromArgb("#5A7A9A"), FontAttributes = FontAttributes.Bold };
+            statsRow.Add(CreateStatNode("📍", _lblSpotsCount));
             headerContent.Add(statsRow);
 
             headerGrid.Add(headerContent);
@@ -142,14 +169,15 @@ namespace VinhKhanhTour.Views
 
             // 2. Restaurant List Area
             var listLayout = new VerticalStackLayout { Padding = new Thickness(20, 10, 20, 100), Spacing = 16 };
-            listLayout.Add(new Label
+            _lblSectionTitle = new Label
             {
                 Text = "Hành trình ẩm thực",
                 FontSize = 18,
                 FontAttributes = FontAttributes.Bold,
                 TextColor = Color.FromArgb("#0D2137"),
                 Margin = new Thickness(0, 0, 0, 5)
-            });
+            };
+            listLayout.Add(_lblSectionTitle);
 
             foreach (var r in tourRestaurants)
                 listLayout.Add(CreateRestaurantCard(r));
@@ -189,7 +217,8 @@ namespace VinhKhanhTour.Views
 
             var btnLabelStack = new HorizontalStackLayout { Spacing = 8, VerticalOptions = LayoutOptions.Center };
             btnLabelStack.Add(new Microsoft.Maui.Controls.Shapes.Path { Data = (Geometry)new PathGeometryConverter().ConvertFromInvariantString("M3 11 L22 2 L13 21 L11 13 Z"), Stroke = Colors.White, StrokeThickness = 2, Fill = new SolidColorBrush(Colors.Transparent), WidthRequest = 18, HeightRequest = 18, VerticalOptions = LayoutOptions.Center });
-            btnLabelStack.Add(new Label { Text = "Bắt đầu dẫn đường", FontSize = 16, FontAttributes = FontAttributes.Bold, TextColor = Colors.White, VerticalOptions = LayoutOptions.Center });
+            _lblStartTour = new Label { Text = "Bắt đầu dẫn đường", FontSize = 16, FontAttributes = FontAttributes.Bold, TextColor = Colors.White, VerticalOptions = LayoutOptions.Center };
+            btnLabelStack.Add(_lblStartTour);
 
             btnGrid.Add(btnLabelStack, 0, 0);
             btnGrid.Add(new Label { Text = "→", FontSize = 22, TextColor = Colors.White, VerticalOptions = LayoutOptions.Center }, 1, 0);
@@ -203,11 +232,11 @@ namespace VinhKhanhTour.Views
             Content = mainLayout;
         }
 
-        private VerticalStackLayout CreateStatNode(string icon, string text)
+        private VerticalStackLayout CreateStatNode(string icon, View textEl)
         {
             var stack = new VerticalStackLayout { Spacing = 2 };
             stack.Add(new Label { Text = icon, FontSize = 18 });
-            stack.Add(new Label { Text = text, FontSize = 12, TextColor = Color.FromArgb("#5A7A9A"), FontAttributes = FontAttributes.Bold });
+            stack.Add(textEl);
             return stack;
         }
 

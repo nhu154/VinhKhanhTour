@@ -14,6 +14,10 @@ namespace VinhKhanhTour.Views
         {
             NavigationPage.SetHasNavigationBar(this, false);
             BackgroundColor = Color.FromArgb("#121212");
+            
+            // Xóa session cũ tránh trường hợp audio nền tự động phát từ session trước
+            UserSession.Instance.Logout();
+            
             CreateUI();
         }
 

@@ -1,4 +1,4 @@
-﻿namespace VinhKhanhTour.Services
+namespace VinhKhanhTour.Services
 {
     /// <summary>
     /// Singleton quản lý phiên đăng nhập của người dùng.
@@ -26,6 +26,9 @@
         /// <summary>User đã đăng nhập và KHÔNG phải khách ẩn danh</summary>
         public bool IsAuthenticatedUser => IsLoggedIn && !IsGuest;
 
+        /// <summary>Xác định người dùng đã bắt đầu tour (vào bản đồ) hay chưa</summary>
+        public bool IsTourActive { get; set; } = false;
+
         // ── Methods ─────────────────────────────────────────────────────────
 
         public void LoginAsUser(string username, string fullName)
@@ -50,6 +53,7 @@
             Preferences.Remove(KEY_FULLNAME);
             Preferences.Remove(KEY_IS_GUEST);
             Preferences.Remove(KEY_LOGGED_IN);
+            IsTourActive = false;
         }
     }
 }

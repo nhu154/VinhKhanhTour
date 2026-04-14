@@ -165,7 +165,7 @@ async function saveUser() {
     const url = id ? `${API}/auth/users/${id}` : `${API}/auth/register`;
     const res = await fetch(url, {
       method: method,
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAdminHeaders(),
       body: JSON.stringify(payload)
     });
 
@@ -186,7 +186,7 @@ async function deleteUser() {
   if (!(await showConfirm('Xóa người dùng', 'Bạn có chắc chắn muốn xóa người dùng này? Tài khoản sẽ bị gỡ khỏi hệ thống.', 'danger'))) return;
   
   try {
-    const res = await fetch(`${API}/auth/users/${id}`, { method: 'DELETE' });
+    const res = await fetch(`${API}/auth/users/${id}`, { method: 'DELETE', headers: getAdminHeaders() });
     if (!res.ok) throw new Error('Lỗi xóa người dùng');
     
     showToast('Đã xóa người dùng', 'success');

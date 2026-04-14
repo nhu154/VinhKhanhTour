@@ -4,6 +4,7 @@ using Android.Content.PM;
 using Android.OS;
 using AndroidX.Core.App;
 using VinhKhanhTour.Services;
+using System.Runtime.Versioning;
 using AndroidLocation = global::Android.Locations.Location;
 using AndroidLocationManager = global::Android.Locations.LocationManager;
 using IAndroidLocationListener = global::Android.Locations.ILocationListener;
@@ -15,7 +16,8 @@ namespace VinhKhanhTour.Platforms.Android
     /// Android Foreground Service giữ GPS hoạt động khi màn hình tắt.
     /// Gọi GeofencingService để kiểm tra POI gần nhất và phát thuyết minh.
     /// </summary>
-    [Service(ForegroundServiceType = ForegroundService.TypeLocation)]
+    [Service(Name = "vinhkhanhtour.platforms.android.LocationForegroundService", ForegroundServiceType = ForegroundService.TypeLocation)]
+    [SupportedOSPlatform("android21.0")]
     public class LocationForegroundService : Service, IAndroidLocationListener
     {
         // ── Constants ────────────────────────────────────────────────
@@ -59,6 +61,7 @@ namespace VinhKhanhTour.Platforms.Android
         }
 
         // ── GPS ──────────────────────────────────────────────────────
+        [SupportedOSPlatform("android21.0")]
         private void StartGps()
         {
             _locationManager = (AndroidLocationManager?)GetSystemService(LocationService);
@@ -90,6 +93,13 @@ namespace VinhKhanhTour.Platforms.Android
             {
                 try
                 {
+                    // Chỉ phát audio khi user đã đăng nhập thật và ĐÃ BẮT ĐẦU TOUR (không phát ở trang Welcome)
+                    if (!VinhKhanhTour.Services.UserSession.Instance.IsAuthenticatedUser || 
+                        !VinhKhanhTour.Services.UserSession.Instance.IsTourActive)
+                    {
+                        return;
+                    }
+
                     var poi = await _geofencing.CheckNearbyRestaurant(
                         location.Latitude, location.Longitude);
 
@@ -114,6 +124,7 @@ namespace VinhKhanhTour.Platforms.Android
         public void OnProviderDisabled(string provider) { }
 
         // ── Notification ─────────────────────────────────────────────
+        [SupportedOSPlatform("android26.0")]
         private void CreateNotificationChannel()
         {
             if (Build.VERSION.SdkInt < BuildVersionCodes.O) return;

@@ -120,6 +120,12 @@ function editTour(idx) {
   
   const imgUrl = t.ImageUrl||t.img||'';
   document.getElementById('tour-img').value = imgUrl;
+  const nameEnEl = document.getElementById('tour-name-en'); if(nameEnEl) nameEnEl.value = t.NameEn||t.nameEn||'';
+  const nameZhEl = document.getElementById('tour-name-zh'); if(nameZhEl) nameZhEl.value = t.NameZh||t.nameZh||'';
+  const nameKoEl = document.getElementById('tour-name-ko'); if(nameKoEl) nameKoEl.value = t.NameKo||t.nameKo||'';
+  const descEnEl = document.getElementById('tour-desc-en'); if(descEnEl) descEnEl.value = t.DescEn||t.descEn||'';
+  const descZhEl = document.getElementById('tour-desc-zh'); if(descZhEl) descZhEl.value = t.DescZh||t.descZh||'';
+  const descKoEl = document.getElementById('tour-desc-ko'); if(descKoEl) descKoEl.value = t.DescKo||t.descKo||'';
   if (imgUrl) {
     const src = imgUrl.startsWith('http') || imgUrl.startsWith('data:') ? imgUrl : `${BASE_URL}/${imgUrl}`;
     document.getElementById('tour-image-preview').src = src;
@@ -163,11 +169,14 @@ async function saveTourData() {
   const parsedRating = parseFloat(ratingStr) || 4.0;
 
   const body = {
-    Name: name, NameEn: '',
-    NameZh: '',
+    Name: name,
+    NameEn: document.getElementById('tour-name-en')?.value || '',
+    NameZh: document.getElementById('tour-name-zh')?.value || '',
+    NameKo: document.getElementById('tour-name-ko')?.value || '',
     Description: document.getElementById('tour-desc').value,
-    DescEn: '',
-    DescZh: '',
+    DescEn: document.getElementById('tour-desc-en')?.value || '',
+    DescZh: document.getElementById('tour-desc-zh')?.value || '',
+    DescKo: document.getElementById('tour-desc-ko')?.value || '',
     Duration: document.getElementById('tour-duration').value,
     Rating: parsedRating,
     Emoji: document.getElementById('tour-emoji').value||'🍜',
@@ -176,7 +185,7 @@ async function saveTourData() {
   };
   try {
     const method=id?'PUT':'POST', url=id?`${API}/tours/${id}`:`${API}/tours`;
-    await fetch(url,{method,headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    await fetch(url,{method,headers:getAdminHeaders(),body:JSON.stringify(body)});
     showToast('✅ Đã lưu Tour!','success'); closeTourModal(); await loadTours(); renderTours(); renderStatsCards();
   } catch(e) { showToast('❌ Lỗi khi lưu Tour','danger'); }
 }
@@ -184,15 +193,21 @@ async function saveTourData() {
 async function deleteTour(id) {
   if (!(await showConfirm('Xóa Tour', 'Bạn có chắc chắn muốn xóa hành trình tour này không?', 'danger'))) return;
   try {
-    await fetch(`${API}/tours/${id}`,{method:'DELETE'});
-    showToast('🗑️ Đã xóa Tour','success'); await loadTours(); renderTours(); renderStatsCards();
-  } catch(e) { showToast('❌ Lỗi khi xóa','danger'); }
+    const res = await fetch(`${API}/tours/${id}`,{method:'DELETE',headers:getAdminHeaders()});
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    showToast('🗑️ Đã xóa Tour','success');
+    await loadTours();
+    renderTours();
+    renderStatsCards();
+  } catch(e) {
+    console.error('[deleteTour]', e);
+    showToast('❌ Lỗi khi xóa: ' + e.message,'danger');
+  }
 }
 
 function closeTourModal() { document.getElementById('tour-form-panel').classList.remove('open'); document.getElementById('panel-overlay-tour').style.display='none'; }
 function resetTourForm() {
-  ['tour-id','tour-name','tour-desc','tour-duration','tour-img','tour-emoji'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  ['tour-id','tour-name','tour-name-en','tour-name-zh','tour-name-ko','tour-desc','tour-desc-en','tour-desc-zh','tour-desc-ko','tour-duration','tour-img','tour-emoji'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
   const r=document.getElementById('tour-rating');if(r)r.value=4.0; selectedPois=[];
   clearTourImage();
 }
-

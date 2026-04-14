@@ -1,4 +1,4 @@
-﻿using VinhKhanhTour.Models;
+using VinhKhanhTour.Models;
 
 namespace VinhKhanhTour.Services
 {
@@ -8,9 +8,9 @@ namespace VinhKhanhTour.Services
         private const int DEFAULT_RADIUS_METERS = 50;
         private const int COOLDOWN_SECONDS = 300;
 
-        private Dictionary<int, DateTime> _lastTriggered = new Dictionary<int, DateTime>();
+        private Dictionary<int, DateTime> _lastTriggered = [];
 
-        public double CalculateDistance(double lat1, double lon1, double lat2, double lon2)
+        public static double CalculateDistance(double lat1, double lon1, double lat2, double lon2)
         {
             var dLat = ToRadians(lat2 - lat1);
             var dLon = ToRadians(lon2 - lon1);
@@ -24,7 +24,7 @@ namespace VinhKhanhTour.Services
             return EARTH_RADIUS_METERS * c;
         }
 
-        private double ToRadians(double degrees)
+        private static double ToRadians(double degrees)
         {
             return degrees * Math.PI / 180.0;
         }
@@ -63,10 +63,10 @@ namespace VinhKhanhTour.Services
 
         private bool CanTrigger(int restaurantId)
         {
-            if (!_lastTriggered.ContainsKey(restaurantId))
+            if (!_lastTriggered.TryGetValue(restaurantId, out var lastTime))
                 return true;
 
-            var elapsed = (DateTime.Now - _lastTriggered[restaurantId]).TotalSeconds;
+            var elapsed = (DateTime.Now - lastTime).TotalSeconds;
             return elapsed >= COOLDOWN_SECONDS;
         }
     }

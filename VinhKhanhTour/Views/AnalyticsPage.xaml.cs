@@ -18,12 +18,21 @@ namespace VinhKhanhTour.Views
         static readonly Color Divider = Color.FromArgb("#E2E8F0");
         static readonly Color AccentGold = Color.FromArgb("#F59E0B");
 
+        private string _currentLang = Preferences.Default.Get("app_lang", "vi");
+
         public AnalyticsPage()
         {
-            Title = "Thống kê hành trình";
+            Title = "Thống kê";
             BackgroundColor = BgPage;
             NavigationPage.SetHasNavigationBar(this, false);
             BuildUI();
+            UpdateLanguage(_currentLang);
+        }
+
+        public void UpdateLanguage(string lang)
+        {
+            _currentLang = lang;
+            Title = lang switch { "en" => "Analytics", "zh" => "统计分析", "ja" => "統計", "ko" => "통계 분석", _ => "Thống kê hành trình" };
         }
 
         protected override async void OnAppearing()
@@ -47,8 +56,8 @@ namespace VinhKhanhTour.Views
 
             try
             {
-                var summary = await AnalyticsService.Instance.GetSummaryAsync();
-                var topPois = await AnalyticsService.Instance.GetTopPoisAsync(6);
+                var summary = await AnalyticsService.GetSummaryAsync();
+                var topPois = await AnalyticsService.GetTopPoisAsync(6);
 
                 // ── Stat cards row ────────────────────────────────
                 _content.Add(BuildStatCardsRow(summary));
@@ -57,17 +66,30 @@ namespace VinhKhanhTour.Views
                 _content.Add(BuildInsightStrip(summary.TotalListens, topPois));
 
                 // ── Top POI ranking ───────────────────────────────
-                _content.Add(BuildSectionHeader("🏆  Địa điểm nổi bật"));
+                var rankingTitle = _currentLang switch { "en" => "🏆  Popular Spots", "zh" => "🏆  热门地点", "ja" => "🏆  人気のスポット", "ko" => "🏆  인기 장소", _ => "🏆  Địa điểm nổi bật" };
+                _content.Add(BuildSectionHeader(rankingTitle));
+
                 if (topPois.Count > 0)
                     _content.Add(BuildRankingList(topPois));
                 else
-                    _content.Add(BuildEmptyState("Chưa có lượt nghe thuyết minh nào.\nHãy bắt đầu khám phá Vĩnh Khánh! 🍜"));
+                {
+                    var emptyMsg = _currentLang switch 
+                    { 
+                        "en" => "No narration listens yet.\nStart exploring Vinh Khanh! 🍜", 
+                        "zh" => "尚未听取导览。\n开始探索永庆吧！ 🍜",
+                        "ja" => "音声ガイドをまだ聴いていません。\nヴィンカンを探索しましょう！ 🍜",
+                        "ko" => "음성 안내를 아직 듣지 않았습니다.\n지금 바로 빈칸을 탐색해보세요! 🍜",
+                        _ => "Chưa có lượt nghe thuyết minh nào.\nHãy bắt đầu khám phá Vĩnh Khánh! 🍜" 
+                    };
+                    _content.Add(BuildEmptyState(emptyMsg));
+                }
 
                 // ── Avg listen time chart ─────────────────────────
                 var withTime = topPois.Where(p => p.AvgSeconds > 1).ToList();
                 if (withTime.Count > 0)
                 {
-                    _content.Add(BuildSectionHeader("⏱  Thời gian nghe trung bình (giây)"));
+                    var chartTitle = _currentLang switch { "en" => "⏱  Avg Listening Time (sec)", "zh" => "⏱  平均收听时间（秒）", "ja" => "⏱  平均視聴時間（秒）", "ko" => "⏱  평균 청취 시간 (초)", _ => "⏱  Thời gian nghe trung bình (giây)" };
+                    _content.Add(BuildSectionHeader(chartTitle));
                     _content.Add(BuildAvgTimeChart(withTime));
                 }
 
@@ -140,14 +162,17 @@ namespace VinhKhanhTour.Views
                 Margin = new Thickness(24, 40, 24, 0),
                 Spacing = 2
             };
-            textStack.Add(new Label { Text = "Thống kê hành trình", FontSize = 24, FontAttributes = FontAttributes.Bold, TextColor = Colors.White });
-            textStack.Add(new Label { Text = "Hành trình khám phá Quận 4 của bạn", FontSize = 13, TextColor = Color.FromArgb("#BBDEFB") });
+            var heroTitle = _currentLang switch { "en" => "Journey Analytics", "zh" => "行程统计", "ja" => "統計", "ko" => "여정 통계", _ => "Thống kê hành trình" };
+            var heroSub = _currentLang switch { "en" => "Your exploration dashboard", "zh" => "您的探险面板", "ja" => "あなたの探検ダッシュボード", "ko" => "나의 탐험 대시보드", _ => "Hành trình khám phá Quận 4 của bạn" };
+            
+            textStack.Add(new Label { Text = heroTitle, FontSize = 24, FontAttributes = FontAttributes.Bold, TextColor = Colors.White });
+            textStack.Add(new Label { Text = heroSub, FontSize = 13, TextColor = Color.FromArgb("#BBDEFB") });
             grid.Add(textStack);
 
             return grid;
         }
 
-        private static Grid BuildStatCardsRow(AnalyticsSummary s)
+        private Grid BuildStatCardsRow(AnalyticsSummary s)
         {
             var grid = new Grid
             {
@@ -157,15 +182,20 @@ namespace VinhKhanhTour.Views
                 Margin = new Thickness(16, 16, 16, 0)
             };
 
-            grid.Add(MakeStatCard("🎧", s.TotalListens.ToString(), "Tổng lượt nghe", PrimaryBlue), 0, 0);
-            grid.Add(MakeStatCard("📍", s.UniquePois.ToString(), "Địa điểm ghé qua", AccentBlue), 1, 0);
-            grid.Add(MakeStatCard("⏱", $"{s.AvgListenSec:F0}s", "Thời gian nghe TB", Color.FromArgb("#2E7D32")), 0, 1);
-            grid.Add(MakeStatCard("🗺️", s.TourCompletes.ToString(), "Tour hoàn thành", AccentGold), 1, 1);
+            var lblListens = _currentLang switch { "en" => "Total Listens", "zh" => "总收听量", "ja" => "総視聴数", "ko" => "총 청취 수", _ => "Tổng lượt nghe" };
+            var lblSpots = _currentLang switch { "en" => "Visited Spots", "zh" => "已游览地点", "ja" => "訪問スポット", "ko" => "방문 장소", _ => "Địa điểm ghé qua" };
+            var lblAvg = _currentLang switch { "en" => "Avg Time", "zh" => "平均时间", "ja" => "平均時間", "ko" => "평균 시간", _ => "Thời gian nghe TB" };
+            var lblTour = _currentLang switch { "en" => "Tours Done", "zh" => "已完成行程", "ja" => "完了したツアー", "ko" => "완료된 투어", _ => "Tour hoàn thành" };
+
+            grid.Add(MakeStatCard("🎧", s.TotalListens.ToString(), lblListens, PrimaryBlue), 0, 0);
+            grid.Add(MakeStatCard("📍", s.UniquePois.ToString(), lblSpots, AccentBlue), 1, 0);
+            grid.Add(MakeStatCard("⏱", $"{s.AvgListenSec:F0}s", lblAvg, Color.FromArgb("#2E7D32")), 0, 1);
+            grid.Add(MakeStatCard("🗺️", s.TourCompletes.ToString(), lblTour, AccentGold), 1, 1);
 
             return grid;
         }
 
-        private static Border MakeStatCard(string icon, string value, string label, Color accent)
+        private Border MakeStatCard(string icon, string value, string label, Color accent)
         {
             var valLbl = new Label { Text = value, FontSize = 24, FontAttributes = FontAttributes.Bold, TextColor = TextPrimary };
             var subLbl = new Label { Text = label, FontSize = 11, TextColor = TextSecond };
@@ -188,10 +218,18 @@ namespace VinhKhanhTour.Views
             };
         }
 
-        private static Border BuildInsightStrip(int listens, List<PoiStats> topPois)
+        private Border BuildInsightStrip(int listens, List<PoiStats> topPois)
         {
-            string msg = listens == 0 ? "✨ Bắt đầu khám phá ngay để xem thống kê của riêng bạn!" :
-                        $"🏆 Bạn đã nghe thuyết minh {listens} lần. " + (topPois.Count > 0 ? $"Thích nhất là {topPois[0].PoiName}!" : "");
+            string msg = listens == 0 
+                ? (_currentLang switch { "en" => "✨ Start exploring to see your personal stats!", "zh" => "✨ 即刻开启探索，查看个人统计！", "ja" => "✨ 探険を始めて、自分の統計を確認しましょう！", "ko" => "✨ 탐험을 시작하고 개인 통계를 확인해 보세요!", _ => "✨ Bắt đầu khám phá ngay để xem thống kê của riêng bạn!" })
+                : (_currentLang switch 
+                    { 
+                        "en" => $"🏆 You've listened {listens} times. " + (topPois.Count>0?$"Most loved: {topPois[0].PoiName}!":""),
+                        "zh" => $"🏆 您已收听 {listens} 次。 " + (topPois.Count>0?$"最爱: {topPois[0].PoiName}!":""),
+                        "ja" => $"🏆 {listens} 回視聴しました。 " + (topPois.Count>0?$"お気に入り: {topPois[0].PoiName}!":""),
+                        "ko" => $"🏆 {listens} 회 청취했습니다. " + (topPois.Count>0?$"가장 좋아하는 곳: {topPois[0].PoiName}!":""),
+                        _ => $"🏆 Bạn đã nghe thuyết minh {listens} lần. " + (topPois.Count > 0 ? $"Thích nhất là {topPois[0].PoiName}!" : "")
+                    });
 
             return new Border
             {
@@ -204,14 +242,14 @@ namespace VinhKhanhTour.Views
             };
         }
 
-        private static Grid BuildSectionHeader(string title)
+        private Grid BuildSectionHeader(string title)
         {
             var grid = new Grid { Margin = new Thickness(20, 24, 20, 12) };
             grid.Add(new Label { Text = title, FontSize = 16, FontAttributes = FontAttributes.Bold, TextColor = TextPrimary });
             return grid;
         }
 
-        private static Border BuildRankingList(List<PoiStats> pois)
+        private Border BuildRankingList(List<PoiStats> pois)
         {
             var stack = new VerticalStackLayout { Spacing = 12, Padding = new Thickness(16) };
             int max = Math.Max(pois.Max(x => x.ListenCount), 1);
@@ -241,7 +279,7 @@ namespace VinhKhanhTour.Views
             return new Border { BackgroundColor = BgCard, StrokeShape = new RoundRectangle { CornerRadius = 20 }, Padding = 0, Margin = new Thickness(16, 0), Content = stack };
         }
 
-        private static Border BuildAvgTimeChart(List<PoiStats> pois)
+        private Border BuildAvgTimeChart(List<PoiStats> pois)
         {
             var stack = new VerticalStackLayout { Spacing = 14, Padding = new Thickness(16) };
             double max = Math.Max(pois.Max(x => x.AvgSeconds), 1);
@@ -285,21 +323,27 @@ namespace VinhKhanhTour.Views
 
         private Button BuildClearButton()
         {
+            var btnText = _currentLang switch { "en" => "Clear Analytics", "zh" => "清除统计", "ja" => "統計を消去", "ko" => "통계 데이터 초기화", _ => "Xóa thống kê" };
             var btn = new Button
             {
-                Text = "Xóa thống kê", BackgroundColor = Colors.Transparent, BorderColor = Color.FromArgb("#FF5252"), TextColor = Color.FromArgb("#FF5252"),
+                Text = btnText, BackgroundColor = Colors.Transparent, BorderColor = Color.FromArgb("#FF5252"), TextColor = Color.FromArgb("#FF5252"),
                 BorderWidth = 1, CornerRadius = 12, Margin = new Thickness(24, 32, 24, 0), FontSize = 13, HeightRequest = 44
             };
             btn.Clicked += async (s, e) => {
-                if (await DisplayAlert("Xác nhận", "Bạn có muốn xóa toàn bộ lịch sử thống kê trên thiết bị và server?", "Xóa sạch", "Hủy")) {
-                    await AnalyticsService.Instance.ClearAllAsync();
+                var title = _currentLang switch { "en" => "Confirm", "zh" => "确认", "ja" => "確認", "ko" => "확인", _ => "Xác nhận" };
+                var body = _currentLang switch { "en" => "Do you want to clear all history from both device and server?", "ko" => "기기와 서버에서 모든 기록을 삭제하시겠습니까?", _ => "Bạn có muốn xóa toàn bộ lịch sử thống kê trên thiết bị và server?" };
+                var ok = _currentLang switch { "en" => "Clear All", "ko" => "모두 삭제", _ => "Xóa sạch" };
+                var cancel = _currentLang switch { "en" => "Cancel", "ko" => "취소", _ => "Hủy" };
+                
+                if (await DisplayAlert(title, body, ok, cancel)) {
+                    await AnalyticsService.ClearAllAsync();
                     await LoadAsync();
                 }
             };
             return btn;
         }
 
-        private static Border BuildEmptyState(string msg) => new Border
+        private Border BuildEmptyState(string msg) => new Border
         {
             BackgroundColor = BgCard, StrokeShape = new RoundRectangle { CornerRadius = 16 }, Padding = 30, Margin = 16,
             Content = new Label { Text = msg, TextColor = TextSecond, FontSize = 14, HorizontalTextAlignment = TextAlignment.Center }
