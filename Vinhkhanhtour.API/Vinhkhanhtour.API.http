@@ -1,0 +1,6 @@
+@Vinhkhanhtour.API_HostAddress = http://localhost:5256
+
+GET {{Vinhkhanhtour.API_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
