@@ -22,6 +22,9 @@ namespace VinhKhanhTour.Views
         private Button _btnExitTour = null!;
         private readonly GeofencingService _geofencing = new();
         private Location? _userLocation;
+        private Location? _previousLocation;
+        private HashSet<int> _listenedPois = new();
+        private HashSet<int> _leftPois = new();
         private List<Restaurant> _restaurants = new();
         private List<AppLanguage> _availableLangs = new();
         private readonly Dictionary<int, DateTime> _lastNotified = new();
@@ -47,6 +50,7 @@ namespace VinhKhanhTour.Views
         private bool _mapIsMapReadyForCommands = false;
         private bool _skipNextRefresh = false; // Flag to prevent OnAppearing from resetting map during jumps
         private bool _isActiveMap = false;
+        private bool _tourRouteDrawn = false;
 
         public MapPage() : this(null, null) { }
 
@@ -275,9 +279,23 @@ namespace VinhKhanhTour.Views
                 if (location != null)
                 {
                     _userLocation = location;
+                    // Dùng setInitPos thay vì sPos để chỉ đặt marker ban đầu,
+                    // KHÔNG trigger analytics — tránh ghi GPS 2 lần cùng với JS watchPosition
                     if (_htmlLoaded)
-                        await UpdateMapLocation(location.Latitude, location.Longitude);
+                        await SetInitialMapPosition(location.Latitude, location.Longitude);
                 }
+            }
+            catch { }
+        }
+
+        private async Task SetInitialMapPosition(double lat, double lng)
+        {
+            try
+            {
+                var ic = System.Globalization.CultureInfo.InvariantCulture;
+                // setInitPos chỉ đặt marker vị trí người dùng, KHÔNG gọi maui://locationupdated
+                await _webView.EvaluateJavaScriptAsync(
+                    $"setInitPos({lat.ToString(ic)},{lng.ToString(ic)});");
             }
             catch { }
         }
@@ -287,6 +305,7 @@ namespace VinhKhanhTour.Views
             try { await _webView.EvaluateJavaScriptAsync($"sPos({lat.ToString(System.Globalization.CultureInfo.InvariantCulture)},{lng.ToString(System.Globalization.CultureInfo.InvariantCulture)});"); }
             catch { }
         }
+
 
         private async Task RequestLocationPermissionAsync()
         {
@@ -355,6 +374,7 @@ namespace VinhKhanhTour.Views
                         // Lọc GPS: Chỉ gửi lên hệ thống và đổi mốc nếu khách di chuyển quá 6 mét
                         if (_userLocation == null || Microsoft.Maui.Devices.Sensors.Location.CalculateDistance(_userLocation, newLoc, DistanceUnits.Kilometers) * 1000 >= 6)
                         {
+                            if (_userLocation != null) _previousLocation = _userLocation;
                             _ = AnalyticsService.RecordGpsPointAsync(lat, lng);
                             _userLocation = newLoc;
                         }
@@ -364,7 +384,14 @@ namespace VinhKhanhTour.Views
                             try
                             {
                                 if (_tourName != null)
+                                {
                                     await _webView.EvaluateJavaScriptAsync($"setTourMode(true,'{_tourName.Replace("'", "\'")}');");
+                                    if (!_tourRouteDrawn)
+                                    {
+                                        _tourRouteDrawn = true;
+                                        _ = DrawTourRouteAsync(_restaurants, _userLocation);
+                                    }
+                                }
                             }
                             catch { }
                             _ = CheckNearbyAsync(_userLocation);
@@ -719,6 +746,8 @@ namespace VinhKhanhTour.Views
             lines.Add("  } catch(e) { console.log('Route Error: '+e); }");
             lines.Add("}");
             lines.Add("function sPos(lat,lng){uP={lat:lat,lng:lng};if(uMk){uMk.setPosition(uP);uCir.setCenter(uP);}else{uMk=new google.maps.Marker({position:uP,map:map,zIndex:1000,icon:{path:google.maps.SymbolPath.CIRCLE,scale:12,fillColor:'#42A5F5',fillOpacity:1,strokeColor:'white',strokeWeight:3}});uCir=new google.maps.Circle({center:uP,radius:35,map:map,fillColor:'#42A5F5',fillOpacity:0.25,strokeColor:'#42A5F5',strokeOpacity:0,strokeWeight:0});map.panTo(uP);}window.location.href='maui://locationupdated?lat='+lat+'&lng='+lng;}");
+            // setInitPos: chỉ đặt marker không ghi analytics (dùng cho lần đầu khởi động C# Geolocation)
+            lines.Add("function setInitPos(lat,lng){uP={lat:lat,lng:lng};if(uMk){uMk.setPosition(uP);uCir.setCenter(uP);}else{uMk=new google.maps.Marker({position:uP,map:map,zIndex:1000,icon:{path:google.maps.SymbolPath.CIRCLE,scale:12,fillColor:'#42A5F5',fillOpacity:1,strokeColor:'white',strokeWeight:3}});uCir=new google.maps.Circle({center:uP,radius:35,map:map,fillColor:'#42A5F5',fillOpacity:0.25,strokeColor:'#42A5F5',strokeOpacity:0,strokeWeight:0});map.panTo(uP);}}");
             lines.Add("function gps(){if(navigator.geolocation){navigator.geolocation.watchPosition(function(p){sPos(p.coords.latitude,p.coords.longitude);},function(err){},{enableHighAccuracy:true,timeout:10000,maximumAge:3000});}}");
             lines.Add("function stopAudio(){window.location.href='maui://stopaudio';}");
             lines.Add("function speakPoi(id,ev){ev.stopPropagation(); window.location.href='maui://speakpoi?id='+id;}");
@@ -753,32 +782,102 @@ namespace VinhKhanhTour.Views
         private async Task CheckNearbyAsync(Location location)
         {
             if (_restaurants.Count == 0) return;
-            Restaurant? nearest = null;
-            double minDist = double.MaxValue;
+            
+            // Lấy danh sách các POI lân cận, cập nhật trạng thái rời khỏi
+            var nearbyPois = new List<(Restaurant Poi, double Dist)>();
             foreach (var r in _restaurants)
             {
                 double d = GeofencingService.CalculateDistance(location.Latitude, location.Longitude, r.Latitude, r.Longitude);
-                if (d < minDist) { minDist = d; nearest = r; }
+                
+                // Nếu đã nghe và đi xa hơn 20m, đánh dấu là đã rời khỏi
+                if (_listenedPois.Contains(r.Id) && d >= 20 && !_leftPois.Contains(r.Id))
+                {
+                    _leftPois.Add(r.Id);
+                }
+                
+                if (d <= 5)
+                {
+                    nearbyPois.Add((r, d));
+                }
             }
-            if (nearest == null) return;
-            // _nearestRestaurant = nearest;
+
+            if (nearbyPois.Count == 0) return;
+
+            // Sắp xếp theo khoảng cách
+            nearbyPois = nearbyPois.OrderBy(x => x.Dist).ToList();
+            var nearest = nearbyPois.First().Poi;
+            var minDist = nearbyPois.First().Dist;
+
+            // Xử lý trường hợp 2 điểm có khoảng cách xấp xỉ nhau (chênh lệch < 1 mét)
+            if (nearbyPois.Count > 1)
+            {
+                var first = nearbyPois[0];
+                var second = nearbyPois[1];
+
+                if (Math.Abs(first.Dist - second.Dist) < 1.0 && _previousLocation != null)
+                {
+                    // Xét xem đang đi về hướng nào (khoảng cách từ vị trí cũ đến POI nào giảm nhiều hơn)
+                    double distPrevFirst = GeofencingService.CalculateDistance(_previousLocation.Latitude, _previousLocation.Longitude, first.Poi.Latitude, first.Poi.Longitude);
+                    double distPrevSecond = GeofencingService.CalculateDistance(_previousLocation.Latitude, _previousLocation.Longitude, second.Poi.Latitude, second.Poi.Longitude);
+
+                    double deltaFirst = distPrevFirst - first.Dist; // > 0 tức là đang tiến lại gần
+                    double deltaSecond = distPrevSecond - second.Dist;
+
+                    if (deltaSecond > deltaFirst)
+                    {
+                        nearest = second.Poi;
+                        minDist = second.Dist;
+                    }
+                }
+            }
 
             string langNear = _currentLang switch { "en" => "Nearest", "zh" => "最近", "ja" => "最近", "ko" => "가장 가까운", _ => "Gần nhất" };
             MainThread.BeginInvokeOnMainThread(() => _statusLabel.Text = $"{langNear}: {nearest.Name} ({minDist:F0}m)");
 
-            if (minDist > 5) return; // Chỉ tự phát audio khi nằm sát vùng 5m
             if (!VinhKhanhTour.Services.UserSession.Instance.IsAuthenticatedUser || !_isActiveMap) return;
+
+            // Xử lý logic quay lại điểm đã nghe
+            if (_listenedPois.Contains(nearest.Id))
+            {
+                if (_leftPois.Contains(nearest.Id))
+                {
+                    // Tránh spam prompt liên tục, cooldown 1 phút cho prompt
+                    if (_lastNotified.TryGetValue(nearest.Id, out DateTime lastPrompt) && (DateTime.Now - lastPrompt).TotalMinutes < 1) 
+                        return;
+                        
+                    _lastNotified[nearest.Id] = DateTime.Now;
+                    
+                    MainThread.BeginInvokeOnMainThread(async () =>
+                    {
+                        var app = Application.Current;
+                        if (app?.MainPage == null) return;
+                        
+                        bool replay = await app.MainPage.DisplayAlert(
+                            "Phát lại Audio?", 
+                            $"Bạn đã nghe audio điểm {nearest.Name} này rồi, bạn có muốn nghe lại hay không?", 
+                            "Có", 
+                            "Không");
+                            
+                        if (replay)
+                        {
+                            _leftPois.Remove(nearest.Id); // Xóa để không hỏi lại cho đến khi đi xa tiếp
+                            await SpeakAsync(nearest);
+                            await ShowProximityOverlay(nearest);
+                        }
+                    });
+                }
+                return; // Đã nghe nhưng chưa rời đi, hoặc đang chờ/mới prompt xong
+            }
+
             if (_lastNotified.TryGetValue(nearest.Id, out DateTime last) &&
                 (DateTime.Now - last).TotalMinutes < COOLDOWN) return;
-            _lastNotified[nearest.Id] = DateTime.Now;
-            await SpeakAsync(nearest);
 
-            // Show custom in-map overlay notification instead of system alert
-            var imgJs = (_imgCache.TryGetValue(nearest.Id, out var nb64) && !string.IsNullOrEmpty(nb64) ? nb64 : (nearest.ImageUrl ?? "")).Replace("'", "\\'");
-            var nameJs = nearest.Name.Replace("'", "\\'");
-            var descJs = (!string.IsNullOrWhiteSpace(nearest.TtsScript) ? nearest.TtsScript : nearest.Description).Replace("'", "\\'").Replace("\n", " ").Replace("\r", "");
-            await MainThread.InvokeOnMainThreadAsync(async () =>
-                await _webView.EvaluateJavaScriptAsync($"showProximity({nearest.Id},'{nameJs}','{descJs}','{imgJs}');"));
+            _lastNotified[nearest.Id] = DateTime.Now;
+            _listenedPois.Add(nearest.Id);
+            _leftPois.Remove(nearest.Id);
+            
+            await SpeakAsync(nearest);
+            await ShowProximityOverlay(nearest);
 
             await App.Database.SaveVisitAsync(new VisitHistory
             {
@@ -787,6 +886,15 @@ namespace VinhKhanhTour.Views
                 Username = VinhKhanhTour.Services.UserSession.Instance.Username ?? string.Empty
             });
             _ = ApiService.Instance.PostAnalyticAsync(nearest.Id, "poi_visit", location.Latitude, location.Longitude);
+        }
+
+        private async Task ShowProximityOverlay(Restaurant nearest)
+        {
+            var imgJs = (_imgCache.TryGetValue(nearest.Id, out var nb64) && !string.IsNullOrEmpty(nb64) ? nb64 : (nearest.ImageUrl ?? "")).Replace("'", "\\'");
+            var nameJs = nearest.Name.Replace("'", "\\'");
+            var descJs = (!string.IsNullOrWhiteSpace(nearest.TtsScript) ? nearest.TtsScript : nearest.Description).Replace("'", "\\'").Replace("\n", " ").Replace("\r", "");
+            await MainThread.InvokeOnMainThreadAsync(async () =>
+                await _webView.EvaluateJavaScriptAsync($"showProximity({nearest.Id},'{nameJs}','{descJs}','{imgJs}');"));
         }
 
         public async void FocusAndDirect(Restaurant r)
@@ -860,6 +968,7 @@ namespace VinhKhanhTour.Views
             _restaurants = restaurants;
             _tourName = tourName;
             _htmlLoaded = false;
+            _tourRouteDrawn = false;
             _lastNotified.Clear();
             MainThread.BeginInvokeOnMainThread(() =>
             {
@@ -1032,6 +1141,126 @@ namespace VinhKhanhTour.Views
                 return false;
             }
         }
+
+        private async Task<bool> DrawTourRouteAsync(List<Restaurant> tourPois, Location userLoc)
+        {
+            try
+            {
+                if (tourPois == null || tourPois.Count == 0) return false;
+
+                // 1. Sắp xếp các POI theo Nearest Neighbor
+                var routeList = new List<Restaurant>();
+                var unvisited = new List<Restaurant>(tourPois);
+                var currentLoc = userLoc;
+
+                while (unvisited.Count > 0)
+                {
+                    var nearest = unvisited.OrderBy(r => GeofencingService.CalculateDistance(currentLoc.Latitude, currentLoc.Longitude, r.Latitude, r.Longitude)).First();
+                    routeList.Add(nearest);
+                    unvisited.Remove(nearest);
+                    currentLoc = new Location(nearest.Latitude, nearest.Longitude);
+                }
+
+                var ic = System.Globalization.CultureInfo.InvariantCulture;
+                var origin = $"{userLoc.Latitude.ToString(ic)},{userLoc.Longitude.ToString(ic)}";
+                
+                var destPoi = routeList.Last();
+                var dest = $"{destPoi.Latitude.ToString(ic)},{destPoi.Longitude.ToString(ic)}";
+
+                var waypoints = "";
+                if (routeList.Count > 1)
+                {
+                    var wpList = routeList.Take(routeList.Count - 1).Select(r => $"{r.Latitude.ToString(ic)},{r.Longitude.ToString(ic)}");
+                    waypoints = "&waypoints=" + string.Join("|", wpList);
+                }
+
+                var url = $"https://maps.googleapis.com/maps/api/directions/json?origin={origin}&destination={dest}{waypoints}&mode=walking&avoid=ferries&alternatives=false&language={_currentLang}&key={KEY}";
+
+                using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(15) };
+                var resp = await http.GetStringAsync(url);
+                using var doc = System.Text.Json.JsonDocument.Parse(resp);
+                var root = doc.RootElement;
+                var status = root.GetProperty("status").GetString();
+                if (status != "OK")
+                {
+                    MainThread.BeginInvokeOnMainThread(() => _statusLabel.Text = _currentLang == "vi" ? "Lỗi chỉ đường Tour" : "Tour route error");
+                    return false;
+                }
+
+                var route = root.GetProperty("routes")[0];
+                var legs = route.GetProperty("legs");
+                
+                int totalDistVal = 0;
+                int totalDurVal = 0;
+
+                var segments = new System.Text.StringBuilder("[");
+                bool firstSeg = true;
+
+                // Nối tất cả các chặng lại
+                for (int i = 0; i < legs.GetArrayLength(); i++)
+                {
+                    var leg = legs[i];
+                    totalDistVal += leg.GetProperty("distance").GetProperty("value").GetInt32();
+                    totalDurVal += leg.GetProperty("duration").GetProperty("value").GetInt32();
+
+                    var steps = leg.GetProperty("steps");
+                    
+                    if (i == 0) // Nối điểm đầu
+                    {
+                        var routeStartPt = DecodePolyline(steps[0].GetProperty("polyline").GetProperty("points").GetString() ?? "").FirstOrDefault();
+                        if (routeStartPt != null)
+                        {
+                            var connPts = new List<object> { new { lat = userLoc.Latitude, lng = userLoc.Longitude }, routeStartPt };
+                            var connJson = System.Text.Json.JsonSerializer.Serialize(connPts);
+                            segments.Append($"{{\"pts\":{connJson},\"alley\":true}}");
+                            firstSeg = false;
+                        }
+                    }
+
+                    foreach (var step in steps.EnumerateArray())
+                    {
+                        var stepPoly = step.GetProperty("polyline").GetProperty("points").GetString() ?? "";
+                        var pts = DecodePolyline(stepPoly);
+                        var ptsJson = System.Text.Json.JsonSerializer.Serialize(pts);
+                        if (!firstSeg) segments.Append(",");
+                        firstSeg = false;
+                        segments.Append($"{{\"pts\":{ptsJson},\"alley\":false}}");
+                    }
+                    
+                    if (i == legs.GetArrayLength() - 1) // Nối điểm cuối
+                    {
+                        var routeEndPt = DecodePolyline(steps[steps.GetArrayLength() - 1].GetProperty("polyline").GetProperty("points").GetString() ?? "").LastOrDefault();
+                        if (routeEndPt != null)
+                        {
+                            var endPts = new List<object> { routeEndPt, new { lat = destPoi.Latitude, lng = destPoi.Longitude } };
+                            var endConnJson = System.Text.Json.JsonSerializer.Serialize(endPts);
+                            segments.Append($",{{\"pts\":{endConnJson},\"alley\":true}}");
+                        }
+                    }
+                }
+                segments.Append("]");
+
+                string dTxt = totalDistVal >= 1000 ? $"{(totalDistVal / 1000.0):F1} km" : $"{totalDistVal} m";
+                int mins = totalDurVal / 60;
+                string tTxt = mins >= 60 ? $"{mins / 60} h {mins % 60} ph" : $"{mins} ph";
+
+                var name = $"Tour: {_tourName}".Replace("'", "\\'");
+                var img = ""; // Không có ảnh chung cho tour, để trống sẽ dùng icon
+                var segmentsStr = segments.ToString();
+
+                await MainThread.InvokeOnMainThreadAsync(async () =>
+                {
+                    await _webView.EvaluateJavaScriptAsync($"drawPremiumRoute({segmentsStr}, '{name}', '{dTxt}', '{tTxt}', '{img}');");
+                });
+                return true;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[MapPage] ❌ DrawTourRouteAsync error: {ex.Message}");
+                return false;
+            }
+        }
+
 
 
         // Decode Google Maps encoded polyline ở C# - tránh JS 32-bit bitwise overflow

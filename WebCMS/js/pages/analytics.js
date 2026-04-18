@@ -17,7 +17,6 @@ let _heatVisible  = true;
 let _poisVisible  = true;
 let _heatRadius   = 45;
 let _heatOpacity  = 0.8;
-let _currentLayer = 'combined'; // combined | checkin | view | booking
 
 // Khu vực Vĩnh Khánh, Q4, TP.HCM
 const VK_CENTER = { lat: 10.7614, lng: 106.7045 };
@@ -62,12 +61,12 @@ async function fetchAvgDuration() {
 async function fetchHeatmap(days) {
   days = days || _heatmapDays || 7;
   try {
-    const url = `${API}/analytics/heatmap?days=${days}&layer=${_currentLayer}`;
+    const url = `${API}/analytics/heatmap?days=${days}`;
     const r = await fetch(url, { cache: 'no-store' });
     if (!r.ok) throw new Error(`HTTP ${r.status}`);
     const data = await r.json();
     _heatmapData = Array.isArray(data) ? data : [];
-    console.log(`[Heatmap] ${_heatmapData.length} điểm (${days}d, layer=${_currentLayer})`);
+    console.log(`[Heatmap] ${_heatmapData.length} điểm (${days}d, GPS only)`);
   } catch(e) {
     console.error('[Heatmap] fetch:', e);
     _heatmapData = [];
@@ -148,108 +147,86 @@ function _renderHeatmapShell() {
   const container = document.getElementById('heatmap-container');
   if (!container || container.dataset.ready) return;
   container.dataset.ready = '1';
-
   container.innerHTML = `
-    <div style="position:relative;width:100%;height:100%;background:#e2e8f0;overflow:hidden">
-      
-      <!-- ── Map Wrap ── -->
+    <div style="position:relative;width:100%;height:100%;background:#f1f5f9;overflow:hidden">
       <div id="heatmap-wrap" style="width:100%;height:100%;z-index:1"></div>
-
-      <!-- ── Floating Top Toolbar ── -->
-      <div style="position:absolute;top:20px;left:20px;right:20px;z-index:10;display:flex;justify-content:space-between;align-items:center;pointer-events:none">
-        
-        <!-- Left: Title & Refresh -->
-        <div style="pointer-events:auto;background:rgba(255,255,255,0.85);backdrop-filter:blur(12px);padding:10px 20px;border-radius:16px;box-shadow:0 8px 32px rgba(0,0,0,0.1);border:1px solid rgba(255,255,255,0.5);display:flex;align-items:center;gap:16px">
+      <div style="position:absolute;top:16px;left:16px;right:16px;z-index:10;display:flex;justify-content:space-between;align-items:flex-start;gap:12px;pointer-events:none">
+        <div style="pointer-events:auto;background:rgba(13,17,35,0.92);backdrop-filter:blur(20px);padding:12px 18px;border-radius:16px;box-shadow:0 8px 32px rgba(0,0,0,0.5);border:1px solid rgba(255,255,255,0.08);display:flex;align-items:center;gap:14px">
+          <div style="width:38px;height:38px;background:linear-gradient(135deg,#2563eb,#60a5fa);border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:19px;flex-shrink:0">📡</div>
           <div>
-            <h3 style="margin:0;font-size:16px;font-weight:800;color:var(--text-main)">🗺 Heatmap Vĩnh Khánh</h3>
-            <p id="heatmap-point-count" style="margin:2px 0 0;font-size:11px;color:var(--text-muted)">Đang tải tối ưu dữ liệu...</p>
+            <div style="font-size:14px;font-weight:800;color:#fff;letter-spacing:-0.3px">Bản đồ Hành trình Khách</div>
+            <div id="heatmap-point-count" style="font-size:11px;color:rgba(255,255,255,0.45);margin-top:2px">Đang tải dữ liệu...</div>
           </div>
-          <button onclick="refreshHeatmap()" title="Làm mới dữ liệu" style="width:36px;height:36px;border-radius:10px;border:1px solid var(--border);background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--text-muted);transition:.2s">
-            <i data-lucide="refresh-cw" style="width:16px;height:16px"></i>
-          </button>
-          <button onclick="clearAllAnalytics()" title="Xóa toàn bộ thống kê" style="width:36px;height:36px;border-radius:10px;border:1px solid rgba(239, 68, 68, 0.2);background:rgba(239, 68, 68, 0.05);cursor:pointer;display:flex;align-items:center;justify-content:center;color:#ef4444;transition:.2s">
-            <i data-lucide="trash-2" style="width:16px;height:16px"></i>
-          </button>
+          <div style="display:flex;gap:6px;margin-left:6px">
+            <button onclick="refreshHeatmap()" title="Làm mới" style="width:34px;height:34px;border-radius:9px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.05);cursor:pointer;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,0.55);font-size:15px">↻</button>
+            <button onclick="clearAllAnalytics()" title="Xóa dữ liệu" style="width:34px;height:34px;border-radius:9px;border:1px solid rgba(239,68,68,0.3);background:rgba(239,68,68,0.08);cursor:pointer;display:flex;align-items:center;justify-content:center;color:#f87171;font-size:14px">🗑</button>
+          </div>
         </div>
-
-        <!-- Right: Layer & Time Controls -->
-        <div style="pointer-events:auto;background:rgba(255,255,255,0.85);backdrop-filter:blur(12px);padding:6px;border-radius:16px;box-shadow:0 8px 32px rgba(0,0,0,0.1);border:1px solid rgba(255,255,255,0.5);display:flex;align-items:center;gap:6px">
-          
-          <!-- Days Selection -->
-          <div style="display:flex;gap:2px;background:rgba(0,0,0,0.05);border-radius:10px;padding:3px">
-            <button class="hm-chip hm-day active" data-days="7"  onclick="changeHeatmapDays(7,this)">7N</button>
-            <button class="hm-chip hm-day"        data-days="30" onclick="changeHeatmapDays(30,this)">30N</button>
-            <button class="hm-chip hm-day"        data-days="90" onclick="changeHeatmapDays(90,this)">90N</button>
-          </div>
-
-          <div style="width:1px;height:24px;background:rgba(0,0,0,0.1)"></div>
-
-          <!-- Layer Select -->
-          <select id="hm-layer-select" onchange="changeHeatmapLayer(this.value)"
-            style="font-size:12px;padding:6px 12px;border-radius:10px;border:none;background:transparent;cursor:pointer;color:var(--text-main);font-weight:700;outline:none;appearance:none;padding-right:24px;background-image:url('data:image/svg+xml;utf8,<svg width=\"24\" height=\"24\" fill=\"none\" stroke=\"%2394a3b8\" stroke-width=\"2\" viewBox=\"0 0 24 24\" xmlns=\"http://www.w3.org/2000/svg\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"m19 9-7 7-7-7\"></path></svg>');background-repeat:no-repeat;background-position:right center;background-size:14px">
-            <option value="combined">Tổng hợp</option>
-            <option value="checkin">Check-in</option>
-            <option value="view">Lượt nghe</option>
-          </select>
+        <div style="pointer-events:auto;background:rgba(13,17,35,0.92);backdrop-filter:blur(20px);padding:5px;border-radius:13px;box-shadow:0 8px 32px rgba(0,0,0,0.5);border:1px solid rgba(255,255,255,0.08);display:flex;gap:3px">
+          <button class="hm-chip hm-day active" data-days="7" onclick="changeHeatmapDays(7,this)">7 Ngày</button>
+          <button class="hm-chip hm-day" data-days="30" onclick="changeHeatmapDays(30,this)">30 Ngày</button>
+          <button class="hm-chip hm-day" data-days="90" onclick="changeHeatmapDays(90,this)">90 Ngày</button>
         </div>
       </div>
-
-      <!-- ── Side Panel (Stats) ── -->
-      <div style="position:absolute;top:100px;right:20px;z-index:10;width:280px;display:flex;flex-direction:column;gap:12px">
-        
-        <!-- Summary Stats Card -->
-        <div style="background:rgba(255,255,255,0.9);backdrop-filter:blur(16px);border-radius:20px;padding:20px;box-shadow:0 12px 40px rgba(0,0,0,0.12);border:1px solid rgba(255,255,255,0.6)">
-          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px">
-            <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted)">Tổng tương tác</div>
-            <div style="background:#dcfce7;color:#15803d;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700">LIVE</div>
+      <div style="position:absolute;top:88px;right:16px;z-index:10;width:264px;display:flex;flex-direction:column;gap:10px">
+        <div style="background:rgba(13,17,35,0.92);backdrop-filter:blur(20px);border-radius:18px;padding:18px;box-shadow:0 12px 40px rgba(0,0,0,0.5);border:1px solid rgba(255,255,255,0.08)">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+            <span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:rgba(255,255,255,0.38)">Khách đã đi qua</span>
+            <div style="display:flex;align-items:center;gap:5px;background:rgba(16,185,129,0.12);border:1px solid rgba(16,185,129,0.28);padding:3px 9px;border-radius:20px">
+              <div style="width:6px;height:6px;background:#10b981;border-radius:50%;animation:hm-pulse 2s infinite"></div>
+              <span style="font-size:9px;font-weight:700;color:#10b981;letter-spacing:1px">TRỰC TIẾP</span>
+            </div>
           </div>
-          <div style="font-size:32px;font-weight:900;color:#1e3a8a;letter-spacing:-1px" class="hm-total-val">—</div>
-          <div style="font-size:12px;color:var(--text-muted);margin-top:4px">Dữ liệu <span id="hm-stat-days">7</span> ngày qua</div>
-          
-          <div style="margin:16px 0;height:1px;background:linear-gradient(90deg, transparent, rgba(0,0,0,0.06), transparent)"></div>
-          
-          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);margin-bottom:6px">Khu vực nhộn nhịp nhất</div>
-          <div id="hm-stat-hotname" style="font-size:14px;font-weight:700;color:var(--text-main);margin-bottom:2px">Đang xác định...</div>
-          <div id="hm-stat-hotweight" style="font-size:11px;color:var(--primary);font-weight:600">...</div>
+          <div class="hm-total-val" style="font-size:38px;font-weight:900;color:#fff;letter-spacing:-2px;line-height:1">—</div>
+          <div style="font-size:11px;color:rgba(255,255,255,0.38);margin-top:6px">lượt ghi nhận vị trí · <span id="hm-stat-days">7</span> ngày qua</div>
+          <div style="margin:14px 0;height:1px;background:rgba(255,255,255,0.06)"></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+            <div style="background:rgba(96,165,250,0.07);border:1px solid rgba(96,165,250,0.15);border-radius:11px;padding:10px">
+              <div style="font-size:20px;font-weight:800;color:#60a5fa" id="hm-stat-hotspots">—</div>
+              <div style="font-size:10px;color:rgba(255,255,255,0.38);margin-top:2px">Khu vực có khách</div>
+            </div>
+            <div style="background:rgba(167,139,250,0.07);border:1px solid rgba(167,139,250,0.15);border-radius:11px;padding:10px">
+              <div style="font-size:20px;font-weight:800;color:#a78bfa" id="hm-stat-peak">—</div>
+              <div style="font-size:10px;color:rgba(255,255,255,0.38);margin-top:2px">Khu đông nhất</div>
+            </div>
+          </div>
         </div>
-
+        <div style="background:rgba(13,17,35,0.92);backdrop-filter:blur(20px);border-radius:18px;padding:18px;box-shadow:0 12px 40px rgba(0,0,0,0.5);border:1px solid rgba(255,255,255,0.08)">
+          <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:rgba(255,255,255,0.38);margin-bottom:12px">🏆 Khu Đông Khách Nhất</div>
+          <div id="hm-top-list" style="display:flex;flex-direction:column;gap:7px">
+            <div style="font-size:12px;color:rgba(255,255,255,0.28);text-align:center;padding:12px 0">Đang xác định...</div>
+          </div>
+        </div>
       </div>
-
-      <!-- Intensity Controls removed per user request -->
-
+      <div style="position:absolute;bottom:22px;left:50%;transform:translateX(-50%);z-index:10;background:rgba(13,17,35,0.92);backdrop-filter:blur(20px);padding:9px 20px;border-radius:40px;box-shadow:0 8px 32px rgba(0,0,0,0.5);border:1px solid rgba(255,255,255,0.08);display:flex;align-items:center;gap:14px">
+        <span style="font-size:10px;font-weight:700;color:rgba(255,255,255,0.38);text-transform:uppercase;letter-spacing:1px">Mức độ đông đúc</span>
+        <div style="display:flex;align-items:center;gap:6px">
+          <span style="font-size:10px;color:rgba(255,255,255,0.38)">Thấp</span>
+          <div style="width:110px;height:7px;border-radius:99px;background:linear-gradient(90deg,rgba(59,130,246,0.75),rgba(34,197,94,0.85),rgba(234,179,8,0.9),rgba(249,115,22,1),rgba(239,68,68,1))"></div>
+          <span style="font-size:10px;color:rgba(255,255,255,0.38)">Cao</span>
+        </div>
+        <div style="width:1px;height:14px;background:rgba(255,255,255,0.1)"></div>
+        <div style="display:flex;align-items:center;gap:6px">
+          <div style="width:8px;height:8px;background:#3b82f6;border-radius:50%;border:2px solid rgba(255,255,255,0.7)"></div>
+          <span style="font-size:10px;color:rgba(255,255,255,0.45)">Quán ăn / Điểm tham quan</span>
+        </div>
+      </div>
     </div>`;
-
-  // Inject styles
   if (!document.getElementById('hm-styles')) {
     const s = document.createElement('style');
     s.id = 'hm-styles';
     s.textContent = `
-      .hm-chip {
-        font-size: 12px; font-weight: 500; padding: 4px 10px; border: none;
-        border-radius: 6px; cursor: pointer; background: transparent;
-        color: var(--text-muted); transition: all .15s;
-      }
-      .hm-chip.active {
-        background: var(--card); color: var(--primary);
-        box-shadow: 0 1px 4px rgba(0,0,0,0.1); font-weight: 600;
-      }
-      .hm-chip:hover:not(.active) { color: var(--text-main); }
-      .hm-poi-row {
-        display: flex; align-items: center; gap: 8px; cursor: pointer;
-        padding: 4px 0; transition: opacity .15s;
-      }
-      .hm-poi-row:hover { opacity: .75; }
-      @keyframes hm-spin { to { transform: rotate(360deg) } }
+      .hm-chip { font-size:12px;font-weight:600;padding:6px 14px;border:none;border-radius:9px;cursor:pointer;background:transparent;color:rgba(255,255,255,0.38);transition:all .15s; }
+      .hm-chip.active { background:rgba(37,99,235,0.9);color:#fff;box-shadow:0 2px 8px rgba(37,99,235,0.5); }
+      .hm-chip:hover:not(.active) { color:rgba(255,255,255,0.8);background:rgba(255,255,255,0.07); }
+      .hm-poi-row { display:flex;align-items:center;gap:8px;cursor:pointer;padding:6px 8px;border-radius:10px;transition:background .15s; }
+      .hm-poi-row:hover { background:rgba(255,255,255,0.06); }
+      @keyframes hm-pulse { 0%,100%{opacity:1} 50%{opacity:0.35} }
     `;
     document.head.appendChild(s);
   }
-
   if (typeof lucide !== 'undefined') lucide.createIcons();
 }
-
-// ══════════════════════════════════════════════════════════════════
-//  MAP INIT
-// ══════════════════════════════════════════════════════════════════
 function initHeatmapMap() {
   const wrap = document.getElementById('heatmap-wrap');
   if (!wrap) return;
@@ -309,13 +286,15 @@ function initHeatmapMap() {
 // ══════════════════════════════════════════════════════════════════
 function _mapStyle() {
   return [
-    { featureType:'poi',       elementType:'labels',   stylers:[{visibility:'off'}] },
-    { featureType:'transit',                           stylers:[{visibility:'off'}] },
-    { featureType:'road',      elementType:'geometry', stylers:[{color:'#f5f5f5'}] },
-    { featureType:'road.arterial', elementType:'geometry', stylers:[{color:'#ffffff'}] },
-    { featureType:'water',     elementType:'geometry', stylers:[{color:'#c9e8f5'}] },
-    { featureType:'landscape', elementType:'geometry', stylers:[{color:'#f8fafc'}] },
-    { featureType:'road', elementType:'labels.text.fill', stylers:[{color:'#666'}] },
+    {featureType:'poi',elementType:'labels',stylers:[{visibility:'off'}]},
+    {featureType:'transit',stylers:[{visibility:'off'}]},
+    {featureType:'road',elementType:'geometry',stylers:[{color:'#f5f5f5'}]},
+    {featureType:'road.arterial',elementType:'geometry',stylers:[{color:'#ffffff'}]},
+    {featureType:'road.highway',elementType:'geometry',stylers:[{color:'#dadada'}]},
+    {featureType:'water',elementType:'geometry',stylers:[{color:'#c9e8f5'}]},
+    {featureType:'landscape',elementType:'geometry',stylers:[{color:'#f8fafc'}]},
+    {featureType:'road',elementType:'labels.text.fill',stylers:[{color:'#757575'}]},
+    {featureType:'administrative',elementType:'geometry.stroke',stylers:[{color:'#c9c9c9'}]},
   ];
 }
 
@@ -452,62 +431,33 @@ function _applyHeatLayer() {
 //  SIDEBAR STATS
 // ══════════════════════════════════════════════════════════════════
 function _updateSidebarStats() {
-  const unitText = _currentLayer === 'combined' ? 'tương tác' : 
-                   _currentLayer === 'checkin' ? 'check-in' : 
-                   _currentLayer === 'view' ? 'lượt nghe' : 'tương tác';
-
-  // Total
-  const unitLabelEl = document.getElementById('hm-stat-unit-label');
-  if (unitLabelEl) unitLabelEl.textContent = unitText;
-  
-  const daysEl  = document.getElementById('hm-stat-days');
+  const daysEl = document.getElementById('hm-stat-days');
   if (daysEl) daysEl.textContent = _heatmapDays;
 
-  // Find total
-  const total = _heatmapData?.reduce((s,p) => s + (+(p.weight||p.Weight||1)), 0) || 0;
-  const totalValEl = document.querySelector('#hm-stat-total .hm-total-val');
+  const total = _heatmapData?.reduce((acc, p) => acc + (+(p.weight||p.Weight||1)), 0) || 0;
+  const totalValEl = document.querySelector('.hm-total-val');
   if (totalValEl) totalValEl.textContent = total > 0 ? total.toLocaleString('vi-VN') : '0';
 
-  // Hotspot
-  if (_heatmapData?.length) {
-    const poiGroups = {};
-    _heatmapData.forEach(p => {
-      const name = _findPoiName(p);
-      if (!name) return;
-      const w = +(p.weight||p.Weight||1);
-      if (!poiGroups[name]) poiGroups[name] = { name, weight: w };
-      else poiGroups[name].weight += w;
-    });
-    
-    const nameEl   = document.getElementById('hm-stat-hotname');
-    const weightEl = document.getElementById('hm-stat-hotweight');
-    
-    if (Object.keys(poiGroups).length > 0) {
-      const sorted = Object.values(poiGroups).sort((a,b) => b.weight - a.weight);
-      const top = sorted[0];
+  const hotspotEl = document.getElementById('hm-stat-hotspots');
+  if (hotspotEl) hotspotEl.textContent = (_heatmapData?.length || 0).toLocaleString('vi-VN');
 
-      if (nameEl)   nameEl.textContent   = top.name;
-      if (weightEl) weightEl.textContent = `${Math.round(top.weight * 100) / 100} điểm tổng hợp`;
-    } else {
-      if (nameEl)   nameEl.textContent   = "Chưa xác định";
-      if (weightEl) weightEl.textContent = "...";
-    }
+  const peakEl = document.getElementById('hm-stat-peak');
+  if (peakEl && _heatmapData?.length) {
+    const peak = Math.max(..._heatmapData.map(p => +(p.weight||p.Weight||1)));
+    peakEl.textContent = peak.toLocaleString('vi-VN');
   }
 
-  // Top 5
-  _renderTopList();
-
-  // Update count text
   const countEl = document.getElementById('heatmap-point-count');
   if (countEl) {
     if (_heatmapData?.length) {
-      const totalPts = _heatmapData.length;
-      const totalW   = Math.round(_heatmapData.reduce((s,p) => s + (+(p.weight||p.Weight||1)), 0));
-      countEl.innerHTML = `<span style="color:var(--primary);font-weight:600">${totalPts} cụm vị trí</span> &nbsp;·&nbsp; <strong>${totalW}</strong> ${unitText} &nbsp;·&nbsp; ${_heatmapDays} ngày gần đây`;
+      const hs = _heatmapData.length;
+      const tw = Math.round(total);
+      countEl.innerHTML = `<span style="color:#60a5fa;font-weight:600">${hs.toLocaleString('vi-VN')} khu vực có khách</span>&nbsp;·&nbsp;<strong>${tw.toLocaleString('vi-VN')}</strong> lượt ghi nhận vị trí&nbsp;·&nbsp;${_heatmapDays} ngày gần đây`;
     } else {
-      countEl.textContent = 'Chưa có dữ liệu — heatmap hiển thị khi có du khách tương tác hoặc di chuyển trong phố.';
+      countEl.textContent = 'Chưa có dữ liệu — bản đồ sẽ hiển thị khi có khách sử dụng app và đi trong phố Vĩnh Khánh.';
     }
   }
+  _renderTopList();
 }
 
 function _findPoiName(pt) {
@@ -533,42 +483,44 @@ function _findPoiName(pt) {
 
 function _renderTopList() {
   const el = document.getElementById('hm-top-list');
-  if (!el || !_heatmapData?.length) return;
-  
+  if (!el) return;
+  if (!_heatmapData?.length) {
+    el.innerHTML = '<div style="font-size:12px;color:rgba(255,255,255,0.28);text-align:center;padding:12px 0">Chưa có dữ liệu</div>';
+    const hs = document.getElementById('hm-stat-hotspots');
+    const pk = document.getElementById('hm-stat-peak');
+    if (hs) hs.textContent = '0';
+    if (pk) pk.textContent = '0';
+    return;
+  }
   const poiGroups = {};
   _heatmapData.forEach(p => {
     const name = _findPoiName(p);
     if (!name) return;
     const w = +(p.weight||p.Weight||1);
-    if (!poiGroups[name]) {
-      poiGroups[name] = { name: name, weight: w, lat: parseFloat(p.lat||p.Lat||0), lng: parseFloat(p.lng||p.Lng||0) };
-    } else {
-      poiGroups[name].weight += w;
-    }
+    const lat = parseFloat(p.lat||p.Lat||0), lng = parseFloat(p.lng||p.Lng||0);
+    if (!poiGroups[name]) poiGroups[name] = { name, weight: w, lat, lng };
+    else poiGroups[name].weight += w;
   });
-
   const sorted = Object.values(poiGroups).sort((a,b) => b.weight - a.weight).slice(0,5);
+  if (!sorted.length) { el.innerHTML = '<div style="font-size:12px;color:rgba(255,255,255,0.28);text-align:center;padding:12px 0">Không có dữ liệu POI</div>'; return; }
   const maxW = sorted[0].weight || 1;
-  const labels = ['1.','2.','3.','4.','5.'];
-
-  el.innerHTML = sorted.map((g,i) => {
+  const rankColors = ['#ef4444','#f97316','#eab308','#22c55e','#3b82f6'];
+  const rankIcons  = ['🥇','🥈','🥉','4️⃣','5️⃣'];
+  el.innerHTML = sorted.map((g, i) => {
     const pct  = Math.min(100, Math.round(g.weight / maxW * 100));
-    const colors = ['#ef4444','#f97316','#eab308','#22c55e','#3b82f6'];
-    const wStr = Math.round(g.weight);
-    return `
-      <div class="hm-poi-row" onclick="_panToPoint(${g.lat},${g.lng})">
-        <span style="font-size:13px;width:20px;flex-shrink:0">${labels[i]}</span>
-        <div style="flex:1;min-width:0">
-          <div style="font-size:12px;font-weight:600;color:var(--text-main);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${g.name}</div>
-          <div style="height:4px;border-radius:99px;background:var(--border);margin-top:3px;overflow:hidden">
-            <div style="height:100%;width:${pct}%;background:${colors[i]};border-radius:99px;transition:width .6s ease"></div>
-          </div>
+    const wStr = Math.round(g.weight).toLocaleString('vi-VN');
+    return `<div class="hm-poi-row" onclick="_panToPoint(${g.lat},${g.lng})">
+      <span style="font-size:16px;width:22px;flex-shrink:0;text-align:center">${rankIcons[i]}</span>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:12px;font-weight:600;color:#e2e8f0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:4px">${g.name}</div>
+        <div style="height:4px;border-radius:99px;background:rgba(255,255,255,0.08);overflow:hidden">
+          <div style="height:100%;width:${pct}%;background:${rankColors[i]};border-radius:99px;transition:width .7s ease"></div>
         </div>
-        <span style="font-size:11px;color:var(--text-muted);flex-shrink:0;margin-left:4px">${wStr}</span>
-      </div>`;
+      </div>
+      <span style="font-size:11px;font-weight:700;color:${rankColors[i]};flex-shrink:0;margin-left:8px">${wStr}</span>
+    </div>`;
   }).join('');
 }
-
 
 function _panToPoint(lat, lng) {
   if (!_gHeatMap) return;
@@ -592,9 +544,9 @@ function _showNoData() {
     border:1px solid rgba(37,99,235,.12);min-width:260px;max-width:320px`;
   el.innerHTML = `
     <div style="font-size:44px;margin-bottom:12px">🛰️</div>
-    <div style="font-size:15px;font-weight:700;color:#0f172a;margin-bottom:8px">Chưa có dữ liệu GPS</div>
+    <div style="font-size:15px;font-weight:700;color:#0f172a;margin-bottom:8px">Chưa có khách nào đi qua</div>
     <div style="font-size:12px;color:#64748b;line-height:1.7">
-      Heatmap sẽ tự động hiển thị khi du khách<br>
+      Bản đồ sẽ hiển thị khi có khách<br>
       di chuyển trong phố <strong style="color:#2563eb">Vĩnh Khánh, Q4</strong><br>
       bằng app và GPS được ghi lại.
     </div>`;
@@ -612,15 +564,6 @@ async function changeHeatmapDays(days, el) {
   const countEl = document.getElementById('heatmap-point-count');
   if (countEl) countEl.textContent = 'Đang tải...';
   await fetchHeatmap(days);
-  _applyHeatLayer();
-  _updateSidebarStats();
-}
-
-async function changeHeatmapLayer(layer) {
-  _currentLayer = layer;
-  const countEl = document.getElementById('heatmap-point-count');
-  if (countEl) countEl.textContent = 'Đang tải...';
-  await fetchHeatmap(_heatmapDays);
   _applyHeatLayer();
   _updateSidebarStats();
 }
@@ -680,6 +623,18 @@ async function clearAllAnalytics() {
     const r = await fetch(`${API}/analytics/clear`, { method: 'DELETE' });
     if (r.ok) {
       if (typeof showToast === 'function') showToast('Đã xóa sạch dữ liệu thống kê!', 'success');
+      // Reset UI ngay lập tức trước khi fetch lại
+      _heatmapData = [];
+      const tv = document.querySelector('.hm-total-val');
+      if (tv) tv.textContent = '0';
+      const hs = document.getElementById('hm-stat-hotspots');
+      const pk = document.getElementById('hm-stat-peak');
+      if (hs) hs.textContent = '0';
+      if (pk) pk.textContent = '0';
+      const tl = document.getElementById('hm-top-list');
+      if (tl) tl.innerHTML = '<div style="font-size:12px;color:rgba(255,255,255,0.28);text-align:center;padding:12px 0">Chưa có dữ liệu</div>';
+      const pc = document.getElementById('heatmap-point-count');
+      if (pc) pc.textContent = 'Chưa có dữ liệu';
       refreshHeatmap();
     } else {
       throw new Error(`Server returned ${r.status}`);
@@ -704,7 +659,7 @@ function exportHeatmapCsv() {
   const url  = URL.createObjectURL(blob);
   const a    = Object.assign(document.createElement('a'), {
     href: url,
-    download: `heatmap_vinhkhanh_${_currentLayer}_${_heatmapDays}d_${new Date().toISOString().slice(0,10)}.csv`
+    download: `heatmap_vinhkhanh_gps_${_heatmapDays}d_${new Date().toISOString().slice(0,10)}.csv`
   });
   a.click();
   URL.revokeObjectURL(url);

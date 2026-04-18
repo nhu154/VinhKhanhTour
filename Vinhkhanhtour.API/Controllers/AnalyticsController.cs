@@ -59,24 +59,30 @@ namespace VinhkhanhTour.API.Controllers
         {
             using var db = new MySqlConnection(_conn);
 
-            var totalVisits = await db.ExecuteScalarAsync<int>("SELECT COUNT(*) FROM analytics WHERE EventType != 'gps_point'");
+            // Đếm lượt khách ghé: mỗi ngày có gps_point = 1 lượt ghé
+            var totalVisits = await db.ExecuteScalarAsync<int>(
+                "SELECT COUNT(DISTINCT DATE(Timestamp)) FROM analytics WHERE EventType = 'gps_point'");
             var todayVisits = await db.ExecuteScalarAsync<int>(
-                "SELECT COUNT(*) FROM analytics WHERE DATE(Timestamp) = CURDATE() AND EventType != 'gps_point'");
+                "SELECT COUNT(*) FROM analytics WHERE DATE(Timestamp) = CURDATE() AND EventType = 'gps_point'");
             var weekVisits = await db.ExecuteScalarAsync<int>(
-                "SELECT COUNT(*) FROM analytics WHERE Timestamp >= DATE_SUB(NOW(), INTERVAL 7 DAY) AND EventType != 'gps_point'");
+                "SELECT COUNT(*) FROM analytics WHERE Timestamp >= DATE_SUB(NOW(), INTERVAL 7 DAY) AND EventType = 'gps_point'");
 
+            // Top POI vẫn dựa trên các tương tác thực (không phải gps_point)
             var topPoi = await db.QueryAsync(@"
                 SELECT r.Name, COUNT(*) as VisitCount
                 FROM analytics a
                 LEFT JOIN restaurants r ON a.RestaurantId = r.Id
+                WHERE a.EventType != 'gps_point' AND a.RestaurantId IS NOT NULL
                 GROUP BY a.RestaurantId, r.Name
                 ORDER BY VisitCount DESC
                 LIMIT 5");
 
+            // Biểu đồ theo ngày: đếm lượt tương tác thực (chỉ đếm poi_visit để 1 lần click = 1 lượt)
             var byDay = await db.QueryAsync(@"
                 SELECT DATE(Timestamp) as Day, COUNT(*) as Count
                 FROM analytics
                 WHERE Timestamp >= DATE_SUB(NOW(), INTERVAL 7 DAY)
+                  AND EventType = 'poi_visit'
                 GROUP BY DATE(Timestamp)
                 ORDER BY Day");
 
@@ -107,38 +113,30 @@ namespace VinhkhanhTour.API.Controllers
             return Ok(rows);
         }
 
-        // GET: api/analytics/heatmap?days=30&layer=combined
-        // Trả về danh sách tọa độ GPS ẩn danh để vẽ heatmap
+        // GET: api/analytics/heatmap?days=30
+        // Trả về danh sách tọa độ GPS ẩn danh để vẽ heatmap (dữ liệu người dùng di chuyển)
         [HttpGet("heatmap")]
-        public async Task<IActionResult> GetHeatmap([FromQuery] int days = 30, [FromQuery] string layer = "combined")
+        public async Task<IActionResult> GetHeatmap([FromQuery] int days = 30)
         {
             if (days < 1 || days > 365) days = 30;
 
             using var db = new MySqlConnection(_conn);
 
-            string eventTypeFilter = layer switch
-            {
-                "checkin" => "AND EventType = 'poi_visit'",
-                "view" => "AND EventType LIKE 'audio_%'",
-                _ => "AND EventType != 'gps_point'" // "combined" loại bỏ gps_point để tránh lặp 8 lần trên 1 tương tác
-            };
-
-            // Bao gồm tất cả events có tọa độ GPS hợp lệ trong phạm vi Việt Nam
-            // Group theo 3 chữ số thập phân (~111m) để gom các cụm lại rộng hơn, tránh 1 tương tác rải thành 4 cụm
+            // Group theo 4 chữ số thập phân (~11m) để thấy rõ vệt đường đi của người dùng
             var sql = $@"
                 SELECT
-                    ROUND(Lat, 3) AS lat,
-                    ROUND(Lng, 3) AS lng,
+                    ROUND(Lat, 4) AS lat,
+                    ROUND(Lng, 4) AS lng,
                     COUNT(*)      AS weight
                 FROM analytics
                 WHERE Lat <> 0 AND Lng <> 0
                   AND Lat BETWEEN 5 AND 25
                   AND Lng BETWEEN 100 AND 115
                   AND Timestamp >= DATE_SUB(NOW(), INTERVAL @days DAY)
-                  {eventTypeFilter}
-                GROUP BY ROUND(Lat, 3), ROUND(Lng, 3)
+                  AND EventType = 'gps_point'
+                GROUP BY ROUND(Lat, 4), ROUND(Lng, 4)
                 ORDER BY weight DESC
-                LIMIT 2000";
+                LIMIT 5000";
 
             var points = await db.QueryAsync(sql, new { days });
 

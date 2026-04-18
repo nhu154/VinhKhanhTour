@@ -92,6 +92,15 @@ function setupActiveUsersTooltip() {
   });
 
   setTimeout(updateActiveUsersDetail, 100);
+  // Tự cập nhật mỗi 30 giây để đồng bộ với stat card
+  setInterval(async () => {
+    await fetchRealActiveUsers();
+    const countEl = document.getElementById('active-users-count');
+    if (countEl) countEl.textContent = (appUsersListCache || []).length;
+    // Đồng bộ stat card trên dashboard nếu đang hiển thị
+    const statEl = document.querySelector('[data-active-users-count]');
+    if (statEl) statEl.textContent = (appUsersListCache || []).length;
+  }, 30000);
 }
 
 let appUsersListCache = [];
