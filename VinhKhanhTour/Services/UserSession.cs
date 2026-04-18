@@ -49,6 +49,12 @@ namespace VinhKhanhTour.Services
 
         public void Logout()
         {
+            var sessionId = Preferences.Get("device_session_id", "");
+            if (!string.IsNullOrEmpty(sessionId))
+            {
+                _ = Task.Run(async () => await ApiService.Instance.EndActiveStatusAsync(sessionId));
+            }
+
             Preferences.Remove(KEY_USERNAME);
             Preferences.Remove(KEY_FULLNAME);
             Preferences.Remove(KEY_IS_GUEST);

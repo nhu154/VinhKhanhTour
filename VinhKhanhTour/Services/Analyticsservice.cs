@@ -16,6 +16,7 @@ namespace VinhKhanhTour.Services
                 var evt = new AnalyticsEvent
                 {
                     EventType = "gps_point",
+                    Username = UserSession.Instance.Username,
                     Lat = lat,
                     Lng = lng,
                     TimestampTicks = DateTime.Now.Ticks
@@ -39,6 +40,7 @@ namespace VinhKhanhTour.Services
                 {
                     EventType = eventType,
                     PoiId = poiId,
+                    Username = UserSession.Instance.Username,
                     Lat = lat,
                     Lng = lng,
                     TimestampTicks = DateTime.Now.Ticks
@@ -61,6 +63,7 @@ namespace VinhKhanhTour.Services
                 {
                     EventType = $"audio_{lang}",
                     PoiId = poiId,
+                    Username = UserSession.Instance.Username,
                     Value = durationSeconds,
                     TimestampTicks = DateTime.Now.Ticks
                 };
@@ -97,9 +100,10 @@ namespace VinhKhanhTour.Services
         {
             try
             {
-                // 1. Lấy tất cả sự kiện và lọc các ID hợp lệ (>0)
+                // 1. Lấy tất cả sự kiện và lọc các ID hợp lệ (>0) bằng Username
+                var currentUser = UserSession.Instance.Username;
                 var allEvents = await App.Database.GetAllAnalyticsEventsAsync();
-                var visitEvents = allEvents.Where(e => e.PoiId > 0 &&
+                var visitEvents = allEvents.Where(e => e.PoiId > 0 && e.Username == currentUser &&
                     (e.EventType == "poi_visit" || e.EventType.StartsWith("audio_"))).ToList();
 
                 if (visitEvents.Count == 0) return [];
@@ -136,9 +140,8 @@ namespace VinhKhanhTour.Services
                 {
                     var r = restaurants.FirstOrDefault(x => x.Id == g.Key);
 
-                    // ── FIX: Không bỏ qua entry khi không tìm được tên ──
-                    // Dùng tên fallback thay vì continue, để thống kê luôn hiển thị đủ
-                    string poiName = r?.Name ?? $"Địa điểm #{g.Key}";
+                    // ── FIX: Tên rõ ràng thay vì số ──
+                    string poiName = r?.Name ?? $"Điểm tham quan chưa rõ danh tính";
 
                     var audioEvents = g.Where(e => e.EventType.StartsWith("audio_")).ToList();
 
@@ -166,15 +169,17 @@ namespace VinhKhanhTour.Services
         {
             try
             {
+                var currentUser = UserSession.Instance.Username;
                 var allEvents = await App.Database.GetAllAnalyticsEventsAsync();
+                var userEvents = allEvents.Where(e => e.Username == currentUser).ToList();
 
-                int totalListens = allEvents.Count(e => e.PoiId > 0 && e.EventType.StartsWith("audio_"));
-                int uniquePois = allEvents.Where(e => e.PoiId > 0 && e.EventType.StartsWith("audio_"))
+                int totalListens = userEvents.Count(e => e.PoiId > 0 && e.EventType.StartsWith("audio_"));
+                int uniquePois = userEvents.Where(e => e.PoiId > 0 && e.EventType.StartsWith("audio_"))
                                             .Select(e => e.PoiId).Distinct().Count();
-                double totalSec = allEvents.Where(e => e.PoiId > 0 && e.EventType.StartsWith("audio_"))
+                double totalSec = userEvents.Where(e => e.PoiId > 0 && e.EventType.StartsWith("audio_"))
                                             .Sum(e => e.Value);
                 double avgSec = totalListens > 0 ? totalSec / totalListens : 0;
-                int tourCompletes = allEvents.Count(e => e.EventType == "tour_complete");
+                int tourCompletes = userEvents.Count(e => e.EventType == "tour_complete");
 
                 return new AnalyticsSummary
                 {

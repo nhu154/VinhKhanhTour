@@ -120,15 +120,15 @@ namespace VinhkhanhTour.API.Controllers
             {
                 "checkin" => "AND EventType = 'poi_visit'",
                 "view" => "AND EventType LIKE 'audio_%'",
-                _ => "" // "combined" hoặc không xác định
+                _ => "AND EventType != 'gps_point'" // "combined" loại bỏ gps_point để tránh lặp 8 lần trên 1 tương tác
             };
 
             // Bao gồm tất cả events có tọa độ GPS hợp lệ trong phạm vi Việt Nam
-            // Group theo 4 chữ số thập phân (~11m) để tạo cụm hợp lý
+            // Group theo 3 chữ số thập phân (~111m) để gom các cụm lại rộng hơn, tránh 1 tương tác rải thành 4 cụm
             var sql = $@"
                 SELECT
-                    ROUND(Lat, 4) AS lat,
-                    ROUND(Lng, 4) AS lng,
+                    ROUND(Lat, 3) AS lat,
+                    ROUND(Lng, 3) AS lng,
                     COUNT(*)      AS weight
                 FROM analytics
                 WHERE Lat <> 0 AND Lng <> 0
@@ -136,7 +136,7 @@ namespace VinhkhanhTour.API.Controllers
                   AND Lng BETWEEN 100 AND 115
                   AND Timestamp >= DATE_SUB(NOW(), INTERVAL @days DAY)
                   {eventTypeFilter}
-                GROUP BY ROUND(Lat, 4), ROUND(Lng, 4)
+                GROUP BY ROUND(Lat, 3), ROUND(Lng, 3)
                 ORDER BY weight DESC
                 LIMIT 2000";
 

@@ -78,9 +78,16 @@ if(sessionStorage.getItem('cms_logged_in') !== 'true') window.location.href='log
 <div class="main-wrapper">
   <header class="header">
     <div class="header-left"><div class="header-title"><h1 id="current-page-title">Tổng quan hệ thống</h1></div></div>
-    <div class="header-right">
-      <div class="header-pill"><span></span> Hệ thống đang hoạt động</div>
-
+    <div class="header-right" style="position:relative">
+      <div id="active-users-pill" style="cursor:pointer;display:flex;align-items:center;gap:8px;background:rgba(16, 185, 129, 0.1);border:1px solid rgba(16,185,129,0.3);padding:6px 14px;border-radius:30px;transition:all 0.3s;box-shadow:0 0 10px rgba(16,185,129,0.1)" title="Nhấp để xem chi tiết">
+        <div style="width:8px;height:8px;background:#10b981;border-radius:50%;box-shadow:0 0 8px #10b981;animation:pulse 2s infinite"></div>
+        <span style="font-size:13px;font-weight:600;color:#059669">App đang online:</span>
+        <span id="active-users-count" style="font-weight:800;color:#059669;font-size:14px">0</span> 
+      </div>
+      <div id="active-users-tooltip" style="display:none;position:absolute;top:100%;right:0;margin-top:8px;background:var(--card);border:1px solid var(--border);border-radius:16px;padding:16px;box-shadow:0 10px 30px rgba(0,0,0,0.15);font-size:13px;max-width:340px;min-width:300px;z-index:1000;white-space:normal">
+        <div style="font-weight:700;margin-bottom:12px;color:var(--text-main);font-size:14px;border-bottom:1px solid #f1f5f9;padding-bottom:10px">Người dùng trên ứng dụng di động:</div>
+        <div id="users-list-detail" style="max-height:220px;overflow-y:auto"></div>
+      </div>
     </div>
   </header>
 
@@ -516,28 +523,8 @@ if(sessionStorage.getItem('cms_logged_in') !== 'true') window.location.href='log
       <div class="form-group"><label>Thời lượng</label><input type="text" class="form-control" id="tour-duration" placeholder="45 phút"></div>
       <div class="form-group"><label>Rating ⭐</label><input type="number" step="0.1" min="1" max="5" class="form-control" id="tour-rating" value="4.0"></div>
     </div>
-    <div class="lang-block vi">
-      <div class="lang-label"><span>🇻🇳 Tiếng Việt (mặc định)</span></div>
-      <div class="form-group"><label>Tên Tour</label><input type="text" class="form-control" id="tour-name" placeholder="Tour Ăn Ốc"></div>
-      <div class="form-group" style="margin:0"><label>Mô tả</label><textarea class="form-control" id="tour-desc" rows="2"></textarea></div>
-    </div>
-
-    <div class="lang-block en" style="margin-top:10px">
-      <div class="lang-label"><span>🇺🇸 English</span></div>
-      <div class="form-group"><label>Tour Name (EN)</label><input type="text" class="form-control" id="tour-name-en" placeholder="Snail Food Tour"></div>
-      <div class="form-group" style="margin:0"><label>Description (EN)</label><textarea class="form-control" id="tour-desc-en" rows="2" placeholder="Top 3 famous snail restaurants..."></textarea></div>
-    </div>
-
-    <div class="lang-block zh" style="margin-top:10px">
-      <div class="lang-label"><span>🇨🇳 中文</span></div>
-      <div class="form-group"><label>旅游名称 (ZH)</label><input type="text" class="form-control" id="tour-name-zh" placeholder="螺蛳美食之旅"></div>
-      <div class="form-group" style="margin:0"><label>描述 (ZH)</label><textarea class="form-control" id="tour-desc-zh" rows="2" placeholder="永庆最著名的3家螺蛳餐厅..."></textarea></div>
-    </div>
-
-    <div class="lang-block ko" style="margin-top:10px">
-      <div class="lang-label"><span>🇰🇷 한국어</span></div>
-      <div class="form-group"><label>투어 이름 (KO)</label><input type="text" class="form-control" id="tour-name-ko" placeholder="달팽이 음식 투어"></div>
-      <div class="form-group" style="margin:0"><label>설명 (KO)</label><textarea class="form-control" id="tour-desc-ko" rows="2" placeholder="빈칸 거리 유명 달팽이 식당 3곳..."></textarea></div>
+    <div id="tour-lang-blocks">
+      <!-- Sẽ được render động từ danh sách ngôn ngữ -->
     </div>
 
     <div class="form-group" style="margin-top:12px">
@@ -735,6 +722,7 @@ if(sessionStorage.getItem('cms_logged_in') !== 'true') window.location.href='log
 <script src="js/helpers/config.js"></script>
 <script src="js/helpers/utils.js"></script>
 <script src="js/helpers/layout.js"></script>
+<script src="js/helpers/active-users.js"></script>
 
 <!-- Domain Pages -->
 <script src="js/pages/auth.js"></script>

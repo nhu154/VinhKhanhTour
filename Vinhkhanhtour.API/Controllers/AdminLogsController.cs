@@ -20,8 +20,10 @@ namespace VinhkhanhTour.API.Controllers
         {
             using var db = new MySqlConnection(_conn);
             var logs = await db.QueryAsync(@"
-                SELECT * FROM admin_logs 
-                ORDER BY Timestamp DESC 
+                SELECT a.* FROM admin_logs a
+                LEFT JOIN cms_users u ON a.UserId = u.Id
+                WHERE u.Role = 'admin' OR a.UserName = 'Hệ thống' OR a.UserName = 'admin'
+                ORDER BY a.Timestamp DESC 
                 LIMIT @limit", new { limit });
             return Ok(logs);
         }

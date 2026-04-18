@@ -62,7 +62,7 @@ public partial class ProfilePage : ContentPage
         if (_lblBadgeMoi != null) _lblBadgeMoi.Text = lang switch { "en" => "New", "zh" => "新", "ja" => "新着", "ko" => "새로운", _ => "Mới" };
         if (_lblLang != null) _lblLang.Text = lang switch { "en" => "System Language", "zh" => "系统语言", "ja" => "システム言語", "ko" => "시스템 언어", _ => "Ngôn ngữ hệ thống" };
         if (_lblStats != null) _lblStats.Text = lang switch { "en" => "Analytics", "zh" => "统计分析", "ja" => "統計", "ko" => "통계 분석", _ => "Thống kê phân tích" };
-        if (_lblSettings != null) _lblSettings.Text = lang switch { "en" => "Settings & Privacy", "zh" => "设置与隐私", "ja" => "設定", "ko" => "설정 및 개인정보", _ => "Cài đặt & Quyền riêng tư" };
+        if (_lblSettings != null) _lblSettings.Text = lang switch { "en" => "Logout", "zh" => "登出", "ja" => "ログアウト", "ko" => "로그아웃", _ => "Đăng xuất" };
         if (_lblTicket != null) _lblTicket.Text = lang switch { "en" => "My Ticket", "zh" => "我的票", "ja" => "チケット", "ko" => "내 티켓", _ => "Vé của tôi" };
         if (_lblJournal != null) _lblJournal.Text = lang switch { "en" => "Food Journal", "zh" => "美食日记", "ja" => "食日記", "ko" => "푸드 저널", _ => "Nhật ký ẩm thực" };
         if (_lblBookings != null) _lblBookings.Text = lang switch { "en" => "My Bookings", "zh" => "我的预约", "ja" => "予約履歴", "ko" => "내 예약", _ => "Đặt chỗ của tôi" };
@@ -240,11 +240,6 @@ public partial class ProfilePage : ContentPage
         menuItems.Add(favItem);
         menuItems.Add(new BoxView { HeightRequest = 1, Color = Color.FromArgb("#0FFFFFFF"), Margin = new Thickness(80, 0, 20, 0) });
 
-        _lblOffers = new Label { FontSize = 16, FontAttributes = FontAttributes.Bold, TextColor = Color.FromArgb("#0D2137"), VerticalOptions = LayoutOptions.Center };
-        _lblBadgeMoi = new Label { FontSize = 11, TextColor = Color.FromArgb("#FF8A80"), FontAttributes = FontAttributes.Bold };
-        menuItems.Add(MakeMenuItem("\U0001F381", _lblOffers, _lblBadgeMoi, Color.FromArgb("#E91E63")));
-        menuItems.Add(new BoxView { HeightRequest = 1, Color = Color.FromArgb("#0FFFFFFF"), Margin = new Thickness(80, 0, 20, 0) });
-
         _lblLangSub = new Label { FontSize = 13, FontAttributes = FontAttributes.Bold, TextColor = Color.FromArgb("#64B5F6") };
         _lblLang = new Label { FontSize = 16, FontAttributes = FontAttributes.Bold, TextColor = Color.FromArgb("#0D2137") };
         menuItems.Add(MakeMenuItemWithSub("\U0001F310", _lblLang, _lblLangSub, Color.FromArgb("#42A5F5")));
@@ -268,8 +263,13 @@ public partial class ProfilePage : ContentPage
         menuItems.Add(statsItem);
         menuItems.Add(new BoxView { HeightRequest = 1, Color = Color.FromArgb("#0FFFFFFF"), Margin = new Thickness(80, 0, 20, 0) });
 
-        _lblSettings = new Label { FontSize = 16, FontAttributes = FontAttributes.Bold, TextColor = Color.FromArgb("#0D2137"), VerticalOptions = LayoutOptions.Center };
-        menuItems.Add(MakeMenuItem("\u2699", _lblSettings, null, Color.FromArgb("#9E9E9E")));
+        _lblSettings = new Label { FontSize = 16, FontAttributes = FontAttributes.Bold, TextColor = Color.FromArgb("#FF5252"), VerticalOptions = LayoutOptions.Center };
+        var logoutItem = MakeMenuItem("\U0001F6AA", _lblSettings, null, Color.FromArgb("#FF5252"));
+        logoutItem.GestureRecognizers.Add(new TapGestureRecognizer { Command = new Command(() => {
+            VinhKhanhTour.Services.UserSession.Instance.Logout();
+            Application.Current!.MainPage = new NavigationPage(new LoginPage());
+        }) });
+        menuItems.Add(logoutItem);
 
         // ── Vé của tôi ────────────────────────────────────────────────────
         menuItems.Add(new BoxView { HeightRequest = 1, Color = Color.FromArgb("#0FFFFFFF"), Margin = new Thickness(80, 0, 20, 0) });
@@ -281,25 +281,6 @@ public partial class ProfilePage : ContentPage
         ticketItem.GestureRecognizers.Add(new TapGestureRecognizer
         { Command = new Command(async () => await Navigation.PushAsync(new MyTicketPage())) });
         menuItems.Add(ticketItem);
-
-        // ── Nhật ký ẩm thực ───────────────────────────────────────────────
-        menuItems.Add(new BoxView { HeightRequest = 1, Color = Color.FromArgb("#0FFFFFFF"), Margin = new Thickness(80, 0, 20, 0) });
-        _lblJournal = new Label { FontSize = 16, FontAttributes = FontAttributes.Bold, TextColor = Color.FromArgb("#0D2137"), VerticalOptions = LayoutOptions.Center };
-        var journalBadge = VinhKhanhTour.Services.TicketService.Instance.HasValidTicket
-            ? null
-            : new Label { Text = "🔒 Premium", FontSize = 11, TextColor = Color.FromArgb("#64748B"), FontAttributes = FontAttributes.Bold };
-        var journalItem = MakeMenuItem("📓", _lblJournal, journalBadge, Color.FromArgb("#4CAF50"));
-        journalItem.GestureRecognizers.Add(new TapGestureRecognizer
-        {
-            Command = new Command(async () =>
-            {
-                if (VinhKhanhTour.Services.TicketService.Instance.HasValidTicket)
-                    await Navigation.PushAsync(new FoodJournalPage());
-                else
-                    await Navigation.PushAsync(new PremiumGatePage("Nhật ký ẩm thực"));
-            })
-        });
-        menuItems.Add(journalItem);
 
         // ── Đặt chỗ của tôi ───────────────────────────────────────────────
         menuItems.Add(new BoxView { HeightRequest = 1, Color = Color.FromArgb("#0FFFFFFF"), Margin = new Thickness(80, 0, 20, 0) });

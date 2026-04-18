@@ -2,6 +2,7 @@ using System.Net.Http.Json;
 using System.Threading.Tasks;
 using Microsoft.Maui.Controls;
 using VinhKhanhTour.Models;
+using VinhKhanhTour.Helpers;
 
 namespace VinhKhanhTour.Services
 {
@@ -16,8 +17,12 @@ namespace VinhKhanhTour.Services
             get
             {
                 var saved = Preferences.Default.Get("api_base_url", "");
-                if (!string.IsNullOrWhiteSpace(saved)) return saved.TrimEnd('/') + "/payments";
-                return "http://192.168.1.29:5256/api/payments";
+                if (saved != Config.ApiBaseUrl)
+                {
+                    Preferences.Default.Set("api_base_url", Config.ApiBaseUrl);
+                    return Config.ApiBaseUrl + "/payments";
+                }
+                return saved.TrimEnd('/') + "/payments";
             }
         }
 

@@ -9,6 +9,7 @@ builder.Services.AddSwaggerGen();
 // Đăng ký services dùng chung
 builder.Services.AddScoped<ImageService>();
 builder.Services.AddScoped<LogService>();
+builder.Services.AddSingleton<AppUserTrackingService>();
 
 builder.Services.AddCors(options =>
 {

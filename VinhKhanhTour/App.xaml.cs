@@ -14,6 +14,46 @@ namespace VinhKhanhTour
             Database = new DatabaseService();
             MainPage = new NavigationPage(new LoginPage());
             _ = Task.Run(async () => await InitializeSampleData());
+            StartAppTracking();
+        }
+
+        private void StartAppTracking()
+        {
+            var timer = Dispatcher.CreateTimer();
+            timer.Interval = TimeSpan.FromSeconds(30);
+            timer.Tick += async (s, e) =>
+            {
+                var sessionId = Preferences.Get("device_session_id", "");
+                if (string.IsNullOrEmpty(sessionId))
+                {
+                    sessionId = Guid.NewGuid().ToString();
+                    Preferences.Set("device_session_id", sessionId);
+                }
+                
+                if (!UserSession.Instance.IsLoggedIn) return;
+
+                string username = UserSession.Instance.Username;
+                bool isAnonymous = UserSession.Instance.IsGuest;
+
+                await ApiService.Instance.PingActiveStatusAsync(sessionId, username, isAnonymous);
+            };
+            timer.Start();
+
+            // Lần gửi ping đầu
+            Task.Run(async () => 
+            {
+                await Task.Delay(2000);
+                var sessionId = Preferences.Get("device_session_id", "");
+                if (string.IsNullOrEmpty(sessionId))
+                {
+                    sessionId = Guid.NewGuid().ToString();
+                    Preferences.Set("device_session_id", sessionId);
+                }
+                
+                if (!UserSession.Instance.IsLoggedIn) return;
+
+                await ApiService.Instance.PingActiveStatusAsync(sessionId, UserSession.Instance.Username, UserSession.Instance.IsGuest);
+            });
         }
 
         private async Task InitializeSampleData()

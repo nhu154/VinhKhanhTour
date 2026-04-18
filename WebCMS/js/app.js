@@ -6,11 +6,21 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 async function initApp() {
+  // ══ Initialize active users tracking ══
+  initActiveUsersTracking();
+  setupActiveUsersTooltip();
+  
+  // ══ Register current user as active ══
+  const username = sessionStorage.getItem('cms_username');
+  const fullName = sessionStorage.getItem('cms_fullname');
+  const role = sessionStorage.getItem('cms_role') || 'user';
+  if (username) {
+    registerActiveUser(username, fullName, role);
+  }
+
   applyRolePermissions();
   updateSidebarUser();
   showSkeleton();
-
-  const role = sessionStorage.getItem('cms_role') || 'user';
 
   if (role === 'owner') {
     // ── CHỦ QUÁN: chỉ load data liên quan đến quán của họ ──

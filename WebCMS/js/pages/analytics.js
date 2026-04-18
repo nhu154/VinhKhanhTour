@@ -473,17 +473,25 @@ function _updateSidebarStats() {
     const poiGroups = {};
     _heatmapData.forEach(p => {
       const name = _findPoiName(p);
+      if (!name) return;
       const w = +(p.weight||p.Weight||1);
       if (!poiGroups[name]) poiGroups[name] = { name, weight: w };
       else poiGroups[name].weight += w;
     });
-    const sorted = Object.values(poiGroups).sort((a,b) => b.weight - a.weight);
-    const top = sorted[0];
-
+    
     const nameEl   = document.getElementById('hm-stat-hotname');
     const weightEl = document.getElementById('hm-stat-hotweight');
-    if (nameEl)   nameEl.textContent   = top.name;
-    if (weightEl) weightEl.textContent = `${Math.round(top.weight * 100) / 100} điểm tổng hợp`;
+    
+    if (Object.keys(poiGroups).length > 0) {
+      const sorted = Object.values(poiGroups).sort((a,b) => b.weight - a.weight);
+      const top = sorted[0];
+
+      if (nameEl)   nameEl.textContent   = top.name;
+      if (weightEl) weightEl.textContent = `${Math.round(top.weight * 100) / 100} điểm tổng hợp`;
+    } else {
+      if (nameEl)   nameEl.textContent   = "Chưa xác định";
+      if (weightEl) weightEl.textContent = "...";
+    }
   }
 
   // Top 5
@@ -505,7 +513,7 @@ function _updateSidebarStats() {
 function _findPoiName(pt) {
   const lat = parseFloat(pt.lat||pt.Lat||0);
   const lng = parseFloat(pt.lng||pt.Lng||0);
-  if (typeof allPois === 'undefined' || !allPois.length) return `Khu vực ngoài tuyến`;
+  if (typeof allPois === 'undefined' || !allPois.length) return null;
   
   let best = null, bestDist = Infinity;
   allPois.forEach(p => {
@@ -518,9 +526,9 @@ function _findPoiName(pt) {
 
   // Threshold: Nếu khoảng cách > 0.002 (khoảng 200m) thì coi như ở ngoài khu vực tham quan
   // Điều này ngăn việc test App từ xa làm sai lệch thống kê quán nhộn nhịp nhất.
-  if (bestDist > 0.002) return `Khu vực ngoài tuyến`;
+  if (bestDist > 0.002) return null;
 
-  return best?.name||best?.Name||'Khu vực ngoài tuyến';
+  return best?.name||best?.Name||null;
 }
 
 function _renderTopList() {
@@ -530,6 +538,7 @@ function _renderTopList() {
   const poiGroups = {};
   _heatmapData.forEach(p => {
     const name = _findPoiName(p);
+    if (!name) return;
     const w = +(p.weight||p.Weight||1);
     if (!poiGroups[name]) {
       poiGroups[name] = { name: name, weight: w, lat: parseFloat(p.lat||p.Lat||0), lng: parseFloat(p.lng||p.Lng||0) };

@@ -28,9 +28,9 @@ namespace VinhKhanhTour.Views
         private bool _htmlLoaded = false;
         private readonly Dictionary<int, string> _imgCache = new(); // cache base64 anh
         private const int COOLDOWN = 5;
-        private const string KEY = Config.GoogleMapsApiKey;
-
-        private static string GetImg(Restaurant r)
+       
+        private const string KEY = "AIzaSyAMX0XgjmNv2O4Twk_CBBmjzDwopqtuexE";
+        string GetImg(Restaurant r)
         {
             if (string.IsNullOrWhiteSpace(r.ImageUrl)) return "";
             // URL đầy đủ từ API → dùng thẳng

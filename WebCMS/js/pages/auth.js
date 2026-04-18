@@ -5,6 +5,8 @@
 
 async function doLogout() {
   if (await showConfirm('Đăng xuất', 'Bạn có chắc chắn muốn thoát khỏi hệ thống?', 'warning')) {
+    // ── Unregister user from active users tracking ──
+    unregisterActiveUser();
     sessionStorage.clear();
     window.location.href = 'login.html';
   }

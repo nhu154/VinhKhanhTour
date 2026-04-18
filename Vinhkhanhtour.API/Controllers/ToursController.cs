@@ -80,16 +80,20 @@ namespace VinhkhanhTour.API.Controllers
             var imgUrl = _img.SaveIfBase64(body.GetValueOrDefault("ImageUrl", "")?.ToString(), "tour");
 
             await db.ExecuteAsync(@"
-                INSERT INTO tours (Name, NameEn, NameZh, NameKo, Description, DescEn, DescZh, DescKo, Duration, Rating, Emoji, ImageUrl, IsActive, Pois)
-                VALUES (@Name, @NameEn, @NameZh, @NameKo, @Description, @DescEn, @DescZh, @DescKo, @Duration, @Rating, @Emoji, @ImageUrl, @IsActive, @Pois)",
+                INSERT INTO tours (Name, NameEn, NameZh, NameJa, NameKo, Description, DescEn, DescZh, DescJa, DescKo, Duration, Rating, Emoji, ImageUrl, IsActive, Pois)
+                VALUES (@Name, @NameEn, @NameZh, @NameJa, @NameKo, @Description, @DescEn, @DescZh, @DescJa, @DescKo, @Duration, @Rating, @Emoji, @ImageUrl, @IsActive, @Pois)",
                 new
                 {
                     Name = body.GetValueOrDefault("Name", "")?.ToString(),
                     NameEn = body.GetValueOrDefault("NameEn", "")?.ToString(),
                     NameZh = body.GetValueOrDefault("NameZh", "")?.ToString(),
+                    NameJa = body.GetValueOrDefault("NameJa", "")?.ToString(),
+                    NameKo = body.GetValueOrDefault("NameKo", "")?.ToString(),
                     Description = body.GetValueOrDefault("Description", "")?.ToString(),
                     DescEn = body.GetValueOrDefault("DescEn", "")?.ToString(),
                     DescZh = body.GetValueOrDefault("DescZh", "")?.ToString(),
+                    DescJa = body.GetValueOrDefault("DescJa", "")?.ToString(),
+                    DescKo = body.GetValueOrDefault("DescKo", "")?.ToString(),
                     Duration = body.GetValueOrDefault("Duration", "45 phút")?.ToString(),
                     Rating = double.TryParse(body.GetValueOrDefault("Rating", 4.0)?.ToString(),
                                     NumberStyles.Any, CultureInfo.InvariantCulture, out var r) ? r : 4.0,
@@ -111,8 +115,8 @@ namespace VinhkhanhTour.API.Controllers
 
             await db.ExecuteAsync(@"
                 UPDATE tours SET
-                Name=@Name, NameEn=@NameEn, NameZh=@NameZh,
-                Description=@Description, DescEn=@DescEn, DescZh=@DescZh,
+                Name=@Name, NameEn=@NameEn, NameZh=@NameZh, NameJa=@NameJa, NameKo=@NameKo,
+                Description=@Description, DescEn=@DescEn, DescZh=@DescZh, DescJa=@DescJa, DescKo=@DescKo,
                 Duration=@Duration, Rating=@Rating, Emoji=@Emoji,
                 ImageUrl=@ImageUrl, Pois=@Pois
                 WHERE Id=@Id",
@@ -122,9 +126,13 @@ namespace VinhkhanhTour.API.Controllers
                     Name = body.GetValueOrDefault("Name", "")?.ToString(),
                     NameEn = body.GetValueOrDefault("NameEn", "")?.ToString(),
                     NameZh = body.GetValueOrDefault("NameZh", "")?.ToString(),
+                    NameJa = body.GetValueOrDefault("NameJa", "")?.ToString(),
+                    NameKo = body.GetValueOrDefault("NameKo", "")?.ToString(),
                     Description = body.GetValueOrDefault("Description", "")?.ToString(),
                     DescEn = body.GetValueOrDefault("DescEn", "")?.ToString(),
                     DescZh = body.GetValueOrDefault("DescZh", "")?.ToString(),
+                    DescJa = body.GetValueOrDefault("DescJa", "")?.ToString(),
+                    DescKo = body.GetValueOrDefault("DescKo", "")?.ToString(),
                     Duration = body.GetValueOrDefault("Duration", "45 phút")?.ToString(),
                     Rating = double.TryParse(body.GetValueOrDefault("Rating", 4.0)?.ToString(),
                                     NumberStyles.Any, CultureInfo.InvariantCulture, out var r) ? r : 4.0,

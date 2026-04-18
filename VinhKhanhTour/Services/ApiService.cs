@@ -1,5 +1,6 @@
 using System.Net.Http.Json;
 using VinhKhanhTour.Models;
+using VinhKhanhTour.Helpers;
 
 namespace VinhKhanhTour.Services
 {
@@ -17,13 +18,15 @@ namespace VinhKhanhTour.Services
         {
             get
             {
-                // Lấy từ Preferences (cho phép thay đổi runtime nếu cần)
+                // ── FORCE SYNC: Đảm bảo App luôn dùng IP mới nhất từ Config.cs ──
+                // Nếu IP trong Preferences khác với Config, ta cập nhật lại.
                 var saved = Preferences.Default.Get("api_base_url", "");
-                if (!string.IsNullOrWhiteSpace(saved)) return saved.TrimEnd('/');
-
-                // Fallback: dùng giá trị trong Config.cs
-                // Nếu bạn chưa có Config.ApiBaseUrl, đổi string dưới đây
-                return "http://192.168.1.29:5256/api";
+                if (saved != Config.ApiBaseUrl)
+                {
+                    Preferences.Default.Set("api_base_url", Config.ApiBaseUrl);
+                    return Config.ApiBaseUrl;
+                }
+                return saved.TrimEnd('/');
             }
         }
 
@@ -161,6 +164,39 @@ namespace VinhKhanhTour.Services
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"[ApiService] PostGpsPoint: {ex.Message}");
+            }
+        }
+
+        // ── Tracking ────────────────────────────────────────────────────────
+        public async Task PingActiveStatusAsync(string sessionId, string username, bool isAnonymous)
+        {
+            try
+            {
+                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(3));
+                await _http.PostAsJsonAsync($"{BASE}/tracking/ping", new
+                {
+                    SessionId = sessionId,
+                    Username = username,
+                    IsAnonymous = isAnonymous
+                }, cts.Token);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[ApiService] PingActiveStatus: {ex.Message}");
+            }
+        }
+
+        public async Task EndActiveStatusAsync(string sessionId)
+        {
+            if (string.IsNullOrEmpty(sessionId)) return;
+            try
+            {
+                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(3));
+                await _http.DeleteAsync($"{BASE}/tracking/online-users/{sessionId}", cts.Token);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[ApiService] EndActiveStatus: {ex.Message}");
             }
         }
 

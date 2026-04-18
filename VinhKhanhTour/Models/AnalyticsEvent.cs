@@ -8,7 +8,9 @@ namespace VinhKhanhTour.Models
     {
         [PrimaryKey, AutoIncrement] public int Id { get; set; }
 
-       
+        public string Username { get; set; } = string.Empty;
+
+
         public string EventType { get; set; } = string.Empty;
 
         

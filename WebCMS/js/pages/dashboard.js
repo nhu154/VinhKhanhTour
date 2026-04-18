@@ -17,11 +17,13 @@ function renderStatsCards() {
   // Giữ lại stats cơ bản (có thể lấy từ analytics/stats nếu vẫn muốn hiện lượt ghé thăm)
   const totalVisits = statsData?.totalVisits ?? 0;
   const todayVisits = statsData?.todayVisits ?? 0;
+  const activeUsers = getActiveUserCount();
   
   el.innerHTML = `
     <div class="stat-card"><div class="stat-icon blue"><i data-lucide="map-pin"></i></div><div class="stat-info"><p class="text-muted">Tổng POI</p><h2 class="stat-val">${totalPois}</h2><div class="stat-trend">Địa điểm trên phố</div></div></div>
     <div class="stat-card"><div class="stat-icon green"><i data-lucide="share-2"></i></div><div class="stat-info"><p class="text-muted">Hành trình Tour</p><h2 class="stat-val">${totalTours}</h2><div class="stat-trend">Tuyến tham quan</div></div></div>
     <div class="stat-card"><div class="stat-icon orange"><i data-lucide="activity"></i></div><div class="stat-info"><p class="text-muted">Lượt khách ghé</p><h2 class="stat-val">${totalVisits}</h2><div class="stat-trend up">↑ ${todayVisits} hôm nay</div></div></div>
+    <div class="stat-card"><div class="stat-icon purple" style="background:#a78bfa;color:#fff"><i data-lucide="users"></i></div><div class="stat-info"><p class="text-muted">Người dùng hoạt động</p><h2 class="stat-val" data-active-users-count>${activeUsers}</h2><div class="stat-trend">Đang sử dụng app</div></div></div>
     <div class="stat-card"><div class="stat-icon red"><i data-lucide="history"></i></div><div class="stat-info"><p class="text-muted">Thao tác Admin</p><h2 class="stat-val">${historyData.length}</h2><div class="stat-trend">Lịch sử hệ thống</div></div></div>`;
   lucide.createIcons();
 }
@@ -278,3 +280,11 @@ function renderOwnerPoiList() {
 
 function renderOwnerRequests() { /* Logic giữ nguyên */ }
 function renderOwnerChart() { /* Logic giữ nguyên */ }
+
+// ══ ACTIVE USERS LISTENER ══
+document.addEventListener('activeUsersUpdated', (e) => {
+  const countEl = document.querySelector('[data-active-users-count]');
+  if (countEl) {
+    countEl.textContent = e.detail.count;
+  }
+});
