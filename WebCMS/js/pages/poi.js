@@ -106,6 +106,12 @@ function renderPoiTable() {
   }).join('');
 }
 
+function generateQRUrl(poiId) {
+  const deepLink = `vinhkhanhtour://poi/${poiId}?autoplay=true`;
+  const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(deepLink)}`;
+  return qrApiUrl;
+}
+
 function showMapDetail(poi) {
   const panel = document.getElementById('map-detail-panel');
   document.getElementById('map-detail-title').innerHTML = `${poi.name || poi.Name}`;
@@ -113,6 +119,27 @@ function showMapDetail(poi) {
   document.getElementById('map-detail-desc').textContent = poi.description || poi.Description || 'Chưa có mô tả.';
   document.getElementById('map-detail-img').src = getImgUrl(poi);
   document.getElementById('btn-edit-from-map').onclick = () => openEditPoiForm(poi);
+  
+  // ── SmartTour QR ──
+  const poiId = poi.id || poi.Id;
+  let qrContainer = document.getElementById('map-detail-qr');
+  if (!qrContainer) {
+    qrContainer = document.createElement('div');
+    qrContainer.id = 'map-detail-qr';
+    qrContainer.style.marginTop = '12px';
+    qrContainer.style.textAlign = 'center';
+    document.getElementById('map-detail-desc').parentNode.insertBefore(qrContainer, document.getElementById('map-detail-desc').nextSibling);
+  }
+  
+  if (poiId) {
+    qrContainer.innerHTML = `
+      <div style="font-size:12px;font-weight:bold;color:#475569;margin-bottom:6px"><i data-lucide="qr-code" style="width:14px;height:14px;vertical-align:middle;margin-right:4px"></i>SmartTour QR (Scan & Listen)</div>
+      <img src="${generateQRUrl(poiId)}" style="width:120px;height:120px;border-radius:8px;border:1px solid #e2e8f0;padding:4px;background:#fff" />
+    `;
+  } else {
+    qrContainer.innerHTML = '';
+  }
+
   panel.style.display = 'flex';
   lucide.createIcons();
 }

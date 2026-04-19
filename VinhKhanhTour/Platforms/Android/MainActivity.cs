@@ -4,6 +4,8 @@ using Android.Content.PM;
 using Android.OS;
 using Android.Webkit;
 using VinhKhanhTour.Platforms.Android;
+using VinhKhanhTour.Services;
+using VinhKhanhTour.Views;
 using System.Runtime.Versioning;
 
 namespace VinhKhanhTour
@@ -12,6 +14,16 @@ namespace VinhKhanhTour
         ConfigurationChanges = ConfigChanges.ScreenSize | ConfigChanges.Orientation |
         ConfigChanges.UiMode | ConfigChanges.ScreenLayout |
         ConfigChanges.SmallestScreenSize | ConfigChanges.Density)]
+
+    // ── Deep link: vinhkhanhtour://open/guest ──────────────────────────
+    [IntentFilter(new[] { Intent.ActionView },
+        Categories = new[] { Intent.CategoryDefault, Intent.CategoryBrowsable },
+        DataScheme = "vinhkhanhtour")]
+    // ── Universal link: https://vinhkhanhtour.com/poi/{id} ─────────────
+    [IntentFilter(new[] { Intent.ActionView },
+        Categories = new[] { Intent.CategoryDefault, Intent.CategoryBrowsable },
+        DataScheme = "https",
+        DataHost = "vinhkhanhtour.com")]
     public class MainActivity : MauiAppCompatActivity
     {
         private Intent? _serviceIntent;
@@ -20,7 +32,10 @@ namespace VinhKhanhTour
         {
             base.OnCreate(savedInstanceState);
 
-            // ── WebView settings (giữ nguyên cấu hình cũ) ────────────
+            // ── Xử lý deep link khi app được mở lần đầu từ QR ─────────
+            HandleDeepLinkIntent(Intent);
+
+            // ── WebView settings ──────────────────────────────────────
             Microsoft.Maui.Handlers.WebViewHandler.Mapper.AppendToMapping(
                 "WebViewGeoPermission", (handler, view) =>
                 {
@@ -34,8 +49,47 @@ namespace VinhKhanhTour
                     settings.AllowFileAccessFromFileURLs = true;
                     settings.AllowUniversalAccessFromFileURLs = true;
                     settings.LoadsImagesAutomatically = true;
-                    settings.CacheMode = CacheModes.NoCache;
+
+                    // ── Offline tile cache: dùng Default thay vì NoCache ─────
+                    // NoCache ngăn Android WebView lưu Google Maps tiles vào disk.
+                    // Default = cho phép cache → tiles đã xem lúc online sẽ dùng được lúc offline.
+                    // OfflineService sẽ switch sang CacheOnly khi phát hiện mất mạng.
+                    bool isOnline = Connectivity.Current.NetworkAccess == NetworkAccess.Internet;
+                    settings.CacheMode = isOnline ? CacheModes.Default : CacheModes.CacheElseNetwork;
+
+                    // Lắng nghe thay đổi kết nối → cập nhật cache mode cho WebView này
+                    Connectivity.Current.ConnectivityChanged += (s, e) =>
+                    {
+                        bool online = e.NetworkAccess == NetworkAccess.Internet;
+                        MainThread.BeginInvokeOnMainThread(() =>
+                        {
+                            try
+                            {
+                                handler.PlatformView.Settings.CacheMode =
+                                    online ? CacheModes.Default : CacheModes.CacheElseNetwork;
+                                System.Diagnostics.Debug.WriteLine(
+                                    $"[WebView] Cache mode → {(online ? "Default (online)" : "CacheElseNetwork (offline)")}");
+                            }
+                            catch { }
+                        });
+                    };
                 });
+        }
+
+        // ── Nhận deep link khi app đang chạy nền ─────────────────────
+        protected override void OnNewIntent(Intent? intent)
+        {
+            base.OnNewIntent(intent);
+            HandleDeepLinkIntent(intent);
+        }
+
+        private static void HandleDeepLinkIntent(Intent? intent)
+        {
+            if (intent?.Action != Intent.ActionView) return;
+            var uriString = intent.DataString;
+            if (string.IsNullOrEmpty(uriString)) return;
+            if (Uri.TryCreate(uriString, UriKind.Absolute, out var uri))
+                DeepLinkService.Instance.Process(uri);
         }
 
         protected override void OnResume()

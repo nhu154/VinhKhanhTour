@@ -187,7 +187,31 @@ namespace VinhKhanhTour.Views
             root.Add(tourSection);
 
             mainScroll.Content = root;
-            Content = mainScroll;
+            
+            var mainGrid = new Grid();
+            mainGrid.Add(mainScroll);
+
+            // QR FAB
+            var fab = new Border
+            {
+                BackgroundColor = Color.FromArgb("#2BBFB0"),
+                StrokeThickness = 0,
+                StrokeShape = new RoundRectangle { CornerRadius = 28 },
+                WidthRequest = 56,
+                HeightRequest = 56,
+                HorizontalOptions = LayoutOptions.End,
+                VerticalOptions = LayoutOptions.End,
+                Margin = new Thickness(0, 0, 24, 24),
+                Shadow = new Shadow { Brush = Color.FromArgb("#2BBFB0"), Opacity = 0.5f, Radius = 15, Offset = new Point(0, 6) },
+                Content = new Label { Text = "▣", FontSize = 28, TextColor = Colors.White, HorizontalOptions = LayoutOptions.Center, VerticalOptions = LayoutOptions.Center }
+            };
+            fab.GestureRecognizers.Add(new TapGestureRecognizer
+            {
+                Command = new Command(async () => await Navigation.PushAsync(new QRScanPage()))
+            });
+            mainGrid.Add(fab);
+
+            Content = mainGrid;
         }
 
         // ══ TOURS ══

@@ -5,6 +5,50 @@ namespace VinhKhanhTour.Views
         public MainTabbedPage()
         {
             InitializeComponent();
+            Services.DeepLinkService.Instance.OnDeepLinkReceived += HandlePoiDeepLink;
+        }
+
+        protected override void OnAppearing()
+        {
+            base.OnAppearing();
+            Services.DeepLinkService.Instance.FlushPending();
+        }
+
+        protected override void OnDisappearing()
+        {
+            base.OnDisappearing();
+            Services.DeepLinkService.Instance.OnDeepLinkReceived -= HandlePoiDeepLink;
+        }
+
+        private async void HandlePoiDeepLink(int poiId, bool autoplay)
+        {
+            try
+            {
+                var restaurant = await App.Database.GetRestaurantByIdAsync(poiId);
+                if (restaurant == null)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[DeepLink] ❌ POI {poiId} not found");
+                    return;
+                }
+
+                // Điều hướng đến trang chi tiết
+                var detailPage = new RestaurantDetailPage(restaurant, autoplayAudio: autoplay);
+                
+                if (CurrentPage is NavigationPage navPage)
+                {
+                    await navPage.PushAsync(detailPage);
+                }
+                else
+                {
+                    await Navigation.PushAsync(detailPage);
+                }
+
+                System.Diagnostics.Debug.WriteLine($"[DeepLink] ✅ Navigated to {restaurant.Name}  autoplay={autoplay}");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[DeepLink] Nav error: {ex.Message}");
+            }
         }
 
         public void UpdateLanguage(string lang)

@@ -32,9 +32,9 @@ namespace VinhKhanhTour.Views
             if (_lblBack != null) _lblBack.Text = lang switch { "en" => "← Back", "zh" => "← 返回", "ja" => "← 戻る", "ko" => "← 뒤로", _ => "← Trở về" };
             if (_lblSectionTitle != null) _lblSectionTitle.Text = lang switch { "en" => "Food Journey", "zh" => "美食之旅", "ja" => "美食の旅", "ko" => "음식 여정", _ => "Hành trình ẩm thực" };
             if (_lblStartTour != null) _lblStartTour.Text = lang switch { "en" => "Start GPS Navigation", "zh" => "开始导航", "ja" => "ナビを開始", "ko" => "네비게이션 시작", _ => "Bắt đầu dẫn đường" };
-            
+
             // Re-render tour-specific info if labels are available
-            if (_lblTourName != null) _lblTourName.Text = _tour.Name; 
+            if (_lblTourName != null) _lblTourName.Text = _tour.Name;
             if (_lblTourDesc != null) _lblTourDesc.Text = _tour.Description;
         }
 
@@ -159,7 +159,7 @@ namespace VinhKhanhTour.Views
             var statsRow = new HorizontalStackLayout { Spacing = 20, Margin = new Thickness(0, 12, 0, 0) };
             _lblDuration = new Label { Text = _tour.Duration, FontSize = 12, TextColor = Color.FromArgb("#5A7A9A"), FontAttributes = FontAttributes.Bold };
             statsRow.Add(CreateStatNode("⏱", _lblDuration));
-            
+
             _lblSpotsCount = new Label { Text = $"{tourRestaurants.Count} địa điểm", FontSize = 12, TextColor = Color.FromArgb("#5A7A9A"), FontAttributes = FontAttributes.Bold };
             statsRow.Add(CreateStatNode("📍", _lblSpotsCount));
             headerContent.Add(statsRow);
@@ -242,32 +242,60 @@ namespace VinhKhanhTour.Views
 
         private async Task StartTour(List<Restaurant> restaurants)
         {
-            if (Application.Current?.MainPage is TabbedPage tabbedPage)
+            try
             {
+                // Hỗ trợ cả 2 trường hợp:
+                // 1. MainPage là NavigationPage wrapping MainTabbedPage
+                // 2. MainPage là TabbedPage trực tiếp
+                TabbedPage? tabbedPage = null;
+
+                if (Application.Current?.MainPage is NavigationPage navWrapper)
+                {
+                    tabbedPage = navWrapper.CurrentPage as TabbedPage
+                              ?? navWrapper.RootPage as TabbedPage;
+                }
+                else if (Application.Current?.MainPage is TabbedPage direct)
+                {
+                    tabbedPage = direct;
+                }
+
+                if (tabbedPage == null)
+                {
+                    // Fallback: mở MapPage độc lập với tour
+                    await Navigation.PushAsync(new MapPage(restaurants, _tour.Name));
+                    return;
+                }
+
                 MapPage? mapTab = null;
                 NavigationPage? mapNavPage = null;
 
-                for (int i = 0; i < tabbedPage.Children.Count; i++)
+                foreach (var child in tabbedPage.Children)
                 {
-                    var child = tabbedPage.Children[i];
-                    if (child is NavigationPage navPage)
+                    if (child is NavigationPage nav)
                     {
-                        var found = navPage.RootPage as MapPage ?? navPage.CurrentPage as MapPage;
-                        if (found != null) { mapTab = found; mapNavPage = navPage; break; }
+                        var found = nav.RootPage as MapPage ?? nav.CurrentPage as MapPage;
+                        if (found != null) { mapTab = found; mapNavPage = nav; break; }
                     }
-                    else if (child is MapPage directMap)
-                    {
-                        mapTab = directMap; break;
-                    }
+                    else if (child is MapPage dm) { mapTab = dm; break; }
                 }
 
                 if (mapTab != null)
                 {
                     mapTab.LoadTourPois(restaurants, _tour.Name);
                     tabbedPage.CurrentPage = mapNavPage ?? (Page)mapTab;
+                    await Navigation.PopAsync();
+                }
+                else
+                {
+                    // Không tìm thấy MapPage trong tab → mở mới
+                    await Navigation.PushAsync(new MapPage(restaurants, _tour.Name));
                 }
             }
-            await Navigation.PopAsync();
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[TourDetail] StartTour error: {ex.Message}");
+                await DisplayAlert("Lỗi", "Không thể bắt đầu dẫn đường. Vui lòng thử lại.", "OK");
+            }
         }
 
         private Border CreateRestaurantCard(Restaurant restaurant)

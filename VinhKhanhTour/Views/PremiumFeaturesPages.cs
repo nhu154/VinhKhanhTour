@@ -633,7 +633,7 @@ namespace VinhKhanhTour.Views
             // Photo placeholder
             frameInner.Add(new VerticalStackLayout
             {
-                VerticalOptions = LayoutOptions.FillAndExpand,
+                VerticalOptions = LayoutOptions.Fill,
                 HorizontalOptions = LayoutOptions.Fill,
                 Spacing = 12,
                 Padding = new Thickness(20),

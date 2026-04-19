@@ -18,16 +18,35 @@ namespace VinhKhanhTour.Views
         private const string DESC_PATH = "M21,15H3V17H21V15M21,7H3V9H21V7M21,11H3V13H21V11M3,19H21V21H3V19Z";
         private const string TIME_PATH = "M12,20A8,8 0 0,0 20,12A8,8 0 0,0 12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20M12,2A10,10 0 0,1 22,12A10,10 0 0,1 12,22C6.47,22 2,17.53 2,12A10,10 0 0,1 12,2M12.5,7V12.25L17,14.92L16.25,16.15L11,13V7H12.5Z";
 
-        public RestaurantDetailPage(Restaurant restaurant)
+        private readonly bool _autoplayAudio;
+
+        public RestaurantDetailPage(Restaurant restaurant, bool autoplayAudio = false)
         {
             _restaurant = restaurant;
+            _autoplayAudio = autoplayAudio;
             BackgroundColor = Color.FromArgb("#F8FAFC");
             NavigationPage.SetHasNavigationBar(this, false);
 
-            // Record manual click interaction
-            _ = AnalyticsService.RecordPoiVisitAsync(_restaurant.Id, "click");
+            _ = AnalyticsService.RecordPoiVisitAsync(_restaurant.Id,
+                autoplayAudio ? "qr_scan" : "click");
 
             CreateUI();
+        }
+
+        protected override async void OnAppearing()
+        {
+            base.OnAppearing();
+
+            if (_autoplayAudio)
+            {
+                await Task.Delay(600);
+
+                var lang = Preferences.Default.Get("app_lang", "vi");
+                AudioService.Instance.SetLanguage(lang);
+
+                System.Diagnostics.Debug.WriteLine($"[QR] 🔊 Autoplay TTS for {_restaurant.Name}");
+                await AudioService.Instance.PlayNarrationAsync(_restaurant);
+            }
         }
 
         private void CreateUI()

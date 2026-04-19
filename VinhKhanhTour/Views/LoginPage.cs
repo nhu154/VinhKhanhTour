@@ -14,10 +14,10 @@ namespace VinhKhanhTour.Views
         {
             NavigationPage.SetHasNavigationBar(this, false);
             BackgroundColor = Color.FromArgb("#121212");
-            
+
             // Xóa session cũ tránh trường hợp audio nền tự động phát từ session trước
             UserSession.Instance.Logout();
-            
+
             CreateUI();
         }
 
@@ -57,7 +57,12 @@ namespace VinhKhanhTour.Views
             };
 
             // === Brand Header ===
-            var brandArea = new VerticalStackLayout { Spacing = 6, HorizontalOptions = LayoutOptions.Center, Margin = new Thickness(0, 0, 0, 40) };
+            var brandArea = new VerticalStackLayout
+            {
+                Spacing = 6,
+                HorizontalOptions = LayoutOptions.Center,
+                Margin = new Thickness(0, 0, 0, 40)
+            };
             brandArea.Add(new Label
             {
                 Text = "VĨNH KHÁNH",
@@ -84,7 +89,13 @@ namespace VinhKhanhTour.Views
                 StrokeThickness = 1,
                 Stroke = Color.FromArgb("#2A2A2A"),
                 Padding = new Thickness(24, 28, 24, 28),
-                Shadow = new Shadow { Brush = Colors.Black, Opacity = 0.5f, Radius = 30, Offset = new Point(0, 16) }
+                Shadow = new Shadow
+                {
+                    Brush = Colors.Black,
+                    Opacity = 0.5f,
+                    Radius = 30,
+                    Offset = new Point(0, 16)
+                }
             };
 
             var cardLayout = new VerticalStackLayout { Spacing = 16 };
@@ -130,12 +141,19 @@ namespace VinhKhanhTour.Views
                 {
                     StartPoint = new Point(0, 0),
                     EndPoint = new Point(1, 0),
-                    GradientStops = {
+                    GradientStops =
+                    {
                         new GradientStop(Color.FromArgb("#1565C0"), 0),
                         new GradientStop(Color.FromArgb("#1E88E5"), 1)
                     }
                 },
-                Shadow = new Shadow { Brush = Color.FromArgb("#1565C0"), Opacity = 0.5f, Radius = 16, Offset = new Point(0, 8) },
+                Shadow = new Shadow
+                {
+                    Brush = Color.FromArgb("#1565C0"),
+                    Opacity = 0.5f,
+                    Radius = 16,
+                    Offset = new Point(0, 8)
+                },
                 Margin = new Thickness(0, 8, 0, 0)
             };
             _btnLogin.Clicked += OnLoginClicked;
@@ -144,7 +162,12 @@ namespace VinhKhanhTour.Views
             // Divider
             var div = new Grid
             {
-                ColumnDefinitions = { new ColumnDefinition(GridLength.Star), new ColumnDefinition(GridLength.Auto), new ColumnDefinition(GridLength.Star) },
+                ColumnDefinitions =
+                {
+                    new ColumnDefinition(GridLength.Star),
+                    new ColumnDefinition(GridLength.Auto),
+                    new ColumnDefinition(GridLength.Star)
+                },
                 Margin = new Thickness(0, 16)
             };
             div.Add(new BoxView { HeightRequest = 1, BackgroundColor = Color.FromArgb("#2A2A2A"), VerticalOptions = LayoutOptions.Center }, 0, 0);
@@ -152,25 +175,54 @@ namespace VinhKhanhTour.Views
             div.Add(new BoxView { HeightRequest = 1, BackgroundColor = Color.FromArgb("#2A2A2A"), VerticalOptions = LayoutOptions.Center }, 2, 0);
             cardLayout.Add(div);
 
-            // Guest button (outlined dark style)
-            var btnGuest = new Button
+            // ── Nút Quét QR để vào app (thay thế ẩn danh) ──────────
+            var qrScanBtn = new Border
             {
-                Text = "Tham quan với quyền Khách",
+                BackgroundColor = Color.FromArgb("#0D2137"),
+                StrokeShape = new RoundRectangle { CornerRadius = 14 },
+                StrokeThickness = 1,
+                Stroke = Color.FromArgb("#2BBFB0"),
+                HeightRequest = 56,
+                HorizontalOptions = LayoutOptions.Fill,
+                Margin = new Thickness(0, 4, 0, 0),
+                Shadow = new Shadow
+                {
+                    Brush = Color.FromArgb("#2BBFB0"),
+                    Opacity = 0.2f,
+                    Radius = 12,
+                    Offset = new Point(0, 4)
+                }
+            };
+
+            var qrBtnRow = new HorizontalStackLayout
+            {
+                Spacing = 12,
+                HorizontalOptions = LayoutOptions.Center,
+                VerticalOptions = LayoutOptions.Center
+            };
+            qrBtnRow.Add(new Label
+            {
+                Text = "⬛",
+                FontSize = 20,
+                TextColor = Color.FromArgb("#2BBFB0"),
+                VerticalOptions = LayoutOptions.Center
+            });
+            qrBtnRow.Add(new Label
+            {
+                Text = "Quét QR để vào app",
                 FontSize = 15,
                 FontAttributes = FontAttributes.Bold,
-                TextColor = Color.FromArgb("#B3B3B3"),
-                HeightRequest = 56,
-                CornerRadius = 28,
-                BackgroundColor = Colors.Transparent,
-                BorderColor = Color.FromArgb("#3A3A3A"),
-                BorderWidth = 1.5
-            };
-            btnGuest.Clicked += (s, e) =>
+                TextColor = Color.FromArgb("#2BBFB0"),
+                VerticalOptions = LayoutOptions.Center
+            });
+            qrScanBtn.Content = qrBtnRow;
+
+            qrScanBtn.GestureRecognizers.Add(new TapGestureRecognizer
             {
-                UserSession.Instance.LoginAsGuest();
-                Application.Current!.MainPage = new MainTabbedPage();
-            };
-            cardLayout.Add(btnGuest);
+                Command = new Command(async () =>
+                    await Navigation.PushAsync(new EntryQRScannerPage()))
+            });
+            cardLayout.Add(qrScanBtn);
 
             cardBorder.Content = cardLayout;
             main.Add(cardBorder);
@@ -182,7 +234,13 @@ namespace VinhKhanhTour.Views
                 HorizontalOptions = LayoutOptions.Center,
                 Margin = new Thickness(0, 24, 0, 0)
             };
-            regRow.Add(new Label { Text = "Chưa có tài khoản?", FontSize = 14, TextColor = Color.FromArgb("#6B6B6B"), VerticalOptions = LayoutOptions.Center });
+            regRow.Add(new Label
+            {
+                Text = "Chưa có tài khoản?",
+                FontSize = 14,
+                TextColor = Color.FromArgb("#6B6B6B"),
+                VerticalOptions = LayoutOptions.Center
+            });
             var regLink = new Label
             {
                 Text = "Đăng ký",
@@ -191,7 +249,10 @@ namespace VinhKhanhTour.Views
                 TextColor = Color.FromArgb("#42A5F5"),
                 VerticalOptions = LayoutOptions.Center
             };
-            regLink.GestureRecognizers.Add(new TapGestureRecognizer { Command = new Command(async () => await Navigation.PushAsync(new RegisterPage())) });
+            regLink.GestureRecognizers.Add(new TapGestureRecognizer
+            {
+                Command = new Command(async () => await Navigation.PushAsync(new RegisterPage()))
+            });
             regRow.Add(regLink);
             main.Add(regRow);
 
@@ -291,5 +352,9 @@ namespace VinhKhanhTour.Views
             _errorLabel.Text = message;
             _errorLabel.IsVisible = true;
         }
+
+        // ── Deep link handler (ủy quyền cho DeepLinkService) ─────────────────
+        public static void HandleDeepLink(Uri uri)
+            => DeepLinkService.Instance.Process(uri);
     }
 }

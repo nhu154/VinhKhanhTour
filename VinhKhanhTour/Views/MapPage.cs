@@ -31,8 +31,13 @@ namespace VinhKhanhTour.Views
         private bool _htmlLoaded = false;
         private readonly Dictionary<int, string> _imgCache = new(); // cache base64 anh
         private const int COOLDOWN = 5;
-       
+
         private const string KEY = "AIzaSyAMX0XgjmNv2O4Twk_CBBmjzDwopqtuexE";
+
+        // ── Offline mode ──────────────────────────────────────────────────────
+        private Grid _offlineBanner = null!;
+        private bool _isOfflineBannerVisible = false;
+
         string GetImg(Restaurant r)
         {
             if (string.IsNullOrWhiteSpace(r.ImageUrl)) return "";
@@ -147,24 +152,108 @@ namespace VinhKhanhTour.Views
                 });
             };
 
+            // ── Offline Banner ─────────────────────────────────────────
+            _offlineBanner = new Grid
+            {
+                BackgroundColor = Color.FromArgb("#B71C1C"),
+                IsVisible = false,
+                Padding = new Thickness(16, 6),
+                ColumnDefinitions =
+                {
+                    new ColumnDefinition { Width = GridLength.Auto },
+                    new ColumnDefinition { Width = GridLength.Star },
+                    new ColumnDefinition { Width = GridLength.Auto }
+                }
+            };
+            _offlineBanner.Add(new Label
+            {
+                Text = "📡",
+                FontSize = 14,
+                VerticalOptions = LayoutOptions.Center
+            }, 0, 0);
+            _offlineBanner.Add(new Label
+            {
+                Text = "Đang offline — Bản đồ & audio từ bộ nhớ cache",
+                TextColor = Colors.White,
+                FontSize = 12,
+                FontAttributes = FontAttributes.Bold,
+                VerticalOptions = LayoutOptions.Center,
+                Margin = new Thickness(8, 0)
+            }, 1, 0);
+            var downloadBtn = new Button
+            {
+                Text = "Tải về",
+                FontSize = 11,
+                FontAttributes = FontAttributes.Bold,
+                TextColor = Colors.White,
+                BackgroundColor = Color.FromArgb("#7f0000"),
+                CornerRadius = 12,
+                HeightRequest = 26,
+                Padding = new Thickness(10, 0),
+                VerticalOptions = LayoutOptions.Center
+            };
+            downloadBtn.Clicked += (s, e) =>
+                _ = Navigation.PushAsync(new OfflineDownloadPage());
+            _offlineBanner.Add(downloadBtn, 2, 0);
+
             var grid = new Grid
             {
                 RowDefinitions =
                 {
+                    new RowDefinition { Height = GridLength.Auto },  // offline banner
                     new RowDefinition { Height = new GridLength(1, GridUnitType.Star) },
                     new RowDefinition { Height = GridLength.Auto },
                     new RowDefinition { Height = GridLength.Auto },
                     new RowDefinition { Height = GridLength.Auto }
                 }
             };
-            grid.Add(_webView, 0, 0);
-            grid.Add(_btnExitTour, 0, 1);
-            grid.Add(_audioBarContainer, 0, 2);
-            grid.Add(_statusLabel, 0, 3);
+            grid.Add(_offlineBanner, 0, 0);
+            grid.Add(_webView, 0, 1);
+            grid.Add(_btnExitTour, 0, 2);
+            grid.Add(_audioBarContainer, 0, 3);
+            grid.Add(_statusLabel, 0, 4);
             Content = grid;
+
+            // ── Lắng nghe thay đổi kết nối → show/hide offline banner ─
+            OfflineService.Instance.StatusChanged += OnConnectivityChanged;
 
             _webView.IsEnabled = true;
             _ = InitAsync();
+        }
+
+        private void OnConnectivityChanged(ConnectivityStatus status)
+        {
+            MainThread.BeginInvokeOnMainThread(() =>
+            {
+                bool isOffline = status == ConnectivityStatus.Offline;
+                if (isOffline == _isOfflineBannerVisible) return;
+
+                _isOfflineBannerVisible = isOffline;
+                _offlineBanner.IsVisible = isOffline;
+
+                // Cập nhật label banner theo ngôn ngữ hiện tại
+                if (isOffline && _offlineBanner.Children.Count > 1 &&
+                    _offlineBanner.Children[1] is Label bannerLabel)
+                {
+                    bannerLabel.Text = _currentLang switch
+                    {
+                        "en" => "Offline — Map & audio from cache",
+                        "zh" => "离线 — 使用缓存地图与音频",
+                        "ja" => "オフライン — キャッシュから地図と音声",
+                        "ko" => "오프라인 — 캐시에서 지도 및 오디오",
+                        _ => "Đang offline — Bản đồ & audio từ bộ nhớ cache"
+                    };
+                }
+
+                // Nếu vừa online lại: trigger pre-warm tiles và refresh
+                if (!isOffline)
+                {
+                    _ = OfflineModeService.Instance.PreWarmMapTilesAsync();
+                }
+
+                System.Diagnostics.Debug.WriteLine(
+                    $"[MapPage] Offline banner: {(isOffline ? "SHOW" : "HIDE")}");
+            });
         }
 
         protected override void OnAppearing()
@@ -770,11 +859,61 @@ namespace VinhKhanhTour.Views
             lines.Add("function menuNav(id,ev){ev.stopPropagation();var r=ALL.find(function(x){return x.id===id;});if(!r)return;cur=r;document.getElementById('menuSheet').classList.remove('open');reqR();}");
 
             lines.Add("document.addEventListener('click',function(e){var sr=document.getElementById('searchResults');if(sr&&!sr.contains(e.target)&&e.target.id!=='searchInput')sr.style.display='none';var lb=document.getElementById('langBtn');var ld=document.getElementById('langDropdown');if(ld&&!lb.contains(e.target))ld.style.display='none';});");
-            lines.Add("function initMap(){try{var mapDiv=document.getElementById('map');if(!mapDiv)return;var mapOptions={center:CTR,zoom:16,mapTypeControl:false,streetViewControl:false,fullscreenControl:false,zoomControl:true,zoomControlOptions:{position:google.maps.ControlPosition.LEFT_CENTER},scrollwheel:true,gestureHandling:'greedy',clickableIcons:false,mapTypeId:'roadmap',disableDoubleClickZoom:true};map=new google.maps.Map(mapDiv,mapOptions);if(ALL&&ALL.length>0){ALL.forEach(function(r){var mk=new google.maps.Marker({position:{lat:r.lat,lng:r.lng},map:map,title:r.name});mk.addListener('click',function(){pick(r);});});}map.addListener('click',function(){closeS();});map.addListener('dblclick',function(e){var tp={'vi':'Đã dịch chuyển tới đây!','en':'Teleported here!','zh':'已传送到这里！','ja':'ここに移動しました!','ko':'여기로 이동했습니다!'};toast(tp[cL]||tp.vi); sPos(e.latLng.lat(),e.latLng.lng()); });google.maps.event.trigger(map, 'resize');setTimeout(gps,1000); applyLang(); window.location.href='maui://mapready'; }catch(e){console.error(e); window.location.href='maui://mapready';}}");
+
+            // ── Pre-warm Google Maps tiles khu vực Vĩnh Khánh (chạy sau khi map ready) ──
+            lines.Add("var _preCacheDone=false;");
+            lines.Add("function preCacheMapArea(){" +
+                // Tải tile im lặng bằng Image() — không pan map, không hiện toast
+                "if(_preCacheDone||typeof map==='undefined')return;" +
+                "_preCacheDone=true;" +
+                "var pts=[" +
+                "  {lat:10.758,lng:106.699},{lat:10.758,lng:106.705},{lat:10.758,lng:106.710}," +
+                "  {lat:10.762,lng:106.699},{lat:10.762,lng:106.705},{lat:10.762,lng:106.710}," +
+                "  {lat:10.766,lng:106.699},{lat:10.766,lng:106.705},{lat:10.766,lng:106.710}" +
+                "];" +
+                "pts.forEach(function(p){" +
+                "  [16,17,18].forEach(function(z){" +
+                "    var n=Math.pow(2,z);" +
+                "    var tx=Math.floor((p.lng+180)/360*n);" +
+                "    var rad=p.lat*Math.PI/180;" +
+                "    var ty=Math.floor((1-Math.log(Math.tan(rad)+1/Math.cos(rad))/Math.PI)/2*n);" +
+                "    var img=new Image();" +
+                "    img.src='https://mt1.google.com/vt/lyrs=m&x='+tx+'&y='+ty+'&z='+z;" +
+                "  });" +
+                "});" +
+                "}");
+
+            lines.Add("function initMap(){try{var mapDiv=document.getElementById('map');if(!mapDiv)return;" +
+                "var mapOptions={center:CTR,zoom:16,mapTypeControl:false,streetViewControl:false,fullscreenControl:false," +
+                "zoomControl:true,zoomControlOptions:{position:google.maps.ControlPosition.LEFT_CENTER}," +
+                "scrollwheel:true,gestureHandling:'greedy',clickableIcons:false,mapTypeId:'roadmap',disableDoubleClickZoom:true};" +
+                "map=new google.maps.Map(mapDiv,mapOptions);" +
+                "if(ALL&&ALL.length>0){ALL.forEach(function(r){" +
+                "  var mk=new google.maps.Marker({position:{lat:r.lat,lng:r.lng},map:map,title:r.name});" +
+                "  mk.addListener('click',function(){pick(r);});" +
+                "});}" +
+                "map.addListener('click',function(){closeS();});" +
+                "map.addListener('dblclick',function(e){" +
+                "  var tp={'vi':'\u0110\u00e3 d\u1ecbch chuy\u1ec3n t\u1edbi \u0111\u00e2y!','en':'Teleported here!','zh':'\u5df2\u4f20\u9001\u5230\u8fd9\u91cc\uff01','ja':'\u3053\u3053\u306b\u79fb\u52d5\u3057\u307e\u3057\u305f!','ko':'\uc5ec\uae30\ub85c \uc774\ub3d9\ud588\uc2b5\ub2c8\ub2e4!'};" +
+                "  toast(tp[cL]||tp.vi); sPos(e.latLng.lat(),e.latLng.lng());" +
+                "});" +
+                "google.maps.event.trigger(map,'resize');" +
+                "setTimeout(gps,1000);" +
+                // Pre-warm tiles lần đầu (3 giây sau khi map ready, để user map đã render xong)
+                "google.maps.event.addListenerOnce(map,'idle',function(){" +
+                "  setTimeout(function(){" +
+                "    if(navigator.onLine){preCacheMapArea();}" +
+                "  },3000);" +
+                "});" +
+                "applyLang();" +
+                "window.location.href='maui://mapready';" +
+                "}catch(e){console.error(e);window.location.href='maui://mapready';}}");
+
             lines.Add("</script>");
             lines.Add("<script src='https://maps.googleapis.com/maps/api/js?key=" + KEY + "'></script>");
             lines.Add("<script>window.addEventListener('load',function(){setTimeout(initMap,200);});</script>");
             lines.Add("</body></html>");
+
 
             return string.Join("\n", lines);
         }
@@ -782,19 +921,19 @@ namespace VinhKhanhTour.Views
         private async Task CheckNearbyAsync(Location location)
         {
             if (_restaurants.Count == 0) return;
-            
+
             // Lấy danh sách các POI lân cận, cập nhật trạng thái rời khỏi
             var nearbyPois = new List<(Restaurant Poi, double Dist)>();
             foreach (var r in _restaurants)
             {
                 double d = GeofencingService.CalculateDistance(location.Latitude, location.Longitude, r.Latitude, r.Longitude);
-                
+
                 // Nếu đã nghe và đi xa hơn 20m, đánh dấu là đã rời khỏi
                 if (_listenedPois.Contains(r.Id) && d >= 20 && !_leftPois.Contains(r.Id))
                 {
                     _leftPois.Add(r.Id);
                 }
-                
+
                 if (d <= 5)
                 {
                     nearbyPois.Add((r, d));
@@ -842,22 +981,22 @@ namespace VinhKhanhTour.Views
                 if (_leftPois.Contains(nearest.Id))
                 {
                     // Tránh spam prompt liên tục, cooldown 1 phút cho prompt
-                    if (_lastNotified.TryGetValue(nearest.Id, out DateTime lastPrompt) && (DateTime.Now - lastPrompt).TotalMinutes < 1) 
+                    if (_lastNotified.TryGetValue(nearest.Id, out DateTime lastPrompt) && (DateTime.Now - lastPrompt).TotalMinutes < 1)
                         return;
-                        
+
                     _lastNotified[nearest.Id] = DateTime.Now;
-                    
+
                     MainThread.BeginInvokeOnMainThread(async () =>
                     {
                         var app = Application.Current;
                         if (app?.MainPage == null) return;
-                        
+
                         bool replay = await app.MainPage.DisplayAlert(
-                            "Phát lại Audio?", 
-                            $"Bạn đã nghe audio điểm {nearest.Name} này rồi, bạn có muốn nghe lại hay không?", 
-                            "Có", 
+                            "Phát lại Audio?",
+                            $"Bạn đã nghe audio điểm {nearest.Name} này rồi, bạn có muốn nghe lại hay không?",
+                            "Có",
                             "Không");
-                            
+
                         if (replay)
                         {
                             _leftPois.Remove(nearest.Id); // Xóa để không hỏi lại cho đến khi đi xa tiếp
@@ -875,7 +1014,7 @@ namespace VinhKhanhTour.Views
             _lastNotified[nearest.Id] = DateTime.Now;
             _listenedPois.Add(nearest.Id);
             _leftPois.Remove(nearest.Id);
-            
+
             await SpeakAsync(nearest);
             await ShowProximityOverlay(nearest);
 
@@ -920,16 +1059,16 @@ namespace VinhKhanhTour.Views
 
                 await MainThread.InvokeOnMainThreadAsync(async () =>
                 {
-                // Center and show POI sheet
-                await _webView.EvaluateJavaScriptAsync($"if(typeof pick === 'function') {{ var target = ALL.find(x => x.id === {r.Id}); if(target) pick(target); }} else if(typeof selectSearchResult === 'function') {{ selectSearchResult({r.Id}); }}");
+                    // Center and show POI sheet
+                    await _webView.EvaluateJavaScriptAsync($"if(typeof pick === 'function') {{ var target = ALL.find(x => x.id === {r.Id}); if(target) pick(target); }} else if(typeof selectSearchResult === 'function') {{ selectSearchResult({r.Id}); }}");
 
-                // Show status toast
-                await _webView.EvaluateJavaScriptAsync($"if(typeof toast === 'function') toast('{(_currentLang == "vi" ? "Đang định vị và tìm đường..." : (_currentLang == "zh" ? "正在定位..." : (_currentLang == "ja" ? "ルート検索中..." : (_currentLang == "ko" ? "경로 탐색 중..." : "Locating and finding route..."))))}')");
+                    // Show status toast
+                    await _webView.EvaluateJavaScriptAsync($"if(typeof toast === 'function') toast('{(_currentLang == "vi" ? "Đang định vị và tìm đường..." : (_currentLang == "zh" ? "正在定位..." : (_currentLang == "ja" ? "ルート検索中..." : (_currentLang == "ko" ? "경로 탐색 중..." : "Locating and finding route..."))))}')");
 
                     // 2. Trigger directions routing
                     var routeData = new { id = r.Id, lat = r.Latitude, lng = r.Longitude, name = r.Name };
                     string json = System.Text.Json.JsonSerializer.Serialize(routeData);
-                    
+
                     // Networking in background
                     bool routeSuccess = await Task.Run(async () => await DrawRouteAsync(json));
 
@@ -1142,16 +1281,19 @@ namespace VinhKhanhTour.Views
             }
         }
 
-        private async Task<bool> DrawTourRouteAsync(List<Restaurant> tourPois, Location userLoc)
+        private async Task<bool> DrawTourRouteAsync(List<Restaurant> tourPois, Location? userLoc)
         {
             try
             {
                 if (tourPois == null || tourPois.Count == 0) return false;
 
+                // Fallback về trung tâm Vĩnh Khánh nếu chưa có GPS
+                var effectiveLoc = userLoc ?? new Location(10.7615, 106.7045);
+
                 // 1. Sắp xếp các POI theo Nearest Neighbor
                 var routeList = new List<Restaurant>();
                 var unvisited = new List<Restaurant>(tourPois);
-                var currentLoc = userLoc;
+                var currentLoc = effectiveLoc;
 
                 while (unvisited.Count > 0)
                 {
@@ -1162,8 +1304,8 @@ namespace VinhKhanhTour.Views
                 }
 
                 var ic = System.Globalization.CultureInfo.InvariantCulture;
-                var origin = $"{userLoc.Latitude.ToString(ic)},{userLoc.Longitude.ToString(ic)}";
-                
+                var origin = $"{effectiveLoc.Latitude.ToString(ic)},{effectiveLoc.Longitude.ToString(ic)}";
+
                 var destPoi = routeList.Last();
                 var dest = $"{destPoi.Latitude.ToString(ic)},{destPoi.Longitude.ToString(ic)}";
 
@@ -1189,7 +1331,7 @@ namespace VinhKhanhTour.Views
 
                 var route = root.GetProperty("routes")[0];
                 var legs = route.GetProperty("legs");
-                
+
                 int totalDistVal = 0;
                 int totalDurVal = 0;
 
@@ -1204,7 +1346,7 @@ namespace VinhKhanhTour.Views
                     totalDurVal += leg.GetProperty("duration").GetProperty("value").GetInt32();
 
                     var steps = leg.GetProperty("steps");
-                    
+
                     if (i == 0) // Nối điểm đầu
                     {
                         var routeStartPt = DecodePolyline(steps[0].GetProperty("polyline").GetProperty("points").GetString() ?? "").FirstOrDefault();
@@ -1226,7 +1368,7 @@ namespace VinhKhanhTour.Views
                         firstSeg = false;
                         segments.Append($"{{\"pts\":{ptsJson},\"alley\":false}}");
                     }
-                    
+
                     if (i == legs.GetArrayLength() - 1) // Nối điểm cuối
                     {
                         var routeEndPt = DecodePolyline(steps[steps.GetArrayLength() - 1].GetProperty("polyline").GetProperty("points").GetString() ?? "").LastOrDefault();

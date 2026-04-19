@@ -12,8 +12,13 @@ namespace VinhKhanhTour
         {
             InitializeComponent();
             Database = new DatabaseService();
-            MainPage = new NavigationPage(new LoginPage());
-            _ = Task.Run(async () => await InitializeSampleData());
+            MainPage = new NavigationPage(new QREntryPage());
+            _ = Task.Run(async () =>
+            {
+                await InitializeSampleData();
+                // Sau khi dữ liệu POI sẵn sàng, tự động pre-cache offline ngầm
+                await OfflineModeService.Instance.AutoPreCacheIfNeededAsync();
+            });
             StartAppTracking();
         }
 
@@ -29,7 +34,7 @@ namespace VinhKhanhTour
                     sessionId = Guid.NewGuid().ToString();
                     Preferences.Set("device_session_id", sessionId);
                 }
-                
+
                 if (!UserSession.Instance.IsLoggedIn) return;
 
                 string username = UserSession.Instance.Username;
@@ -40,7 +45,7 @@ namespace VinhKhanhTour
             timer.Start();
 
             // Lần gửi ping đầu
-            Task.Run(async () => 
+            Task.Run(async () =>
             {
                 await Task.Delay(2000);
                 var sessionId = Preferences.Get("device_session_id", "");
@@ -49,11 +54,24 @@ namespace VinhKhanhTour
                     sessionId = Guid.NewGuid().ToString();
                     Preferences.Set("device_session_id", sessionId);
                 }
-                
+
                 if (!UserSession.Instance.IsLoggedIn) return;
 
                 await ApiService.Instance.PingActiveStatusAsync(sessionId, UserSession.Instance.Username, UserSession.Instance.IsGuest);
             });
+        }
+
+        // ── Deep Link Integration ─────────────────────────────────────────────
+        protected override void OnAppLinkRequestReceived(Uri uri)
+        {
+            base.OnAppLinkRequestReceived(uri);
+            DeepLinkService.Instance.Process(uri);
+        }
+
+        // ── App Lifecycle ───────────────────────────────────────────────────
+        protected override void OnStart()
+        {
+            base.OnStart();
         }
 
         private async Task InitializeSampleData()

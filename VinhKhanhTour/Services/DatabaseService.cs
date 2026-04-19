@@ -64,6 +64,9 @@ namespace VinhKhanhTour.Services
         public Task<List<Restaurant>> GetRestaurantsAsync()
             => _database.Table<Restaurant>().ToListAsync();
 
+        public Task<Restaurant?> GetRestaurantByIdAsync(int id)
+            => _database.Table<Restaurant>().FirstOrDefaultAsync(r => r.Id == id);
+
         public Task<int> SaveRestaurantAsync(Restaurant restaurant)
             => _database.InsertAsync(restaurant);
 
