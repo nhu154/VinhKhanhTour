@@ -12,7 +12,7 @@ namespace VinhKhanhTour.Services
         private readonly HttpClient _http;
 
         // ── FIX: Đọc BASE_URL từ Config để dễ thay đổi, không cần sửa nhiều chỗ ──
-        // Trong Config.cs, thêm:  public const string ApiBaseUrl = "http://192.168.1.29:5256/api";
+        // Trong Config.cs, thêm:  public const string ApiBaseUrl = "http://192.168.1.233:5256/api";
         // Nếu chưa có, fallback về địa chỉ mặc định
         private static string BASE
         {

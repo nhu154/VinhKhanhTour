@@ -1,4 +1,4 @@
-const API = 'http://localhost:5256/api', BASE_URL = 'http://localhost:5256';
+const API = 'http://192.168.1.233:5256/api', BASE_URL = 'http://192.168.1.233:5256';
 let map, markers = [], allPois = [], tours = [], historyData = [];
 let mainChart, pieChart;
 let selectedPois = [];
