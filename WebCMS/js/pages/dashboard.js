@@ -1,7 +1,7 @@
-// ══ ADMIN LOGS (Thay thế Analytics cũ) ══
+// ══ USER ANALYTICS (Lịch sử sử dụng của người dùng) ══
 async function loadAnalytics() {
   try {
-    const res = await fetch(`${API}/adminlogs`, { cache: 'no-store' });
+    const res = await fetch(`${API}/analytics`, { cache: 'no-store' });
     historyData = await res.json();
     renderStatsCards();
     renderHistory();
@@ -14,7 +14,6 @@ function renderStatsCards() {
   const el = document.getElementById('dashboard-stats'); if (!el) return;
   const totalPois = allPois.length;
   const totalTours = tours.length;
-  // Giữ lại stats cơ bản (có thể lấy từ analytics/stats nếu vẫn muốn hiện lượt ghé thăm)
   const totalVisits = statsData?.totalVisits ?? 0;
   const todayVisits = statsData?.todayVisits ?? 0;
   const activeUsers = (typeof appUsersListCache !== 'undefined' ? appUsersListCache : []).length || 0;
@@ -24,7 +23,7 @@ function renderStatsCards() {
     <div class="stat-card"><div class="stat-icon green"><i data-lucide="share-2"></i></div><div class="stat-info"><p class="text-muted">Hành trình Tour</p><h2 class="stat-val">${totalTours}</h2><div class="stat-trend">Tuyến tham quan</div></div></div>
     <div class="stat-card"><div class="stat-icon orange"><i data-lucide="activity"></i></div><div class="stat-info"><p class="text-muted">Lượt khách ghé thăm</p><h2 class="stat-val">${totalVisits}</h2><div class="stat-trend up">↑ ${todayVisits} lượt hôm nay</div></div></div>
     <div class="stat-card"><div class="stat-icon purple" style="background:#a78bfa;color:#fff"><i data-lucide="users"></i></div><div class="stat-info"><p class="text-muted">Người dùng hoạt động</p><h2 class="stat-val" data-active-users-count>${activeUsers}</h2><div class="stat-trend">Đang sử dụng app</div></div></div>
-    <div class="stat-card"><div class="stat-icon red"><i data-lucide="history"></i></div><div class="stat-info"><p class="text-muted">Thao tác Admin</p><h2 class="stat-val">${historyData.length}</h2><div class="stat-trend">Lịch sử hệ thống</div></div></div>`;
+    <div class="stat-card"><div class="stat-icon red"><i data-lucide="history"></i></div><div class="stat-info"><p class="text-muted">Lượt tương tác</p><h2 class="stat-val">${historyData.length}</h2><div class="stat-trend">Lịch sử sử dụng</div></div></div>`;
   lucide.createIcons();
 }
 
@@ -33,15 +32,15 @@ function renderHistory(search='') {
   let data = historyData;
 
   if (currentFilter !== 'all') {
-    data = data.filter(h => (h.Action || h.action || '').includes(currentFilter));
+    const f = currentFilter.toLowerCase();
+    data = data.filter(h => (h.EventType || h.eventType || '').toLowerCase().includes(f));
   }
 
   if (search) {
     const s = search.toLowerCase();
     data = data.filter(h => 
-      (h.UserName||h.username||'').toLowerCase().includes(s) || 
-      (h.Target||h.target||'').toLowerCase().includes(s) ||
-      (h.Action||h.action||'').toLowerCase().includes(s)
+      (h.RestaurantName||h.restaurantName||'').toLowerCase().includes(s) || 
+      (h.EventType||h.eventType||'').toLowerCase().includes(s)
     );
   }
 
@@ -57,31 +56,27 @@ function renderHistory(search='') {
   }
   
   tbody.innerHTML = data.map(h => {
-    const action = h.Action || h.action || 'Unknown';
-    const target = h.Target || h.target || '—';
-    const user   = h.UserName || h.userName || 'Hệ thống';
+    const action = h.EventType || h.eventType || 'Unknown';
+    const target = h.RestaurantName || h.restaurantName || '—';
+    const user   = h.Username || h.username || 'Du khách';
     const time   = new Date(h.Timestamp || h.timestamp).toLocaleString('vi-VN');
     
-    let icon = 'settings', color = '#64748b', bg = '#f8fafc', label = action, sub = 'Hệ thống';
+    let icon = 'activity', color = '#64748b', bg = '#f8fafc', label = action, sub = 'Tương tác App';
     
-    if (action.includes('POI')) {
+    if (action === 'poi_visit' || action === 'click') {
       icon = 'map-pin'; color = '#3b82f6'; bg = '#eff6ff';
-      label = action.startsWith('CREATE') ? 'Thêm địa điểm' : action.startsWith('UPDATE') ? 'Cập nhật địa điểm' : 'Xóa địa điểm';
-      sub = 'Quản lý POI';
-    } else if (action.includes('TOUR')) {
-      icon = 'navigation'; color = '#10b981'; bg = '#f0fdf4';
-      label = action.startsWith('CREATE') ? 'Tạo Tour mới' : action.startsWith('UPDATE') ? 'Cập nhật Tour' : 'Xóa Tour';
-      sub = 'Quản lý hành trình';
-    } else if (action === 'LOGIN') {
-      icon = 'log-in'; color = '#8b5cf6'; bg = '#f3e8ff';
-      label = 'Đăng nhập hệ thống'; sub = 'Bảo mật';
-    } else if (action.includes('REQ')) {
-      icon = 'check-square'; color = '#f59e0b'; bg = '#fffbeb';
-      label = action === 'APPROVE_REQ' ? 'Phê duyệt yêu cầu' : 'Từ chối yêu cầu';
-      sub = 'Quy trình xét duyệt';
-    } else if (action.includes('USER')) {
-      icon = 'users'; color = '#ef4444'; bg = '#fef2f2';
-      label = 'Quản trị nhân sự'; sub = 'Tài khoản CMS';
+      label = action === 'click' ? 'Nhấn xem trên bản đồ' : 'Mở trang chi tiết';
+      sub = 'Tìm hiểu thông tin';
+    } else if (action === 'app_login') {
+      icon = 'log-in'; color = '#f59e0b'; bg = '#fffbeb';
+      label = 'Khởi động App';
+      sub = 'Mở ứng dụng';
+    } else if (action.includes('audio_')) {
+      icon = 'headphones'; color = '#10b981'; bg = '#f0fdf4';
+      const isStart = action.startsWith('poi_audio_started_');
+      const lang = action.split('_').pop() || '';
+      label = isStart ? `Bắt đầu nghe (${lang.toUpperCase()})` : `Nghe xong (${lang.toUpperCase()})`;
+      sub = isStart ? 'Phát Audio' : `Thời lượng: ${h.Value || h.value || 0}s`;
     }
 
     return `<tr>
@@ -93,17 +88,12 @@ function renderHistory(search='') {
       <td>
         <div style="font-weight:700;font-size:14px;color:var(--text-main)">${label}</div>
         <div style="font-size:11px;color:var(--text-muted);margin-top:2px;display:flex;align-items:center;gap:4px">
-          <span style="font-weight:600;color:${color}">${sub}</span> • <span>Bởi <strong>${user}</strong></span>
-        </div>
-      </td>
-      <td>
-        <div style="padding:6px 12px; border-radius:8px; background:#f1f5f9; color:#475569; font-size:12px; font-weight:600; display:inline-block; border:1px solid #e2e8f0">
-          ${target}
+          <span style="font-weight:600;color:${color}">${sub}</span> • <span>Bởi <strong>${user}</strong></span> • <span>Mục tiêu: <strong>${target}</strong></span>
         </div>
       </td>
       <td>
         <div style="font-size:13px; font-weight:500; color:var(--text-main)">${time}</div>
-        <div style="font-size:11px; color:var(--text-muted); margin-top:2px">Thời gian máy chủ</div>
+        <div style="font-size:11px; color:var(--text-muted); margin-top:2px">Thời gian thực</div>
       </td>
     </tr>`;
   }).join('');
@@ -121,16 +111,16 @@ function setFilter(f,el) {
 function renderDashboardRecent() {
   const tbody = document.getElementById('dashboard-recent-tbody'); if (!tbody) return;
   tbody.innerHTML = historyData.slice(0, 8).map(h => {
-    const action = h.Action || h.action || 'Unknown';
-    const target = h.Target || h.target || '—';
-    const user   = h.UserName || h.userName || 'Hệ thống';
+    const action = h.EventType || h.eventType || 'Unknown';
+    const target = h.RestaurantName || h.restaurantName || '—';
+    const user   = h.Username || h.username || 'Du khách';
     const time   = new Date(h.Timestamp || h.timestamp).toLocaleTimeString('vi-VN');
     
     let label = action;
-    if (action.includes('POI')) label = 'POI';
-    else if (action.includes('TOUR')) label = 'Tour';
-    else if (action === 'LOGIN') label = 'Login';
-    else if (action.includes('REQ')) label = 'Duyệt';
+    if (action === 'poi_visit') label = 'Mở trang';
+    else if (action === 'click') label = 'Click POI';
+    else if (action === 'app_login') label = 'Khởi động';
+    else if (action.includes('audio_')) label = 'Audio';
 
     return `<tr>
       <td>
@@ -282,9 +272,7 @@ function renderOwnerRequests() { /* Logic giữ nguyên */ }
 function renderOwnerChart() { /* Logic giữ nguyên */ }
 
 // ══ ACTIVE USERS LISTENER ══
-document.addEventListener('activeUsersUpdated', (e) => {
-  const countEl = document.querySelector('[data-active-users-count]');
-  if (countEl) {
-    countEl.textContent = e.detail.count;
-  }
-});
+// Lưu ý: stat card "Người dùng hoạt động" được cập nhật bởi fetchRealActiveUsers()
+// trong layout.js (lấy từ API /tracking/online-users — chỉ đếm app mobile).
+// KHÔNG lắng nghe activeUsersUpdated từ active-users.js (localStorage CMS admin)
+// để tránh hiển thị nhầm số admin đang dùng CMS vào ô "Đang sử dụng app".

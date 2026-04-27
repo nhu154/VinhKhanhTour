@@ -1,3 +1,4 @@
+using System.Linq;
 using VinhKhanhTour.Services;
 using VinhKhanhTour.Models;
 using Microsoft.Maui.Controls.Shapes;
@@ -407,8 +408,14 @@ namespace VinhKhanhTour.Views
             if (_currentLang == lang) return;
             Preferences.Default.Set("app_lang", lang);
             VinhKhanhTour.Services.AudioService.Instance.SetLanguage(lang);
-            if (Application.Current?.MainPage is MainTabbedPage tabbedPage) tabbedPage.UpdateLanguage(lang);
-            else UpdateLanguage(lang);
+            
+            var rootPage = Application.Current?.MainPage;
+            MainTabbedPage? tabbedPage = rootPage as MainTabbedPage;
+            if (tabbedPage == null && rootPage is NavigationPage nav)
+                tabbedPage = nav.CurrentPage as MainTabbedPage;
+
+            if (tabbedPage != null) tabbedPage.UpdateLanguage(lang);
+            UpdateLanguage(lang);
         }
 
         public void UpdateLanguage(string lang)

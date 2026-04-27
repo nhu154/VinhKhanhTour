@@ -29,6 +29,10 @@ namespace VinhKhanhTour.Services
         /// <summary>Xác định người dùng đã bắt đầu tour (vào bản đồ) hay chưa</summary>
         public bool IsTourActive { get; set; } = false;
 
+        /// <summary>Vị trí GPS cuối cùng — cập nhật bởi MapPage, dùng để ping lên server</summary>
+        public double LastLat { get; set; } = 0;
+        public double LastLng { get; set; } = 0;
+
         // ── Methods ─────────────────────────────────────────────────────────
 
         public void LoginAsUser(string username, string fullName)
@@ -37,6 +41,10 @@ namespace VinhKhanhTour.Services
             Preferences.Set(KEY_FULLNAME, string.IsNullOrWhiteSpace(fullName) ? username : fullName);
             Preferences.Set(KEY_IS_GUEST, false);
             Preferences.Set(KEY_LOGGED_IN, true);
+            _ = Task.Run(async () => {
+                await App.SendHeartbeatAsync();
+                await AnalyticsService.RecordAppLoginAsync();
+            });
         }
 
         public void LoginAsGuest()
@@ -45,6 +53,10 @@ namespace VinhKhanhTour.Services
             Preferences.Set(KEY_FULLNAME, "Du khách");
             Preferences.Set(KEY_IS_GUEST, true);
             Preferences.Set(KEY_LOGGED_IN, true);
+            _ = Task.Run(async () => {
+                await App.SendHeartbeatAsync();
+                await AnalyticsService.RecordAppLoginAsync();
+            });
         }
 
         public void Logout()
@@ -53,6 +65,8 @@ namespace VinhKhanhTour.Services
             if (!string.IsNullOrEmpty(sessionId))
             {
                 _ = Task.Run(async () => await ApiService.Instance.EndActiveStatusAsync(sessionId));
+                // Xóa session ID — tránh ghost session khi mở lại app
+                Preferences.Remove("device_session_id");
             }
 
             Preferences.Remove(KEY_USERNAME);

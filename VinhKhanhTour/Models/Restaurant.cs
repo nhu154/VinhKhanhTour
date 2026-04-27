@@ -5,7 +5,7 @@ namespace VinhKhanhTour.Models
     [Table("restaurants")]
     public class Restaurant
     {
-        [PrimaryKey, AutoIncrement]
+        [PrimaryKey]
         public int Id { get; set; }
 
         public string Name { get; set; } = string.Empty;

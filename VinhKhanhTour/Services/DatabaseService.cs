@@ -7,14 +7,24 @@ namespace VinhKhanhTour.Services
     {
         private readonly SQLiteAsyncConnection _database;
 
-        private const int DB_VERSION = 7;
+        private const int DB_VERSION = 8;
         private const string VERSION_KEY = "db_version";
+
+        private Task? _initTask;
+        private async Task EnsureInitializedAsync()
+        {
+            if (_initTask == null)
+            {
+                _initTask = InitAsync();
+            }
+            await _initTask;
+        }
 
         public DatabaseService()
         {
             string dbPath = Path.Combine(FileSystem.AppDataDirectory, "vinhkhanh.db");
             _database = new SQLiteAsyncConnection(dbPath);
-            Task.Run(async () => await InitAsync()).GetAwaiter().GetResult();
+            // Không block UI thread bằng GetResult(), dùng pattern EnsureInitializedAsync trong mỗi phương thức
         }
 
         private async Task InitAsync()
@@ -56,100 +66,169 @@ namespace VinhKhanhTour.Services
             => await _database.Table<User>()
                               .FirstOrDefaultAsync(u => u.Username == username) != null;
 
-        public Task<int> SaveUserAsync(User user)
-            => _database.InsertAsync(user);
+        public async Task<int> SaveUserAsync(User user)
+        {
+            await EnsureInitializedAsync();
+            return await _database.InsertAsync(user);
+        }
 
         // ── Restaurant ─────────────────────────────────────────────
 
-        public Task<List<Restaurant>> GetRestaurantsAsync()
-            => _database.Table<Restaurant>().ToListAsync();
+        public async Task<List<Restaurant>> GetRestaurantsAsync()
+        {
+            await EnsureInitializedAsync();
+            return await _database.Table<Restaurant>().ToListAsync();
+        }
 
-        public Task<Restaurant?> GetRestaurantByIdAsync(int id)
-            => _database.Table<Restaurant>().FirstOrDefaultAsync(r => r.Id == id);
+        public async Task<Restaurant?> GetRestaurantByIdAsync(int id)
+        {
+            await EnsureInitializedAsync();
+            return await _database.Table<Restaurant>().FirstOrDefaultAsync(r => r.Id == id);
+        }
 
-        public Task<int> SaveRestaurantAsync(Restaurant restaurant)
-            => _database.InsertAsync(restaurant);
+        public async Task<int> SaveRestaurantAsync(Restaurant restaurant)
+        {
+            await EnsureInitializedAsync();
+            return await _database.InsertAsync(restaurant);
+        }
 
-        public Task<int> UpdateRestaurantAsync(Restaurant restaurant)
-            => _database.UpdateAsync(restaurant);
+        public async Task<int> UpdateRestaurantAsync(Restaurant restaurant)
+        {
+            await EnsureInitializedAsync();
+            return await _database.UpdateAsync(restaurant);
+        }
 
-        public Task<List<Restaurant>> GetFavoriteRestaurantsAsync()
-            => _database.Table<Restaurant>().Where(r => r.IsFavorite).ToListAsync();
+        public async Task<List<Restaurant>> GetFavoriteRestaurantsAsync()
+        {
+            await EnsureInitializedAsync();
+            return await _database.Table<Restaurant>().Where(r => r.IsFavorite).ToListAsync();
+        }
 
         public async Task DeleteRestaurantAsync(int id)
-            => await _database.DeleteAsync<Restaurant>(id);
+        {
+            await EnsureInitializedAsync();
+            await _database.DeleteAsync<Restaurant>(id);
+        }
 
         // ── Visit ──────────────────────────────────────────────────
 
-        public Task<int> SaveVisitAsync(VisitHistory visit)
-            => _database.InsertAsync(visit);
+        public async Task<int> SaveVisitAsync(VisitHistory visit)
+        {
+            await EnsureInitializedAsync();
+            return await _database.InsertAsync(visit);
+        }
 
-        public Task<List<VisitHistory>> GetVisitHistoryAsync()
-            => _database.Table<VisitHistory>()
+        public async Task<List<VisitHistory>> GetVisitHistoryAsync()
+        {
+            await EnsureInitializedAsync();
+            return await _database.Table<VisitHistory>()
                         .OrderByDescending(v => v.VisitedAt)
                         .ToListAsync();
+        }
 
-        public Task<List<VisitHistory>> GetVisitHistoryByUserAsync(string username)
-            => _database.Table<VisitHistory>()
+        public async Task<List<VisitHistory>> GetVisitHistoryByUserAsync(string username)
+        {
+            await EnsureInitializedAsync();
+            return await _database.Table<VisitHistory>()
                         .Where(v => v.Username == username)
                         .OrderByDescending(v => v.VisitedAt)
                         .ToListAsync();
+        }
 
-        public Task<int> ClearVisitHistoryAsync()
-            => _database.DeleteAllAsync<VisitHistory>();
+        public async Task<int> ClearVisitHistoryAsync()
+        {
+            await EnsureInitializedAsync();
+            return await _database.DeleteAllAsync<VisitHistory>();
+        }
 
         // ── Booking ────────────────────────────────────────────────
 
-        public Task<int> SaveBookingAsync(Booking booking)
-            => _database.InsertAsync(booking);
+        public async Task<int> SaveBookingAsync(Booking booking)
+        {
+            await EnsureInitializedAsync();
+            return await _database.InsertAsync(booking);
+        }
 
-        public Task<int> UpdateBookingAsync(Booking booking)
-            => _database.UpdateAsync(booking);
+        public async Task<int> UpdateBookingAsync(Booking booking)
+        {
+            await EnsureInitializedAsync();
+            return await _database.UpdateAsync(booking);
+        }
 
-        public Task<List<Booking>> GetAllBookingsAsync()
-            => _database.Table<Booking>()
+        public async Task<List<Booking>> GetAllBookingsAsync()
+        {
+            await EnsureInitializedAsync();
+            return await _database.Table<Booking>()
                         .OrderByDescending(b => b.CreatedAtTicks)
                         .ToListAsync();
+        }
 
-        public Task<List<Booking>> GetBookingsByRestaurantAsync(int restaurantId)
-            => _database.Table<Booking>()
+        public async Task<List<Booking>> GetBookingsByRestaurantAsync(int restaurantId)
+        {
+            await EnsureInitializedAsync();
+            return await _database.Table<Booking>()
                         .Where(b => b.RestaurantId == restaurantId)
                         .OrderByDescending(b => b.CreatedAtTicks)
                         .ToListAsync();
+        }
 
-        public Task<List<Booking>> GetPendingBookingsAsync()
-            => _database.Table<Booking>()
+        public async Task<List<Booking>> GetPendingBookingsAsync()
+        {
+            await EnsureInitializedAsync();
+            return await _database.Table<Booking>()
                         .Where(b => b.SyncStatus == "pending")
                         .ToListAsync();
+        }
 
         public async Task<Booking?> GetBookingByIdAsync(int id)
-            => await _database.Table<Booking>()
+        {
+            await EnsureInitializedAsync();
+            return await _database.Table<Booking>()
                                .FirstOrDefaultAsync(b => b.Id == id);
+        }
 
-        public Task<int> DeleteBookingAsync(int id)
-            => _database.DeleteAsync<Booking>(id);
+        public async Task<int> DeleteBookingAsync(int id)
+        {
+            await EnsureInitializedAsync();
+            return await _database.DeleteAsync<Booking>(id);
+        }
 
         // ── Analytics ──────────────────────────────────────────────
 
-        public Task<int> InsertAnalyticsEventAsync(AnalyticsEvent e)
-            => _database.InsertAsync(e);
+        public async Task<int> InsertAnalyticsEventAsync(AnalyticsEvent e)
+        {
+            await EnsureInitializedAsync();
+            return await _database.InsertAsync(e);
+        }
 
-        public Task<int> UpdateAnalyticsEventAsync(AnalyticsEvent e)
-            => _database.UpdateAsync(e);
+        public async Task<int> UpdateAnalyticsEventAsync(AnalyticsEvent e)
+        {
+            await EnsureInitializedAsync();
+            return await _database.UpdateAsync(e);
+        }
 
-        public Task<List<AnalyticsEvent>> GetAnalyticsEventsAsync(string eventType)
-            => _database.Table<AnalyticsEvent>()
+        public async Task<List<AnalyticsEvent>> GetAnalyticsEventsAsync(string eventType)
+        {
+            await EnsureInitializedAsync();
+            return await _database.Table<AnalyticsEvent>()
                         .Where(e => e.EventType == eventType)
                         .OrderBy(e => e.TimestampTicks)
                         .ToListAsync();
+        }
 
-        public Task<List<AnalyticsEvent>> GetAllAnalyticsEventsAsync()
-            => _database.Table<AnalyticsEvent>()
+        public async Task<List<AnalyticsEvent>> GetAllAnalyticsEventsAsync()
+        {
+            await EnsureInitializedAsync();
+            return await _database.Table<AnalyticsEvent>()
                         .OrderBy(e => e.TimestampTicks)
                         .ToListAsync();
+        }
 
-        public Task<int> ClearAnalyticsAsync()
-            => _database.DeleteAllAsync<AnalyticsEvent>();
+        public async Task<int> ClearAnalyticsAsync()
+        {
+            await EnsureInitializedAsync();
+            return await _database.DeleteAllAsync<AnalyticsEvent>();
+        }
     }
 
     [Table("db_meta")]

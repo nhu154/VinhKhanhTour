@@ -112,6 +112,16 @@ namespace VinhKhanhTour.Views
             BackgroundColor = Color.FromArgb("#0D1B2A");
             NavigationPage.SetHasNavigationBar(this, false);
             BuildUI();
+
+            // ── Premium Gate Check ──
+            if (!TicketService.Instance.HasValidTicket)
+            {
+                MainThread.BeginInvokeOnMainThread(async () =>
+                {
+                    await Navigation.PushAsync(new PremiumGatePage("Audio Guide HD"));
+                    Navigation.RemovePage(this);
+                });
+            }
         }
 
         private void BuildUI()
@@ -329,6 +339,16 @@ namespace VinhKhanhTour.Views
             BackgroundColor = Color.FromArgb("#F8FAFC");
             NavigationPage.SetHasNavigationBar(this, false);
             BuildUI();
+
+            // ── Premium Gate Check ──
+            if (!_ts.HasValidTicket)
+            {
+                MainThread.BeginInvokeOnMainThread(async () =>
+                {
+                    await Navigation.PushAsync(new PremiumGatePage("Food Journal"));
+                    Navigation.RemovePage(this);
+                });
+            }
         }
 
         protected override void OnAppearing()

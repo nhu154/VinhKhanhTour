@@ -1,5 +1,7 @@
+using System.Linq;
 using Microsoft.Maui.Controls.Shapes;
 using VinhKhanhTour.Services;
+using VinhKhanhTour.Models;
 
 namespace VinhKhanhTour.Views
 {
@@ -351,32 +353,6 @@ namespace VinhKhanhTour.Views
                 ticketCard.Content = tInner;
                 content.Add(ticketCard);
 
-                // Điểm thưởng
-                content.Add(new Border
-                {
-                    BackgroundColor = Color.FromArgb("#FFF8E1"),
-                    StrokeThickness = 0,
-                    StrokeShape = new RoundRectangle { CornerRadius = 16 },
-                    Padding = new Thickness(20, 16),
-                    Content = new Grid
-                    {
-                        ColumnDefinitions = { new ColumnDefinition(GridLength.Star), new ColumnDefinition(GridLength.Auto) },
-                        Children =
-                        {
-                            new VerticalStackLayout
-                            {
-                                Spacing = 2,
-                                Children =
-                                {
-                                    new Label { Text = L("🏆 Điểm thưởng", "🏆 Reward Points", "🏆 积分"), FontSize = 14, FontAttributes = FontAttributes.Bold, TextColor = Color.FromArgb("#92400E") },
-                                    new Label { Text = L("Tích điểm mỗi lần ghé quán", "Earn points each visit", "每次光顾获得积分"), FontSize = 12, TextColor = Color.FromArgb("#78350F") }
-                                }
-                            },
-                            new Label { Text = $"{_ts.Points}", FontSize = 32, FontAttributes = FontAttributes.Bold,
-                                TextColor = Color.FromArgb("#D97706"), VerticalOptions = LayoutOptions.Center }
-                        }
-                    }.Also(g => { Grid.SetColumn((View)g.Children[1], 1); })
-                });
 
                 // Huy hiệu đã có
                 content.Add(BuildBadgesSection());

@@ -107,8 +107,11 @@ function renderPoiTable() {
 }
 
 function generateQRUrl(poiId) {
-  const deepLink = `vinhkhanhtour://poi/${poiId}?autoplay=true`;
-  const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(deepLink)}`;
+  // Trỏ QR vào trang redirect thông minh (go.html):
+  //   - Nếu app đã cài → mở thẳng app, tab bản đồ, tự phát audio
+  //   - Nếu chưa cài   → hiện nút tải APK
+  const redirectUrl = `${BASE_URL}/go.html?poi=${poiId}&autoplay=true`;
+  const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(redirectUrl)}`;
   return qrApiUrl;
 }
 
@@ -453,4 +456,3 @@ function closePoiForm() {
   document.getElementById('poi-form-panel').classList.remove('open');
   document.getElementById('panel-overlay-poi').style.display = 'none';
 }
-

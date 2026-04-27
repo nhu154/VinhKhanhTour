@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SmartTour – Đang mở app...</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #1e3a5f 0%, #0f6b3a 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+    }
+    .card {
+      background: rgba(255,255,255,0.10);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255,255,255,0.20);
+      border-radius: 24px;
+      padding: 40px 32px;
+      max-width: 360px;
+      width: 90%;
+      text-align: center;
+    }
+    .logo {
+      font-size: 48px;
+      margin-bottom: 12px;
+    }
+    h1 { font-size: 22px; font-weight: 700; margin-bottom: 6px; }
+    .subtitle { font-size: 14px; opacity: 0.75; margin-bottom: 28px; }
+    .spinner {
+      width: 40px; height: 40px;
+      border: 3px solid rgba(255,255,255,0.3);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin: 0 auto 20px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .status { font-size: 14px; opacity: 0.85; margin-bottom: 28px; min-height: 20px; }
+    .btn-download {
+      display: none;
+      background: #fff;
+      color: #1e3a5f;
+      font-weight: 700;
+      font-size: 16px;
+      padding: 14px 28px;
+      border-radius: 50px;
+      text-decoration: none;
+      border: none;
+      cursor: pointer;
+      width: 100%;
+      transition: opacity 0.2s;
+    }
+    .btn-download:hover { opacity: 0.9; }
+    .poi-name {
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+    .poi-addr { font-size: 13px; opacity: 0.7; margin-bottom: 24px; }
+    .note { font-size: 12px; opacity: 0.55; margin-top: 20px; }
+  </style>
+</head>
+<body>
+<div class="card">
+  <div class="logo">🗺️</div>
+  <h1>SmartTour – Vĩnh Khánh</h1>
+  <p class="subtitle">Hướng dẫn âm thanh thông minh</p>
+
+  <div id="poi-info" style="display:none">
+    <div class="poi-name" id="poi-name"></div>
+    <div class="poi-addr" id="poi-addr"></div>
+  </div>
+
+  <div class="spinner" id="spinner"></div>
+  <div class="status" id="status">Đang mở ứng dụng...</div>
+
+  <a class="btn-download" id="btn-download" href="#">
+    📥 Tải ứng dụng SmartTour
+  </a>
+
+  <p class="note" id="note"></p>
+</div>
+
+<script>
+  // ── Đọc tham số từ URL ──────────────────────────────────────────────────
+  const params  = new URLSearchParams(window.location.search);
+  const poiId   = params.get('poi');          // ?poi=5
+  const autoplay = params.get('autoplay') !== 'false'; // mặc định true
+
+  // ── URL APK để tải về khi chưa có app ──────────────────────────────────
+  // Thay đường dẫn này bằng link thật của file APK / trang tải app
+  const APK_URL = 'http://192.168.1.233:5256/download/VinhKhanhTour.apk';
+
+  // ── Deep link mở thẳng app ─────────────────────────────────────────────
+  const deepLink = poiId
+    ? `vinhkhanhtour://poi/${poiId}?autoplay=${autoplay}&tab=map`
+    : `vinhkhanhtour://home?tab=map`;
+
+  // ── Hiển thị tên POI nếu server trả về (optional) ──────────────────────
+  if (poiId) {
+    fetchPoiInfo(poiId);
+  }
+
+  // ── Thực hiện redirect ─────────────────────────────────────────────────
+  let appOpened = false;
+
+  function tryOpenApp() {
+    // Tạo iframe ẩn để không làm mất trang hiện tại (Android trick)
+    const iframe = document.createElement('iframe');
+    iframe.style.display = 'none';
+    iframe.src = deepLink;
+    document.body.appendChild(iframe);
+
+    // Đồng thời thử window.location (iOS / một số Android)
+    setTimeout(() => {
+      window.location.href = deepLink;
+    }, 50);
+
+    // Sau 2.5s nếu trang vẫn còn focus → app chưa cài → hiện nút tải
+    setTimeout(() => {
+      if (!document.hidden) {
+        showDownloadFallback();
+      }
+    }, 2500);
+
+    // Nếu app mở thành công, tab sẽ bị blur/hidden
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) appOpened = true;
+    });
+  }
+
+  function showDownloadFallback() {
+    if (appOpened) return; // App đã mở rồi, không cần hiện nút
+    document.getElementById('spinner').style.display = 'none';
+    document.getElementById('status').textContent =
+      'Ứng dụng chưa được cài trên thiết bị này.';
+    const btn = document.getElementById('btn-download');
+    btn.style.display = 'block';
+    btn.href = APK_URL;
+    document.getElementById('note').textContent =
+      'Sau khi cài xong, mở app → quét lại mã QR để nghe hướng dẫn.';
+  }
+
+  async function fetchPoiInfo(id) {
+    try {
+      // Gọi API để lấy tên POI hiển thị lên trang chờ
+      const res = await fetch(`http://192.168.1.233:5256/api/restaurants/${id}`);
+      if (!res.ok) return;
+      const data = await res.json();
+      const name = data.name || data.Name;
+      const addr = data.address || data.Address;
+      if (name) {
+        document.getElementById('poi-name').textContent = name;
+        document.getElementById('poi-addr').textContent = addr || '';
+        document.getElementById('poi-info').style.display = 'block';
+      }
+    } catch (_) { /* không cần hiển thị lỗi */ }
+  }
+
+  // Chạy ngay sau khi trang load
+  tryOpenApp();
+</script>
+</body>
+</html>

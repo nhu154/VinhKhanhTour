@@ -11,6 +11,7 @@ namespace VinhKhanhTour.Views
         protected override void OnAppearing()
         {
             base.OnAppearing();
+            UpdateLanguage(Preferences.Default.Get("app_lang", "vi"));
             Services.DeepLinkService.Instance.FlushPending();
         }
 
@@ -31,19 +32,24 @@ namespace VinhKhanhTour.Views
                     return;
                 }
 
-                // Điều hướng đến trang chi tiết
-                var detailPage = new RestaurantDetailPage(restaurant, autoplayAudio: autoplay);
-                
-                if (CurrentPage is NavigationPage navPage)
+                // Chuyển sang tab Bản đồ (thường là index 1)
+                SelectedItem = Children[1];
+
+                if (Children[1] is NavigationPage navMap)
                 {
-                    await navPage.PushAsync(detailPage);
-                }
-                else
-                {
-                    await Navigation.PushAsync(detailPage);
+                    // Đảm bảo quay về root của tab bản đồ nếu đang ở trang con nào đó
+                    if (navMap.Navigation.NavigationStack.Count > 1)
+                    {
+                        await navMap.PopToRootAsync(false);
+                    }
+
+                    if (navMap.CurrentPage is MapPage mapPage)
+                    {
+                        mapPage.FocusAndDirect(restaurant, autoplay);
+                    }
                 }
 
-                System.Diagnostics.Debug.WriteLine($"[DeepLink] ✅ Navigated to {restaurant.Name}  autoplay={autoplay}");
+                System.Diagnostics.Debug.WriteLine($"[DeepLink] ✅ Navigated to Map Tab for {restaurant.Name}  autoplay={autoplay}");
             }
             catch (Exception ex)
             {

@@ -4,6 +4,14 @@ using Dapper;
 
 namespace VinhkhanhTour.API.Controllers
 {
+    public class AdminLogRequest
+    {
+        public string Action { get; set; } = "";
+        public string Target { get; set; } = "";
+        public string UserName { get; set; } = "";
+        public string Details { get; set; } = "";
+    }
+
     [ApiController]
     [Route("api/[controller]")]
     public class AdminLogsController : ControllerBase
@@ -24,6 +32,17 @@ namespace VinhkhanhTour.API.Controllers
                 ORDER BY Timestamp DESC 
                 LIMIT @limit", new { limit });
             return Ok(logs);
+        }
+
+        [HttpPost("user-activity")]
+        public async Task<IActionResult> LogActivity([FromBody] AdminLogRequest req)
+        {
+            using var db = new MySqlConnection(_conn);
+            await db.ExecuteAsync(@"
+                INSERT INTO admin_logs (Action, Target, UserName, Details, Timestamp)
+                VALUES (@Action, @Target, @UserName, @Details, NOW())",
+                new { req.Action, req.Target, req.UserName, req.Details });
+            return Ok(new { message = "Logged successfully" });
         }
 
         [HttpDelete("clear")]

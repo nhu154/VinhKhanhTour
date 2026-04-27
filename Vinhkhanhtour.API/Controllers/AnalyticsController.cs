@@ -11,6 +11,7 @@ namespace VinhkhanhTour.API.Controllers
         public double Value { get; set; }
         public double Lat  { get; set; }
         public double Lng  { get; set; }
+        public string Username { get; set; } = "";
     }
 
     public class GpsPointRequest
@@ -24,10 +25,12 @@ namespace VinhkhanhTour.API.Controllers
     public class AnalyticsController : ControllerBase
     {
         private readonly string _conn;
+        private readonly VinhkhanhTour.API.Services.AppUserTrackingService _tracker;
 
-        public AnalyticsController(IConfiguration config)
+        public AnalyticsController(IConfiguration config, VinhkhanhTour.API.Services.AppUserTrackingService tracker)
         {
             _conn = config.GetConnectionString("DefaultConnection")!;
+            _tracker = tracker;
         }
 
         // GET: api/analytics
@@ -44,6 +47,7 @@ namespace VinhkhanhTour.API.Controllers
                     a.Value,
                     a.Lat,
                     a.Lng,
+                    a.Username,
                     a.Timestamp
                 FROM analytics a
                 LEFT JOIN restaurants r ON a.RestaurantId = r.Id
@@ -59,13 +63,13 @@ namespace VinhkhanhTour.API.Controllers
         {
             using var db = new MySqlConnection(_conn);
 
-            // Đếm lượt khách ghé: mỗi ngày có gps_point = 1 lượt ghé
+            // Đếm lượt khách ghé thăm (Dựa trên số lần Mở App / Đăng nhập)
             var totalVisits = await db.ExecuteScalarAsync<int>(
-                "SELECT COUNT(DISTINCT DATE(Timestamp)) FROM analytics WHERE EventType = 'gps_point'");
+                "SELECT COUNT(*) FROM analytics WHERE EventType = 'app_login'");
             var todayVisits = await db.ExecuteScalarAsync<int>(
-                "SELECT COUNT(*) FROM analytics WHERE DATE(Timestamp) = CURDATE() AND EventType = 'gps_point'");
+                "SELECT COUNT(*) FROM analytics WHERE DATE(Timestamp) = CURDATE() AND EventType = 'app_login'");
             var weekVisits = await db.ExecuteScalarAsync<int>(
-                "SELECT COUNT(*) FROM analytics WHERE Timestamp >= DATE_SUB(NOW(), INTERVAL 7 DAY) AND EventType = 'gps_point'");
+                "SELECT COUNT(*) FROM analytics WHERE Timestamp >= DATE_SUB(NOW(), INTERVAL 7 DAY) AND EventType = 'app_login'");
 
             // Top POI vẫn dựa trên các tương tác thực (không phải gps_point)
             var topPoi = await db.QueryAsync(@"
@@ -82,7 +86,7 @@ namespace VinhkhanhTour.API.Controllers
                 SELECT DATE(Timestamp) as Day, COUNT(*) as Count
                 FROM analytics
                 WHERE Timestamp >= DATE_SUB(NOW(), INTERVAL 7 DAY)
-                  AND EventType = 'poi_visit'
+                  AND EventType != 'gps_point'
                 GROUP BY DATE(Timestamp)
                 ORDER BY Day");
 
@@ -143,6 +147,22 @@ namespace VinhkhanhTour.API.Controllers
             return Ok(points);
         }
 
+        // GET: api/analytics/heatmap-live
+        // Trả về dữ liệu heatmap từ các người dùng đang online (realtime)
+        [HttpGet("heatmap-live")]
+        public IActionResult GetHeatmapLive()
+        {
+            var liveUsers = _tracker.GetUsersWithLocation();
+            var points = liveUsers.Select(u => new
+            {
+                lat = u.Lat,
+                lng = u.Lng,
+                weight = 1.0
+            }).ToList();
+
+            return Ok(new { success = true, data = points });
+        }
+
         // POST: api/analytics
         // Nhận Value (duration), Lat, Lng từ MAUI app
         // RestaurantId có thể null với event gps_point
@@ -155,16 +175,16 @@ namespace VinhkhanhTour.API.Controllers
             if (req.EventType == "gps_point" || req.RestaurantId == null || req.RestaurantId == 0)
             {
                 await db.ExecuteAsync(@"
-                    INSERT INTO analytics (RestaurantId, EventType, Value, Lat, Lng, Timestamp)
-                    VALUES (NULL, @EventType, @Value, @Lat, @Lng, NOW())",
-                    new { req.EventType, Value = req.Value, Lat = req.Lat, Lng = req.Lng });
+                    INSERT INTO analytics (RestaurantId, EventType, Value, Lat, Lng, Username, Timestamp)
+                    VALUES (NULL, @EventType, @Value, @Lat, @Lng, @Username, NOW())",
+                    new { req.EventType, Value = req.Value, Lat = req.Lat, Lng = req.Lng, req.Username });
             }
             else
             {
                 await db.ExecuteAsync(@"
-                    INSERT INTO analytics (RestaurantId, EventType, Value, Lat, Lng, Timestamp)
-                    VALUES (@RestaurantId, @EventType, @Value, @Lat, @Lng, NOW())",
-                    new { req.RestaurantId, req.EventType, Value = req.Value, Lat = req.Lat, Lng = req.Lng });
+                    INSERT INTO analytics (RestaurantId, EventType, Value, Lat, Lng, Username, Timestamp)
+                    VALUES (@RestaurantId, @EventType, @Value, @Lat, @Lng, @Username, NOW())",
+                    new { req.RestaurantId, req.EventType, Value = req.Value, Lat = req.Lat, Lng = req.Lng, req.Username });
             }
             return Ok(new { message = "Ghi thành công" });
         }

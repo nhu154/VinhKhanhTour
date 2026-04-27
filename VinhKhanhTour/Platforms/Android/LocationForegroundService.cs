@@ -28,8 +28,8 @@ namespace VinhKhanhTour.Platforms.Android
 
         // ── Fields ───────────────────────────────────────────────────
         private AndroidLocationManager? _locationManager;
-        private GeofencingService _geofencing = new GeofencingService();
-        private AudioService _audio = new AudioService();
+        private readonly GeofencingService _geofencing = new GeofencingService();
+        private readonly AudioService _audio = new AudioService();
         private bool _isRunning = false;
 
         // ── Binder (không cần bind từ Activity) ──────────────────────
@@ -40,6 +40,12 @@ namespace VinhKhanhTour.Platforms.Android
         {
             base.OnCreate();
             CreateNotificationChannel();
+
+            // Lắng nghe event "đã nghe rồi" → hiện notification cho user chọn phát lại
+            _geofencing.AlreadyHeardTriggered += poi =>
+            {
+                UpdateNotification($"🔁 Đã nghe: {poi.Name} – Bấm để phát lại");
+            };
         }
 
         public override StartCommandResult OnStartCommand(Intent? intent, StartCommandFlags flags, int startId)
@@ -94,7 +100,7 @@ namespace VinhKhanhTour.Platforms.Android
                 try
                 {
                     // Chỉ phát audio khi user đã đăng nhập thật và ĐÃ BẮT ĐẦU TOUR (không phát ở trang Welcome)
-                    if (!VinhKhanhTour.Services.UserSession.Instance.IsAuthenticatedUser || 
+                    if (!VinhKhanhTour.Services.UserSession.Instance.IsAuthenticatedUser ||
                         !VinhKhanhTour.Services.UserSession.Instance.IsTourActive)
                     {
                         return;
@@ -106,9 +112,9 @@ namespace VinhKhanhTour.Platforms.Android
                     if (poi != null)
                     {
                         // Cập nhật notification hiển thị tên POI đang gần
-                        UpdateNotification($"Gần: {poi.Name}");
+                        UpdateNotification($"📍 Gần: {poi.Name}");
 
-                        // Phát thuyết minh (AudioService tự kiểm tra đang phát không)
+                        // Phát thuyết minh (AudioService tự kiểm tra chống trùng)
                         await _audio.PlayNarrationAsync(poi, location.Latitude, location.Longitude);
                     }
                 }
@@ -151,7 +157,7 @@ namespace VinhKhanhTour.Platforms.Android
             return new NotificationCompat.Builder(this, CHANNEL_ID)
                 .SetContentTitle("VinhKhánh Tour")
                 .SetContentText(text)
-                .SetSmallIcon(Resource.Mipmap.appicon)
+                .SetSmallIcon(VinhKhanhTour.Resource.Mipmap.appicon)
                 .SetContentIntent(pending)
                 .SetOngoing(true)           // Không thể vuốt tắt
                 .SetPriority(NotificationCompat.PriorityLow)

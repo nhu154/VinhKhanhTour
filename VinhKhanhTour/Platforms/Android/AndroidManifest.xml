@@ -17,6 +17,16 @@
             android:foregroundServiceType="location"
             android:exported="false" />
 
+		<!-- Deep link: vinhkhanhtour://poi/{id} — QR bảng quán -->
+		<activity android:name="com.microsoft.maui.MainActivity" android:exported="true">
+			<intent-filter android:autoVerify="false">
+				<action android:name="android.intent.action.VIEW" />
+				<category android:name="android.intent.category.DEFAULT" />
+				<category android:name="android.intent.category.BROWSABLE" />
+				<data android:scheme="vinhkhanhtour" android:host="poi" />
+			</intent-filter>
+		</activity>
+
 	</application>
 
 	<!-- Permissions vị trí -->

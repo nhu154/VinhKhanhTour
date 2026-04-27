@@ -1,4 +1,4 @@
-﻿// Views/QREntryPage.cs — Màn hình vào app qua QR
+// Views/QREntryPage.cs — Màn hình vào app qua QR
 // Design: Tối giản sang trọng — dark navy, gold accent, không icon rác
 
 using Microsoft.Maui.Controls.Shapes;
@@ -125,34 +125,7 @@ namespace VinhKhanhTour.Views
             });
             btns.Add(scanBtn);
 
-            // Nút phụ — demo
-            var demoBtn = new Border
-            {
-                BackgroundColor = Colors.Transparent,
-                StrokeShape = new RoundRectangle { CornerRadius = 3 },
-                StrokeThickness = 1,
-                Stroke = Color.FromArgb("#1E2D3F"),
-                HeightRequest = 52,
-                HorizontalOptions = LayoutOptions.Fill,
-                Margin = new Thickness(0, 0, 0, 24),
-                Content = new Label
-                {
-                    Text = "Truy cập không cần QR",
-                    FontSize = 13,
-                    TextColor = Color.FromArgb("#4A6280"),
-                    HorizontalOptions = LayoutOptions.Center,
-                    VerticalOptions = LayoutOptions.Center
-                }
-            };
-            demoBtn.GestureRecognizers.Add(new TapGestureRecognizer
-            {
-                Command = new Command(() =>
-                {
-                    UserSession.Instance.LoginAsGuest();
-                    Application.Current!.MainPage = new NavigationPage(new MainTabbedPage());
-                })
-            });
-            btns.Add(demoBtn);
+
 
             // Link đăng nhập
             var loginRow = new HorizontalStackLayout
@@ -498,24 +471,37 @@ namespace VinhKhanhTour.Views
             MainThread.BeginInvokeOnMainThread(async () =>
             {
                 if (_cameraView != null) _cameraView.IsDetecting = false;
-                if (value.StartsWith("vinhkhanhtour://", StringComparison.OrdinalIgnoreCase))
+
+                // Kiểm tra mã qua parser trung tâm
+                var (poiId, _) = DeepLinkService.TryParsePoiLink(value);
+                
+                // Trường hợp đặc biệt: mã login guest (vinhkhanhtour://open/guest)
+                bool isGuestLogin = value.Contains("open/guest", StringComparison.OrdinalIgnoreCase);
+
+                if (poiId > 0 || isGuestLogin)
                 {
                     await FlashAccent();
-                    EnterApp();
+                    EnterApp(poiId > 0 ? poiId : null);
                 }
                 else
                 {
                     await DisplayAlert("Mã không hợp lệ",
-                        "Đây không phải mã QR của VinhKhanhTour.", "Thử lại");
+                        "Đây không phải mã QR hợp lệ của VinhKhanhTour.", "Thử lại");
                     _isProcessing = false;
                     if (_cameraView != null) _cameraView.IsDetecting = true;
                 }
             });
         }
 
-        private void EnterApp()
+        private void EnterApp(int? targetPoiId = null)
         {
             UserSession.Instance.LoginAsGuest();
+            // Lưu POI ID để MapPage tự động navigate khi app khởi động
+            if (targetPoiId.HasValue)
+                Preferences.Set("pending_poi_id", targetPoiId.Value);
+            else
+                Preferences.Remove("pending_poi_id");
+
             Application.Current!.MainPage = new NavigationPage(new MainTabbedPage());
         }
 

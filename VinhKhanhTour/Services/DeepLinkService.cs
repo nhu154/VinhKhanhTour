@@ -73,6 +73,11 @@ namespace VinhKhanhTour.Services
         }
 
         /// <summary>
+        /// Xử lý deep link nếu app được mở bởi QR khi đang tắt (cold start).
+        /// </summary>
+        public void ProcessPendingIfAny() => FlushPending();
+
+        /// <summary>
         /// Gọi từ MainTabbedPage.OnAppearing() để xử lý link còn tồn đọng
         /// (trường hợp app vừa khởi động lạnh từ QR).
         /// </summary>
@@ -86,47 +91,77 @@ namespace VinhKhanhTour.Services
         }
 
         // ── Logic bóc tách URL ────────────────────────────────────────
-        private void ParseAndDispatch(Uri uri)
+        /// <summary>
+        /// Thử giải mã nội dung QR/DeepLink để lấy POI ID và trạng thái autoplay.
+        /// Chấp nhận cả custom scheme và URL redirect từ Web.
+        /// </summary>
+        public static (int poiId, bool autoplay) TryParsePoiLink(string value)
         {
-            // Hỗ trợ 2 dạng URL:
-            // vinhkhanhtour://poi/5
-            // https://vinhkhanhtour.com/poi/5?autoplay=true
+            if (string.IsNullOrWhiteSpace(value)) return (0, false);
+
             try
             {
-                var segments = uri.AbsolutePath
-                    .Split('/', StringSplitOptions.RemoveEmptyEntries);
-
-                // Tìm "poi" trong path rồi lấy số ngay sau nó
-                int poiIndex = Array.FindIndex(segments,
-                    s => s.Equals("poi", StringComparison.OrdinalIgnoreCase));
-
-                // Nếu scheme là custom scheme và host là poi (vinhkhanhtour://poi/5)
-                if (uri.Scheme.ToLower() == "vinhkhanhtour" && uri.Host.ToLower() == "poi")
+                // Nếu là custom scheme trực tiếp: vinhkhanhtour://poi/5
+                if (value.StartsWith("vinhkhanhtour://", StringComparison.OrdinalIgnoreCase))
                 {
-                    if (segments.Length > 0 && int.TryParse(segments[0], out int id))
+                    if (Uri.TryCreate(value, UriKind.Absolute, out var uri))
                     {
-                        DispatchPoi(uri, id);
-                        return;
+                        var segments = uri.AbsolutePath.Trim('/').Split('/');
+                        if (uri.Host.Equals("poi", StringComparison.OrdinalIgnoreCase) && 
+                            segments.Length > 0 && int.TryParse(segments[0], out int id))
+                        {
+                            return (id, IsAutoplay(uri));
+                        }
                     }
                 }
 
-                if (poiIndex < 0 || poiIndex + 1 >= segments.Length)
+                // Nếu là URL Web (Redirect hoặc POI page)
+                if (value.StartsWith("http", StringComparison.OrdinalIgnoreCase))
                 {
-                    System.Diagnostics.Debug.WriteLine("[DeepLink] ❌ Cannot find /poi/{id} in URL");
-                    return;
-                }
+                    if (Uri.TryCreate(value, UriKind.Absolute, out var uri))
+                    {
+                        var query = System.Web.HttpUtility.ParseQueryString(uri.Query);
+                        
+                        // Case 1: go.html?poi=5
+                        if (int.TryParse(query["poi"], out int poiId)) return (poiId, IsAutoplay(uri));
+                        
+                        // Case 2: poi.html?id=5 (Legacy)
+                        if (int.TryParse(query["id"], out int id2)) return (id2, IsAutoplay(uri));
 
-                if (!int.TryParse(segments[poiIndex + 1], out int poiId) || poiId <= 0)
-                {
-                    System.Diagnostics.Debug.WriteLine("[DeepLink] ❌ Invalid POI id");
-                    return;
+                        // Case 3: vinhkhanhtour.com/poi/5
+                        var segments = uri.AbsolutePath.Trim('/').Split('/');
+                        int poiIdx = Array.FindIndex(segments, s => s.Equals("poi", StringComparison.OrdinalIgnoreCase));
+                        if (poiIdx >= 0 && poiIdx + 1 < segments.Length && int.TryParse(segments[poiIdx + 1], out int id3))
+                        {
+                            return (id3, IsAutoplay(uri));
+                        }
+                    }
                 }
-
-                DispatchPoi(uri, poiId);
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"[DeepLink] Parse error: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"[DeepLink] TryParsePoiLink error: {ex.Message}");
+            }
+
+            return (0, false);
+        }
+
+        private static bool IsAutoplay(Uri uri)
+        {
+            var query = System.Web.HttpUtility.ParseQueryString(uri.Query);
+            return string.Equals(query["autoplay"], "true", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private void ParseAndDispatch(Uri uri)
+        {
+            var (poiId, autoplay) = TryParsePoiLink(uri.ToString());
+            if (poiId > 0)
+            {
+                DispatchPoi(uri, poiId);
+            }
+            else
+            {
+                System.Diagnostics.Debug.WriteLine($"[DeepLink] ❌ Cannot parse POI from: {uri}");
             }
         }
 

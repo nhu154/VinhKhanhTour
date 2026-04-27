@@ -121,7 +121,7 @@ namespace VinhKhanhTour.Views
             var hasPremium = TicketService.Instance.HasValidTicket;
 
             actionRow.Add(CreateProfessionalButton(
-                _currentLang switch { "en" => hasPremium ? "🎧 AUDIO HD" : "🔒 AUDIO HD", "zh" => hasPremium ? "🎧 音频" : "🔒 音频", _ => hasPremium ? "🎧 AUDIO HD" : "🔒 AUDIO HD" },
+                _currentLang switch { "en" => "🎧 AUDIO HD", "zh" => "🎧 音频", _ => "🎧 AUDIO HD" },
                 async () =>
                 {
                     if (TicketService.Instance.CanAccessPremiumAudio)
@@ -133,7 +133,7 @@ namespace VinhKhanhTour.Views
                 hasPremium ? Colors.White : Color.FromArgb("#94A3B8")), 0, 2);
 
             actionRow.Add(CreateProfessionalButton(
-                _currentLang switch { "en" => hasPremium ? "📸 PHOTO" : "🔒 PHOTO", "zh" => hasPremium ? "📸 拍照" : "🔒 拍照", _ => hasPremium ? "📸 KHUNG ẢNH" : "🔒 KHUNG ẢNH" },
+                _currentLang switch { "en" => "📸 PHOTO", "zh" => "📸 拍照", _ => "📸 KHUNG ẢNH" },
                 async () =>
                 {
                     if (TicketService.Instance.CanAccessPhotoFrame)
@@ -188,7 +188,7 @@ namespace VinhKhanhTour.Views
             };
             goBtn.Content = new Label
             {
-                Text = _currentLang switch { "en" => "🗺️  DIRECTIONS", "zh" => "🗺️  导航", "ja" => "🗺️  ナビ", "ko" => "🗺️  길찾기", _ => "🗺️  CHỈ ĐƯỜNG" },
+                Text = _currentLang switch { "en" => "DIRECTIONS", "zh" => "导航", "ja" => "ナビ", "ko" => "길찾기", _ => "CHỈ ĐƯỜNG" },
                 TextColor = Colors.White,
                 FontAttributes = FontAttributes.Bold,
                 FontSize = 15,
@@ -217,7 +217,7 @@ namespace VinhKhanhTour.Views
             };
             bookBtn.Content = new Label
             {
-                Text = _currentLang switch { "en" => "🍽️  BOOK", "zh" => "🍽️  预约", "ja" => "🍽️  予約", "ko" => "🍽️  예약", _ => "🍽️  ĐẶT CHỖ" },
+                Text = _currentLang switch { "en" => "BOOK", "zh" => "预约", "ja" => "予約", "ko" => "예약", _ => "ĐẶT CHỖ" },
                 TextColor = Colors.White,
                 FontAttributes = FontAttributes.Bold,
                 FontSize = 15,

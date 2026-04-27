@@ -28,6 +28,16 @@ namespace VinhKhanhTour.Views
             BuildUI();
             RefreshStats();
 
+            // ── Premium Gate Check ──
+            if (!TicketService.Instance.HasValidTicket)
+            {
+                MainThread.BeginInvokeOnMainThread(async () =>
+                {
+                    await Navigation.PushAsync(new PremiumGatePage("Offline Downloads"));
+                    Navigation.RemovePage(this);
+                });
+            }
+
             // Lắng nghe progress khi đang tải
             OfflineModeService.Instance.AudioCacheProgressChanged += OnAudioProgress;
             OfflineModeService.Instance.AudioCacheCompleted       += OnAudioCompleted;

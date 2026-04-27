@@ -32,6 +32,26 @@ namespace VinhKhanhTour.Services
             }
         }
 
+        public static async Task RecordAppLoginAsync()
+        {
+            try
+            {
+                var evt = new AnalyticsEvent
+                {
+                    EventType = "app_login",
+                    Username = UserSession.Instance.Username,
+                    TimestampTicks = DateTime.Now.Ticks
+                };
+                await App.Database.InsertAnalyticsEventAsync(evt);
+                bool success = await ApiService.Instance.PostAnalyticAsync(0, "app_login", 0, 0);
+                if (!success) System.Diagnostics.Debug.WriteLine($"[AnalyticsService] Warning: Could not sync app_login to server");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[AnalyticsService] RecordAppLogin: {ex.Message}");
+            }
+        }
+
         public static async Task RecordPoiVisitAsync(int poiId, string eventType = "poi_visit", double lat = 0, double lng = 0)
         {
             try
@@ -141,7 +161,9 @@ namespace VinhKhanhTour.Services
                     var r = restaurants.FirstOrDefault(x => x.Id == g.Key);
 
                     // ── FIX: Tên rõ ràng thay vì số ──
-                    string poiName = r?.Name ?? $"Điểm tham quan chưa rõ danh tính";
+                    var currentLang = Microsoft.Maui.Storage.Preferences.Default.Get("app_lang", "vi");
+                    string unknownText = currentLang switch { "en" => "Unknown POI", "zh" => "未知地点", "ja" => "未知の場所", "ko" => "알 수 없는 장소", _ => "Địa điểm chưa rõ" };
+                    string poiName = r?.Name ?? $"{unknownText} (ID: {g.Key})";
 
                     var audioEvents = g.Where(e => e.EventType.StartsWith("audio_")).ToList();
 

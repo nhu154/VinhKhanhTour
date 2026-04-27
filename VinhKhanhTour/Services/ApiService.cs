@@ -12,21 +12,23 @@ namespace VinhKhanhTour.Services
         private readonly HttpClient _http;
 
         // ── FIX: Đọc BASE_URL từ Config để dễ thay đổi, không cần sửa nhiều chỗ ──
-        // Trong Config.cs, thêm:  public const string ApiBaseUrl = "http://192.168.1.233:5256/api";
+        // Trong Config.cs, thêm:  public const string ApiBaseUrl = "http://192.168.1.29:5256/api";
         // Nếu chưa có, fallback về địa chỉ mặc định
         private static string BASE
         {
             get
             {
-                // ── FORCE SYNC: Đảm bảo App luôn dùng IP mới nhất từ Config.cs ──
-                // Nếu IP trong Preferences khác với Config, ta cập nhật lại.
-                var saved = Preferences.Default.Get("api_base_url", "");
-                if (saved != Config.ApiBaseUrl)
+                string baseUrl = Config.ApiBaseUrl;
+
+                // ── HỖ TRỢ MÁY ẢO ──
+                // Nếu là máy ảo Android, ta chuyển IP LAN thành 10.0.2.2 để có thể gọi về localhost máy tính
+                if (DeviceInfo.DeviceType == DeviceType.Virtual && DeviceInfo.Platform == DevicePlatform.Android)
                 {
-                    Preferences.Default.Set("api_base_url", Config.ApiBaseUrl);
-                    return Config.ApiBaseUrl;
+                    // Tự động thay thế IP LAN bằng địa chỉ loopback của máy ảo
+                    baseUrl = baseUrl.Replace("192.168.1.34", "10.0.2.2");
                 }
-                return saved.TrimEnd('/');
+
+                return baseUrl.TrimEnd('/');
             }
         }
 
@@ -88,6 +90,23 @@ namespace VinhKhanhTour.Services
             {
                 System.Diagnostics.Debug.WriteLine($"[ApiService] GetRestaurants: {ex.Message}");
                 return [];
+            }
+        }
+
+        public async Task<Restaurant?> GetRestaurantByIdAsync(int id)
+        {
+            try
+            {
+                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+                var r = await _http.GetFromJsonAsync<Restaurant>($"{BASE}/restaurants/{id}", cts.Token);
+                if (r != null)
+                    r.ImageUrl = NormalizeImageUrl(r.ImageUrl);
+                return r;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[ApiService] GetRestaurantById: {ex.Message}");
+                return null;
             }
         }
 
@@ -158,7 +177,8 @@ namespace VinhKhanhTour.Services
                     EventType = "gps_point",
                     Value = 0.0,
                     Lat = lat,
-                    Lng = lng
+                    Lng = lng,
+                    Username = UserSession.Instance.Username
                 }, cts.Token);
             }
             catch (Exception ex)
@@ -168,7 +188,7 @@ namespace VinhKhanhTour.Services
         }
 
         // ── Tracking ────────────────────────────────────────────────────────
-        public async Task PingActiveStatusAsync(string sessionId, string username, bool isAnonymous)
+        public async Task PingActiveStatusAsync(string sessionId, string username, bool isAnonymous, double? lat = null, double? lng = null)
         {
             try
             {
@@ -177,7 +197,9 @@ namespace VinhKhanhTour.Services
                 {
                     SessionId = sessionId,
                     Username = username,
-                    IsAnonymous = isAnonymous
+                    IsAnonymous = isAnonymous,
+                    Lat = lat,
+                    Lng = lng
                 }, cts.Token);
             }
             catch (Exception ex)
@@ -197,6 +219,25 @@ namespace VinhKhanhTour.Services
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"[ApiService] EndActiveStatus: {ex.Message}");
+            }
+        }
+
+        public async Task LogUserActivityAsync(string action, string target, string details = "")
+        {
+            try
+            {
+                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(3));
+                await _http.PostAsJsonAsync($"{BASE}/AdminLogs/user-activity", new
+                {
+                    Action = action,
+                    Target = target,
+                    UserName = UserSession.Instance.Username,
+                    Details = details
+                }, cts.Token);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[ApiService] LogUserActivity: {ex.Message}");
             }
         }
 
@@ -299,9 +340,145 @@ namespace VinhKhanhTour.Services
                 System.Diagnostics.Debug.WriteLine($"[ApiService] ClearAnalytics: {ex.Message}");
             }
         }
+
+        // ── Device Management (Quản lý thiết bị) ─────────────────────────────
+
+        /// <summary>Đăng ký thiết bị khi đăng nhập</summary>
+        public async Task<DeviceRegisterResult> RegisterDeviceAsync(int userId, string deviceId,
+            string deviceName, string platform)
+        {
+            try
+            {
+                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+                var res = await _http.PostAsJsonAsync($"{BASE}/devices/register", new
+                {
+                    UserId = userId,
+                    DeviceId = deviceId,
+                    DeviceName = deviceName,
+                    Platform = platform
+                }, cts.Token);
+
+                var json = await res.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>(
+                    cancellationToken: cts.Token);
+
+                if (res.IsSuccessStatusCode)
+                {
+                    return new DeviceRegisterResult
+                    {
+                        Success = true,
+                        Message = json.TryGetProperty("message", out var m) ? m.GetString() ?? "" : "",
+                        IsNew = json.TryGetProperty("isNew", out var n) && n.GetBoolean()
+                    };
+                }
+
+                // Conflict = đã đạt giới hạn
+                if ((int)res.StatusCode == 409)
+                {
+                    return new DeviceRegisterResult
+                    {
+                        Success = false,
+                        LimitReached = true,
+                        Message = json.TryGetProperty("message", out var m2) ? m2.GetString() ?? "" : ""
+                    };
+                }
+
+                return new DeviceRegisterResult { Success = false, Message = "Lỗi đăng ký thiết bị" };
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[ApiService] RegisterDevice: {ex.Message}");
+                return new DeviceRegisterResult { Success = false, Message = ex.Message };
+            }
+        }
+
+        /// <summary>Gửi heartbeat cho thiết bị (gọi định kỳ)</summary>
+        public async Task<bool> DeviceHeartbeatAsync(int userId, string deviceId)
+        {
+            try
+            {
+                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(3));
+                var res = await _http.PutAsJsonAsync($"{BASE}/devices/heartbeat", new
+                {
+                    UserId = userId,
+                    DeviceId = deviceId
+                }, cts.Token);
+
+                if (!res.IsSuccessStatusCode)
+                {
+                    var json = await res.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>(
+                        cancellationToken: cts.Token);
+                    bool revoked = json.TryGetProperty("revoked", out var r) && r.GetBoolean();
+                    if (revoked)
+                    {
+                        System.Diagnostics.Debug.WriteLine("[ApiService] Device has been revoked!");
+                        return false; // Thiết bị bị thu hồi → cần logout
+                    }
+                }
+
+                return res.IsSuccessStatusCode;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[ApiService] DeviceHeartbeat: {ex.Message}");
+                return true; // Lỗi mạng → giữ nguyên, không ép logout
+            }
+        }
+
+        /// <summary>Thu hồi thiết bị</summary>
+        public async Task<bool> RevokeDeviceAsync(int userId, string deviceId)
+        {
+            try
+            {
+                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+                var res = await _http.DeleteAsync(
+                    $"{BASE}/devices/{userId}/{Uri.EscapeDataString(deviceId)}", cts.Token);
+                return res.IsSuccessStatusCode;
+            }
+            catch { return false; }
+        }
+
+        /// <summary>Lấy dữ liệu Heatmap người dùng thực tế (live)</summary>
+        public async Task<List<HeatmapPoint>> GetLiveHeatmapDataAsync()
+        {
+            try
+            {
+                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+                var res = await _http.GetFromJsonAsync<HeatmapResponse>($"{BASE}/analytics/heatmap-live", cts.Token);
+                return res?.Data ?? [];
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[ApiService] GetLiveHeatmap: {ex.Message}");
+                return [];
+            }
+        }
+
     }
 
     // ── Data models ───────────────────────────────────────────────────────────
+
+    public class HeatmapResponse
+    {
+        public bool Success { get; set; }
+        public List<HeatmapPoint> Data { get; set; } = [];
+    }
+
+    public class HeatmapPoint
+    {
+        public double Lat { get; set; }
+        public double Lng { get; set; }
+        public double Weight { get; set; } = 1.0;
+    }
+
+    public class DeviceRegisterResult
+    {
+        public bool Success { get; set; }
+        public bool LimitReached { get; set; }
+        public bool IsNew { get; set; }
+        public string Message { get; set; } = "";
+    }
+
+
 
     public class LoginResult
     {

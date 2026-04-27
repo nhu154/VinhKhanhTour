@@ -13,6 +13,8 @@ using System.Net.Http;
 
 namespace VinhKhanhTour.Views
 {
+    [QueryProperty(nameof(PoiId), "poiId")]
+    [QueryProperty(nameof(Autoplay), "autoplay")]
     public partial class MapPage : ContentPage
     {
         private readonly WebView _webView;
@@ -20,6 +22,7 @@ namespace VinhKhanhTour.Views
         private readonly Grid _audioBarContainer;
         private readonly Label _audioBarLabel;
         private Button _btnExitTour = null!;
+        private Button _pauseAudioBtn = null!;
         private readonly GeofencingService _geofencing = new();
         private Location? _userLocation;
         private Location? _previousLocation;
@@ -28,11 +31,18 @@ namespace VinhKhanhTour.Views
         private List<Restaurant> _restaurants = new();
         private List<AppLanguage> _availableLangs = new();
         private readonly Dictionary<int, DateTime> _lastNotified = new();
+        private readonly Dictionary<int, DateTime> _leftPoiTime = new(); // Thời điểm rời khỏi POI
+
+        // Track POI bị ngắt khi user bấm manual
+        private Restaurant? _interruptedPoi = null;       // POI đang phát bị ngắt
+        private bool _interruptedPoiWasPlaying = false;   // Có đang phát dở không
         private bool _htmlLoaded = false;
         private readonly Dictionary<int, string> _imgCache = new(); // cache base64 anh
         private const int COOLDOWN = 5;
 
         private const string KEY = "AIzaSyAMX0XgjmNv2O4Twk_CBBmjzDwopqtuexE";
+        private Timer? _gpsPulseTimer;
+        private Timer? _heatmapTimer;
 
         // ── Offline mode ──────────────────────────────────────────────────────
         private Grid _offlineBanner = null!;
@@ -56,6 +66,26 @@ namespace VinhKhanhTour.Views
         private bool _skipNextRefresh = false; // Flag to prevent OnAppearing from resetting map during jumps
         private bool _isActiveMap = false;
         private bool _tourRouteDrawn = false;
+
+        // ── Deep Link Properties ──────────────────────────────────────────────
+        private string? _poiId;
+        public string? PoiId
+        {
+            get => _poiId;
+            set
+            {
+                _poiId = value;
+                if (!string.IsNullOrEmpty(value))
+                    OnPoiIdReceived(value);
+            }
+        }
+
+        private string? _autoplay;
+        public string? Autoplay
+        {
+            get => _autoplay;
+            set => _autoplay = value;
+        }
 
         public MapPage() : this(null, null) { }
 
@@ -93,6 +123,7 @@ namespace VinhKhanhTour.Views
                 ColumnDefinitions =
                 {
                     new ColumnDefinition { Width = GridLength.Star },
+                    new ColumnDefinition { Width = GridLength.Auto },
                     new ColumnDefinition { Width = GridLength.Auto }
                 }
             };
@@ -122,8 +153,28 @@ namespace VinhKhanhTour.Views
             };
             stopAudioBtn.Clicked += (s, e) => _ = AudioService.Instance.StopAsync();
 
+            _pauseAudioBtn = new Button
+            {
+                Text = "⏸ Tạm dừng",
+                TextColor = Colors.White,
+                BackgroundColor = Color.FromArgb("#f57c00"), // Orange pause button
+                FontAttributes = FontAttributes.Bold,
+                FontSize = 12,
+                CornerRadius = 14,
+                HeightRequest = 28,
+                Padding = new Thickness(12, 0),
+                Margin = new Thickness(8, 0),
+                VerticalOptions = LayoutOptions.Center
+            };
+            _pauseAudioBtn.Clicked += (s, e) =>
+            {
+                if (AudioService.Instance.IsPaused) AudioService.Instance.Resume();
+                else AudioService.Instance.Pause();
+            };
+
             _audioBarContainer.Add(_audioBarLabel, 0, 0);
-            _audioBarContainer.Add(stopAudioBtn, 1, 0);
+            _audioBarContainer.Add(_pauseAudioBtn, 1, 0);
+            _audioBarContainer.Add(stopAudioBtn, 2, 0);
 
             _btnExitTour = new Button
             {
@@ -141,14 +192,37 @@ namespace VinhKhanhTour.Views
             };
             _btnExitTour.Clicked += (s, e) => ExitTourMode();
 
+            // Khởi tạo bộ đếm thời gian gửi xung nhịp GPS (mỗi 30s gửi 1 lần để duy trì live heatmap)
+            _gpsPulseTimer = new Timer(async _ => {
+                if (_userLocation != null && _isActiveMap)
+                {
+                    await AnalyticsService.RecordGpsPointAsync(_userLocation.Latitude, _userLocation.Longitude);
+                }
+            }, null, TimeSpan.FromSeconds(30), TimeSpan.FromSeconds(30));
+
+            // Khởi tạo bộ đếm thời gian cập nhật Heatmap (mỗi 15s lấy dữ liệu mới từ server)
+            _heatmapTimer = new Timer(async _ => {
+                if (_isActiveMap && _htmlLoaded)
+                {
+                    await RefreshHeatmapAsync();
+                }
+            }, null, TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(15));
+
             AudioService.Instance.PlaybackStateChanged += isPlaying =>
             {
                 MainThread.BeginInvokeOnMainThread(() =>
                 {
+                    bool isPaused = AudioService.Instance.IsPaused;
                     _audioBarContainer.IsVisible = isPlaying;
                     _audioBarLabel.Text = isPlaying
-                        ? $"🎧 Đang phát: {AudioService.Instance.CurrentTrack ?? "..."}"
+                        ? $"{(isPaused ? "⏸" : "🎧")} {(isPaused ? "Đã tạm dừng" : "Đang phát")}: {AudioService.Instance.CurrentTrack ?? "..."}"
                         : string.Empty;
+
+                    if (_pauseAudioBtn != null)
+                    {
+                        _pauseAudioBtn.Text = isPaused ? "▶ Tiếp tục" : "⏸ Tạm dừng";
+                        _pauseAudioBtn.BackgroundColor = isPaused ? Color.FromArgb("#2e7d32") : Color.FromArgb("#f57c00");
+                    }
                 });
             };
 
@@ -259,6 +333,7 @@ namespace VinhKhanhTour.Views
         protected override void OnAppearing()
         {
             base.OnAppearing();
+            UpdateLanguage(_currentLang);
             _isActiveMap = true;
             VinhKhanhTour.Services.UserSession.Instance.IsTourActive = true;
             if (_tourName != null) { }
@@ -395,6 +470,25 @@ namespace VinhKhanhTour.Views
             catch { }
         }
 
+        private async Task RefreshHeatmapAsync()
+        {
+            try
+            {
+                var points = await ApiService.Instance.GetLiveHeatmapDataAsync();
+                if (points == null || points.Count == 0) return;
+
+                var json = System.Text.Json.JsonSerializer.Serialize(points);
+                await MainThread.InvokeOnMainThreadAsync(async () =>
+                {
+                    await _webView.EvaluateJavaScriptAsync($"updateHeatmap({json});");
+                });
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[MapPage] Heatmap error: {ex.Message}");
+            }
+        }
+
 
         private async Task RequestLocationPermissionAsync()
         {
@@ -420,7 +514,39 @@ namespace VinhKhanhTour.Views
             try
             {
                 if (_restaurants.Count == 0 && _tourName == null)
+                {
+                    // Thử load từ SQLite local trước
                     _restaurants = await App.Database.GetRestaurantsAsync();
+
+                    // Nếu local rỗng → fetch từ API luôn (lần đầu cài app hoặc chưa sync)
+                    if (_restaurants.Count == 0)
+                    {
+                        System.Diagnostics.Debug.WriteLine("[MapPage] Local DB rỗng → fetch từ API...");
+                        try
+                        {
+                            var apiList = await ApiService.Instance.GetRestaurantsAsync();
+                            if (apiList.Count > 0)
+                            {
+                                _restaurants = apiList;
+                                foreach (var r in apiList)
+                                    await App.Database.SaveRestaurantAsync(r);
+                                System.Diagnostics.Debug.WriteLine($"[MapPage] ✅ Loaded {apiList.Count} POIs từ API → đã lưu local");
+                            }
+                            else
+                            {
+                                System.Diagnostics.Debug.WriteLine("[MapPage] ⚠️ API trả về 0 POI — kiểm tra server/network");
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"[MapPage] ❌ Fetch API thất bại: {ex.Message}");
+                        }
+                    }
+                    else
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[MapPage] ✅ Loaded {_restaurants.Count} POIs từ local DB");
+                    }
+                }
 
                 if (!_htmlLoaded)
                 {
@@ -453,21 +579,28 @@ namespace VinhKhanhTour.Views
                     _mapIsMapReadyForCommands = true;
                     System.Diagnostics.Debug.WriteLine("[MapPage] Signal Received: mapready");
                     CheckPendingDirection();
+                    MainThread.BeginInvokeOnMainThread(() =>
+                    {
+                        _ = _webView.EvaluateJavaScriptAsync($"if(typeof chgL === 'function') chgL('{_currentLang}');");
+                    });
                     break;
                 case "locationupdated":
                     if (double.TryParse(q["lat"], System.Globalization.NumberStyles.Float, ic, out double lat) &&
                         double.TryParse(q["lng"], System.Globalization.NumberStyles.Float, ic, out double lng))
                     {
                         var newLoc = new Location(lat, lng);
+                        App.CurrentLocation = newLoc;
 
-                        // Lọc GPS: Chỉ gửi lên hệ thống và đổi mốc nếu khách di chuyển quá 6 mét
-                        if (_userLocation == null || Microsoft.Maui.Devices.Sensors.Location.CalculateDistance(_userLocation, newLoc, DistanceUnits.Kilometers) * 1000 >= 6)
+                        // Lọc GPS: Chỉ gửi lên hệ thống và đổi mốc nếu khách di chuyển quá 2 mét (tăng độ nhạy cho Live Heatmap)
+                        if (_userLocation == null || Microsoft.Maui.Devices.Sensors.Location.CalculateDistance(_userLocation, newLoc, DistanceUnits.Kilometers) * 1000 >= 2)
                         {
                             if (_userLocation != null) _previousLocation = _userLocation;
+                            System.Diagnostics.Debug.WriteLine($"[MapPage] Recording GPS: {lat},{lng} (Diff: {( _userLocation == null ? 0 : Microsoft.Maui.Devices.Sensors.Location.CalculateDistance(_userLocation, newLoc, DistanceUnits.Kilometers) * 1000):F1}m)");
                             _ = AnalyticsService.RecordGpsPointAsync(lat, lng);
                             _userLocation = newLoc;
                         }
 
+                        var currentLoc = newLoc;
                         MainThread.BeginInvokeOnMainThread(async () =>
                         {
                             try
@@ -483,7 +616,7 @@ namespace VinhKhanhTour.Views
                                 }
                             }
                             catch { }
-                            _ = CheckNearbyAsync(_userLocation);
+                            _ = CheckNearbyAsync(currentLoc);
                         });
                     }
                     break;
@@ -530,7 +663,7 @@ namespace VinhKhanhTour.Views
                     {
                         var target = _restaurants.FirstOrDefault(r => r.Id == poiId);
                         if (target != null)
-                            MainThread.BeginInvokeOnMainThread(() => _ = SpeakAsync(target));
+                            MainThread.BeginInvokeOnMainThread(() => _ = SpeakManualAsync(target));
                     }
                     break;
                 case "togglefav":
@@ -576,7 +709,22 @@ namespace VinhKhanhTour.Views
 
         private void CheckPendingDirection()
         {
-            if (_pendingDirectionPoi != null && !_isProcessingPending)
+            if (_isProcessingPending) return;
+
+            // Kiểm tra xem có POI nào truyền từ QREntryPage không
+            if (Preferences.ContainsKey("pending_poi_id"))
+            {
+                int poiId = Preferences.Get("pending_poi_id", -1);
+                Preferences.Remove("pending_poi_id");
+                
+                var targetPoi = _restaurants.FirstOrDefault(r => r.Id == poiId);
+                if (targetPoi != null)
+                {
+                    _pendingDirectionPoi = targetPoi;
+                }
+            }
+
+            if (_pendingDirectionPoi != null)
             {
                 var target = _pendingDirectionPoi;
                 _pendingDirectionPoi = null;
@@ -792,6 +940,7 @@ namespace VinhKhanhTour.Views
 
             lines.Add("<script>");
             lines.Add("var map,uMk,uCir,rLn,rLnBg,rtMks=[],rtWin,poi={},uP=null,cur=null,cL='" + _currentLang + "';");
+            lines.Add("var heatmap;");
             lines.Add("var ALL=" + data + ";");
             lines.Add("var CTR={lat:10.7615,lng:106.7045};");
             lines.Add("var L={");
@@ -842,6 +991,7 @@ namespace VinhKhanhTour.Views
             lines.Add("function speakPoi(id,ev){ev.stopPropagation(); window.location.href='maui://speakpoi?id='+id;}");
             lines.Add("function setTourMode(on,name){}");
             lines.Add("function setAudioPlaying(on){document.getElementById('btnStop').style.display=on?'flex':'none';}");
+            lines.Add("function updateHeatmap(data){ if(!map)return; var pts=data.map(p=>({location:new google.maps.LatLng(p.Lat,p.Lng),weight:p.Weight})); if(heatmap){heatmap.setData(pts);}else{heatmap=new google.maps.visualization.HeatmapLayer({data:pts,map:map,radius:40,opacity:0.7});} }");
             // Proximity notification overlay functions
             lines.Add("var _proxCur=null;");
             lines.Add("function showProximity(id,name,desc,img){_proxCur=ALL.find(function(r){return r.id===id;});document.getElementById('pcNameEl').textContent=name;document.getElementById('pcDescEl').textContent=desc;var ic=document.getElementById('pcIconEl');ic.innerHTML=img?'<img src=\"'+img+'\" style=\"width:100%;height:100%;object-fit:cover;border-radius:12px;\">':'🍽️';document.getElementById('proximityAlert').style.display='flex';setTimeout(function(){document.getElementById('proximityCard').classList.add('show');},10);setTimeout(function(){closeProximity();},8000);}");
@@ -909,8 +1059,15 @@ namespace VinhKhanhTour.Views
                 "window.location.href='maui://mapready';" +
                 "}catch(e){console.error(e);window.location.href='maui://mapready';}}");
 
+            lines.Add("function focusMarker(lat, lng, name) { " +
+                "var r = ALL.find(function(x) { " +
+                "  return Math.abs(x.lat - lat) < 0.0001 && Math.abs(x.lng - lng) < 0.0001; " +
+                "}); " +
+                "if (r) pick(r); " +
+                "}");
+
             lines.Add("</script>");
-            lines.Add("<script src='https://maps.googleapis.com/maps/api/js?key=" + KEY + "'></script>");
+            lines.Add("<script src='https://maps.googleapis.com/maps/api/js?key=" + KEY + "&libraries=visualization'></script>");
             lines.Add("<script>window.addEventListener('load',function(){setTimeout(initMap,200);});</script>");
             lines.Add("</body></html>");
 
@@ -918,26 +1075,73 @@ namespace VinhKhanhTour.Views
             return string.Join("\n", lines);
         }
 
+        // ── Deep Link Handling ────────────────────────────────────────────────
+        private async void OnPoiIdReceived(string poiIdStr)
+        {
+            if (!int.TryParse(poiIdStr, out int poiId)) return;
+
+            bool shouldAutoplay = (_autoplay ?? "true") != "false";
+
+            // Chờ map load xong
+            for (int i = 0; i < 10 && (!_htmlLoaded || !_mapIsMapReadyForCommands); i++)
+                await Task.Delay(500);
+
+            try
+            {
+                var poi = await App.Database.GetRestaurantByIdAsync(poiId);
+                if (poi == null) return;
+
+                // Di chuyển bản đồ và mở popup
+                await _webView.EvaluateJavaScriptAsync(
+                    $"focusMarker({poi.Latitude.ToString(System.Globalization.CultureInfo.InvariantCulture)}, " +
+                    $"{poi.Longitude.ToString(System.Globalization.CultureInfo.InvariantCulture)}, '{EscapeJs(poi.Name)}');");
+
+                if (shouldAutoplay)
+                {
+                    await Task.Delay(800);
+                    await PlayTtsForPoi(poi);
+                }
+
+                System.Diagnostics.Debug.WriteLine($"[MapPage] ✅ Deep link processed: POI={poi.Name}");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[MapPage] ❌ DeepLink error: {ex.Message}");
+            }
+        }
+
+        private async Task PlayTtsForPoi(Restaurant poi)
+        {
+            await SpeakAsync(poi);
+        }
+
+        private static string EscapeJs(string s) =>
+            s.Replace("\\", "\\\\").Replace("'", "\\'").Replace("\n", "\\n");
+
         private async Task CheckNearbyAsync(Location location)
         {
+            System.Diagnostics.Debug.WriteLine($"[CheckNearby] restaurants={_restaurants.Count}, loc={location?.Latitude:F6},{location?.Longitude:F6}, isActive={_isActiveMap}, isAuth={VinhKhanhTour.Services.UserSession.Instance.IsAuthenticatedUser}");
             if (_restaurants.Count == 0) return;
 
-            // Lấy danh sách các POI lân cận, cập nhật trạng thái rời khỏi
+            // Bước 1: Cập nhật _leftPois cho TẤT CẢ POI (kể cả khi không còn trong 5m)
+            foreach (var r in _restaurants)
+            {
+                double d = GeofencingService.CalculateDistance(location.Latitude, location.Longitude, r.Latitude, r.Longitude);
+                if (_listenedPois.Contains(r.Id) && d >= 20 && !_leftPois.Contains(r.Id))
+                {
+                    _leftPois.Add(r.Id);
+                    _leftPoiTime[r.Id] = DateTime.Now; // Ghi lại thời điểm rời
+                    System.Diagnostics.Debug.WriteLine($"[CheckNearby] Ra khỏi {r.Name} ({d:F0}m) → đánh dấu _leftPois");
+                }
+            }
+
+            // Bước 2: Tìm POI trong bán kính 5m
             var nearbyPois = new List<(Restaurant Poi, double Dist)>();
             foreach (var r in _restaurants)
             {
                 double d = GeofencingService.CalculateDistance(location.Latitude, location.Longitude, r.Latitude, r.Longitude);
-
-                // Nếu đã nghe và đi xa hơn 20m, đánh dấu là đã rời khỏi
-                if (_listenedPois.Contains(r.Id) && d >= 20 && !_leftPois.Contains(r.Id))
-                {
-                    _leftPois.Add(r.Id);
-                }
-
                 if (d <= 5)
-                {
                     nearbyPois.Add((r, d));
-                }
             }
 
             if (nearbyPois.Count == 0) return;
@@ -973,50 +1177,79 @@ namespace VinhKhanhTour.Views
             string langNear = _currentLang switch { "en" => "Nearest", "zh" => "最近", "ja" => "最近", "ko" => "가장 가까운", _ => "Gần nhất" };
             MainThread.BeginInvokeOnMainThread(() => _statusLabel.Text = $"{langNear}: {nearest.Name} ({minDist:F0}m)");
 
-            if (!VinhKhanhTour.Services.UserSession.Instance.IsAuthenticatedUser || !_isActiveMap) return;
+            // Khách (Guest) cũng được nghe audio — chỉ cần đang ở màn hình bản đồ
+            if (!VinhKhanhTour.Services.UserSession.Instance.IsLoggedIn || !_isActiveMap) return;
 
-            // Xử lý logic quay lại điểm đã nghe
-            if (_listenedPois.Contains(nearest.Id))
+
+            // ── Trường hợp 1: Quay lại POI đã nghe + đã rời khỏi ─────────────
+            if (_listenedPois.Contains(nearest.Id) && _leftPois.Contains(nearest.Id))
             {
-                if (_leftPois.Contains(nearest.Id))
+                // Chống spam: chỉ trigger 1 lần mỗi lần vào lại, đợi 30s trước khi trigger lại
+                if (_lastNotified.TryGetValue(nearest.Id, out DateTime lastPrompt) && (DateTime.Now - lastPrompt).TotalSeconds < 30)
+                    return;
+
+                _lastNotified[nearest.Id] = DateTime.Now;
+
+                var minutesAway = _leftPoiTime.TryGetValue(nearest.Id, out DateTime leftAt)
+                    ? (DateTime.Now - leftAt).TotalMinutes : 99;
+
+                if (minutesAway >= 5)
                 {
-                    // Tránh spam prompt liên tục, cooldown 1 phút cho prompt
-                    if (_lastNotified.TryGetValue(nearest.Id, out DateTime lastPrompt) && (DateTime.Now - lastPrompt).TotalMinutes < 1)
-                        return;
-
-                    _lastNotified[nearest.Id] = DateTime.Now;
-
+                    // Ra > 5 phút → tự phát lại luôn, không hỏi
+                    System.Diagnostics.Debug.WriteLine($"[CheckNearby] Quay lại {nearest.Name} sau {minutesAway:F1} phút → tự phát lại");
+                    _leftPois.Remove(nearest.Id);
+                    await SpeakAsync(nearest);
+                    if (AudioService.Instance.CurrentPoiId != nearest.Id)
+                        await ShowProximityOverlay(nearest);
+                }
+                else
+                {
+                    // Ra < 5 phút → hỏi trước
+                    System.Diagnostics.Debug.WriteLine($"[CheckNearby] Quay lại {nearest.Name} sau {minutesAway:F1} phút → hỏi");
+                    var nearestSnapshot = nearest;
                     MainThread.BeginInvokeOnMainThread(async () =>
                     {
                         var app = Application.Current;
                         if (app?.MainPage == null) return;
 
                         bool replay = await app.MainPage.DisplayAlert(
-                            "Phát lại Audio?",
-                            $"Bạn đã nghe audio điểm {nearest.Name} này rồi, bạn có muốn nghe lại hay không?",
-                            "Có",
+                            "Bạn đã nghe thuyết minh ở đây rồi",
+                            $"Bạn có muốn nghe lại thuyết minh tại {nearestSnapshot.Name} không?",
+                            "Có, phát lại",
                             "Không");
 
                         if (replay)
                         {
-                            _leftPois.Remove(nearest.Id); // Xóa để không hỏi lại cho đến khi đi xa tiếp
-                            await SpeakAsync(nearest);
-                            await ShowProximityOverlay(nearest);
+                            _leftPois.Remove(nearestSnapshot.Id);
+                            await SpeakAsync(nearestSnapshot);
+                            if (AudioService.Instance.CurrentPoiId != nearestSnapshot.Id)
+                                await ShowProximityOverlay(nearestSnapshot);
                         }
+                        // Nếu bấm Không → giữ nguyên _leftPois để lần ra vào lại vẫn hỏi
                     });
                 }
-                return; // Đã nghe nhưng chưa rời đi, hoặc đang chờ/mới prompt xong
+                return;
             }
 
+            // ── Trường hợp 2: Đang ở trong POI đã nghe nhưng chưa rời ────────
+            if (_listenedPois.Contains(nearest.Id))
+                return;
+
+            // ── Trường hợp 3: POI mới chưa nghe ─────────────────────────────
             if (_lastNotified.TryGetValue(nearest.Id, out DateTime last) &&
                 (DateTime.Now - last).TotalMinutes < COOLDOWN) return;
+
+            // Nếu đang phát POI khác → xếp hàng (AudioService tự xử lý queue)
+            // Nếu 2 POI cùng trong 5m → phát POI gần nhất trước (đã sort theo dist)
+            System.Diagnostics.Debug.WriteLine($"[CheckNearby] Phát mới: {nearest.Name} ({minDist:F1}m), đang phát: {AudioService.Instance.IsPlaying}");
 
             _lastNotified[nearest.Id] = DateTime.Now;
             _listenedPois.Add(nearest.Id);
             _leftPois.Remove(nearest.Id);
 
             await SpeakAsync(nearest);
-            await ShowProximityOverlay(nearest);
+            if (AudioService.Instance.CurrentPoiId != nearest.Id)
+                await ShowProximityOverlay(nearest);
 
             await App.Database.SaveVisitAsync(new VisitHistory
             {
@@ -1036,9 +1269,14 @@ namespace VinhKhanhTour.Views
                 await _webView.EvaluateJavaScriptAsync($"showProximity({nearest.Id},'{nameJs}','{descJs}','{imgJs}');"));
         }
 
-        public async void FocusAndDirect(Restaurant r)
+        public async void FocusAndDirect(Restaurant r, bool autoplay = false)
         {
             if (r == null) return;
+            if (r.Latitude == 0 && r.Longitude == 0)
+            {
+                await MainThread.InvokeOnMainThreadAsync(() => Shell.Current.DisplayAlert("Thông báo", "Địa điểm này chưa được cập nhật tọa độ chính xác.", "Đóng"));
+                return;
+            }
 
             // 1. If map is not loaded OR not ready for commands yet, queue it
             if (!_htmlLoaded || !_mapIsMapReadyForCommands)
@@ -1074,12 +1312,16 @@ namespace VinhKhanhTour.Views
 
                     if (routeSuccess)
                     {
-                        // 3. Prompt for commentary AFTER route is shown on map
-                        bool answer = await DisplayAlert(
-                            _currentLang == "vi" ? "Thuyết minh" : "Commentary",
-                            _currentLang == "vi" ? "Bạn có muốn nghe thuyết minh về địa điểm này không?" : "Would you like to hear the commentary for this location?",
-                            _currentLang == "vi" ? "Có, phát ngay" : "Yes, play now",
-                            _currentLang == "vi" ? "Để sau" : "Maybe later");
+                        bool answer = autoplay;
+                        if (!autoplay)
+                        {
+                            // 3. Prompt for commentary AFTER route is shown on map
+                            answer = await DisplayAlert(
+                                _currentLang == "vi" ? "Thuyết minh" : "Commentary",
+                                _currentLang == "vi" ? "Bạn có muốn nghe thuyết minh về địa điểm này không?" : "Would you like to hear the commentary for this location?",
+                                _currentLang == "vi" ? "Có, phát ngay" : "Yes, play now",
+                                _currentLang == "vi" ? "Để sau" : "Maybe later");
+                        }
 
                         if (answer)
                         {
@@ -1153,9 +1395,97 @@ namespace VinhKhanhTour.Views
             await MainThread.InvokeOnMainThreadAsync(async () => await _webView.EvaluateJavaScriptAsync("setAudioPlaying(true);"));
             _ = Task.Run(async () =>
             {
-                await AudioService.Instance.PlayCommentaryAsync(r.Id, r.GetTtsScript());
+                // Dùng PlayNarrationAsync (có hàng đợi) — khi đi qua nhiều quán, audio xếp hàng
+                await AudioService.Instance.PlayNarrationAsync(r);
                 await MainThread.InvokeOnMainThreadAsync(async () => await _webView.EvaluateJavaScriptAsync("setAudioPlaying(false);"));
             });
+        }
+
+        /// <summary>
+        /// Phát thủ công (user bấm nút) — ưu tiên tuyệt đối:
+        /// 1. Lưu POI đang phát dở (nếu có)
+        /// 2. Ngắt + xóa queue
+        /// 3. Phát ngay POI được chọn
+        /// 4. Sau khi xong → hỏi user có muốn tiếp tục POI bị ngắt không
+        /// </summary>
+        private async Task SpeakManualAsync(Restaurant manualPoi)
+        {
+            // Lấy POI đang phát dở (nếu có) trước khi ngắt
+            var currentItem = AudioService.Instance.CurrentQueueItem;
+            bool wasPlaying = AudioService.Instance.IsPlaying;
+
+            Restaurant? interrupted = null;
+            if (wasPlaying && currentItem != null && currentItem.PoiId != manualPoi.Id)
+            {
+                interrupted = _restaurants.FirstOrDefault(r => r.Id == currentItem.PoiId);
+                System.Diagnostics.Debug.WriteLine($"[Manual] Ngắt POI {interrupted?.Name} để phát {manualPoi.Name}");
+            }
+
+            // Ngắt hết + xóa queue → phát ngay
+            await AudioService.Instance.PlayNarrationImmediateAsync(manualPoi);
+            _listenedPois.Add(manualPoi.Id);
+
+            // Sau khi phát xong → hỏi về POI bị ngắt
+            if (interrupted != null)
+            {
+                var interruptedSnapshot = interrupted;
+                _ = Task.Run(async () =>
+                {
+                    // Chờ bài manual phát xong
+                    while (AudioService.Instance.IsPlaying)
+                        await Task.Delay(500);
+
+                    await Task.Delay(800); // Khoảng nghỉ nhỏ
+
+                    await MainThread.InvokeOnMainThreadAsync(async () =>
+                    {
+                        var app = Application.Current;
+                        if (app?.MainPage == null) return;
+
+                        // Kiểm tra có vị trí resume không (bị ngắt giữa chừng)
+                        bool hasResume = AudioService.Instance.HasResumePosition(interruptedSnapshot.Id);
+
+                        if (hasResume)
+                        {
+                            // Hỏi: nghe tiếp từ chỗ dừng hay nghe lại từ đầu
+                            string choice = await app.MainPage.DisplayActionSheet(
+                                $"Thuyết minh [{interruptedSnapshot.Name}] bị ngắt",
+                                "Bỏ qua",
+                                null,
+                                "Nghe tiếp từ chỗ dừng",
+                                "Nghe lại từ đầu");
+
+                            if (choice == "Nghe tiếp từ chỗ dừng")
+                            {
+                                // Resume: giữ nguyên index → PlayCommentaryAsync sẽ tự bắt đầu từ câu đó
+                                await SpeakAsync(interruptedSnapshot);
+                                await ShowProximityOverlay(interruptedSnapshot);
+                            }
+                            else if (choice == "Nghe lại từ đầu")
+                            {
+                                AudioService.Instance.ClearResumePosition(interruptedSnapshot.Id);
+                                await SpeakAsync(interruptedSnapshot);
+                                await ShowProximityOverlay(interruptedSnapshot);
+                            }
+                            // "Bỏ qua" → không làm gì
+                        }
+                        else
+                        {
+                            bool resume = await app.MainPage.DisplayAlert(
+                                "Nghe lại thuyết minh?",
+                                $"Bạn có muốn nghe lại thuyết minh tại [{interruptedSnapshot.Name}] không?",
+                                "Nghe lại",
+                                "Bỏ qua");
+
+                            if (resume)
+                            {
+                                await SpeakAsync(interruptedSnapshot);
+                                await ShowProximityOverlay(interruptedSnapshot);
+                            }
+                        }
+                    });
+                });
+            }
         }
 
         private async Task<bool> DrawRouteAsync(string json)
@@ -1290,17 +1620,27 @@ namespace VinhKhanhTour.Views
                 // Fallback về trung tâm Vĩnh Khánh nếu chưa có GPS
                 var effectiveLoc = userLoc ?? new Location(10.7615, 106.7045);
 
-                // 1. Sắp xếp các POI theo Nearest Neighbor
+                // 1. Sắp xếp thông minh: Tìm điểm gần nhất làm điểm bắt đầu, sau đó đi theo thứ tự Tour tuần tự
                 var routeList = new List<Restaurant>();
-                var unvisited = new List<Restaurant>(tourPois);
-                var currentLoc = effectiveLoc;
+                int startIndex = 0;
+                double minDistance = double.MaxValue;
 
-                while (unvisited.Count > 0)
+                // Bước A: Tìm điểm trong Tour gần vị trí hiện tại của User nhất
+                for (int i = 0; i < tourPois.Count; i++)
                 {
-                    var nearest = unvisited.OrderBy(r => GeofencingService.CalculateDistance(currentLoc.Latitude, currentLoc.Longitude, r.Latitude, r.Longitude)).First();
-                    routeList.Add(nearest);
-                    unvisited.Remove(nearest);
-                    currentLoc = new Location(nearest.Latitude, nearest.Longitude);
+                    double d = GeofencingService.CalculateDistance(effectiveLoc.Latitude, effectiveLoc.Longitude, tourPois[i].Latitude, tourPois[i].Longitude);
+                    if (d < minDistance)
+                    {
+                        minDistance = d;
+                        startIndex = i;
+                    }
+                }
+
+                // Bước B: Sắp xếp lại lộ trình bắt đầu từ điểm đó và đi tiếp theo thứ tự mặc định của Tour (xoay vòng)
+                for (int i = 0; i < tourPois.Count; i++)
+                {
+                    int index = (startIndex + i) % tourPois.Count;
+                    routeList.Add(tourPois[index]);
                 }
 
                 var ic = System.Globalization.CultureInfo.InvariantCulture;

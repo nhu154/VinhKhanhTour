@@ -13,7 +13,8 @@ namespace VinhKhanhTour
     [Activity(Theme = "@style/Maui.SplashTheme", MainLauncher = true,
         ConfigurationChanges = ConfigChanges.ScreenSize | ConfigChanges.Orientation |
         ConfigChanges.UiMode | ConfigChanges.ScreenLayout |
-        ConfigChanges.SmallestScreenSize | ConfigChanges.Density)]
+        ConfigChanges.SmallestScreenSize | ConfigChanges.Density,
+        LaunchMode = LaunchMode.SingleTask)]
 
     // ── Deep link: vinhkhanhtour://open/guest ──────────────────────────
     [IntentFilter(new[] { Intent.ActionView },

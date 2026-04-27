@@ -91,7 +91,7 @@ namespace VinhKhanhTour.Views
         {
             var deepLink = $"vinhkhanhtour://poi/{r.Id}?autoplay=true";
             var qrUrl = $"https://api.qrserver.com/v1/create-qr-code/?size=200x200&margin=6" +
-                           $"&data={Uri.EscapeDataString(deepLink)}";
+                           $"&data={Uri.EscapeUriString(deepLink)}";
 
             var row = new Border
             {
@@ -304,27 +304,20 @@ namespace VinhKhanhTour.Views
 
         private async Task HandlePOIQR(string value)
         {
-            if (!Uri.TryCreate(value, UriKind.Absolute, out var uri) ||
-                !uri.Scheme.Equals("vinhkhanhtour", StringComparison.OrdinalIgnoreCase) ||
-                !uri.Host.Equals("poi", StringComparison.OrdinalIgnoreCase))
+            var (poiId, autoplay) = DeepLinkService.TryParsePoiLink(value);
+
+            if (poiId <= 0)
             {
                 await DisplayAlert("Mã không hợp lệ",
-                    "Vui lòng quét mã QR trên bảng của từng quán.", "Thử lại");
+                    "Vui lòng quét mã QR trên bảng của từng quán hoặc từ hệ thống SmartTour.", "Thử lại");
                 _isProcessing = false;
                 if (_cameraView != null) _cameraView.IsDetecting = true;
                 return;
             }
 
-            if (!int.TryParse(uri.AbsolutePath.Trim('/'), out int poiId))
-            {
-                _isProcessing = false; return;
-            }
-
-            var q = System.Web.HttpUtility.ParseQueryString(uri.Query);
-            bool autoplay = string.Equals(q["autoplay"], "true", StringComparison.OrdinalIgnoreCase);
-
             var restaurant = _restaurants.FirstOrDefault(r => r.Id == poiId)
-                          ?? await App.Database.GetRestaurantByIdAsync(poiId);
+                          ?? await App.Database.GetRestaurantByIdAsync(poiId)
+                          ?? await ApiService.Instance.GetRestaurantByIdAsync(poiId);
 
             if (restaurant == null)
             {

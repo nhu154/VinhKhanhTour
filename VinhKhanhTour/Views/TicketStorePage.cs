@@ -10,7 +10,7 @@ namespace VinhKhanhTour.Views
     /// </summary>
     public class TicketStorePage : ContentPage
     {
-        private readonly string _lang;
+        private string _lang;
         private string _selectedTicket = "day"; // day | full
         private string _selectedPayment = "momo";
         private Border _cardDay = null!;
@@ -38,6 +38,12 @@ namespace VinhKhanhTour.Views
             BackgroundColor = Color.FromArgb("#0D1B2A");
             NavigationPage.SetHasNavigationBar(this, false);
             BuildUI();
+        }
+
+        protected override void OnAppearing()
+        {
+            base.OnAppearing();
+            _lang = Preferences.Default.Get("app_lang", "vi");
         }
 
         // ══ BUILD UI ══════════════════════════════════════════════════════════
@@ -176,7 +182,7 @@ namespace VinhKhanhTour.Views
                 ("📖", "Cẩm nang: menu, giá, tip ăn uống",          "Full guide: menu, prices, eating tips"),
                 ("📸", "Khung ảnh AR kỷ niệm độc quyền",             "Exclusive AR photo frames"),
                 ("🎯", "Tour cá nhân hóa theo khẩu vị",              "Personalized tour by taste"),
-                ("🏅", "Huy hiệu & điểm thưởng tích luỹ",            "Badges & reward points"),
+                ("🛎️", "Đặt chỗ trước tại các quán",                 "Pre-booking at restaurants"),
                 ("📓", "Nhật ký ẩm thực cá nhân + xuất PDF",         "Personal food journal + PDF export"),
             };
             foreach (var (icon, vi, en) in features)
@@ -186,7 +192,7 @@ namespace VinhKhanhTour.Views
                     Children =
                     {
                         new Label { Text = icon, FontSize = 18, VerticalOptions = LayoutOptions.Center },
-                        new Label { Text = _lang == "en" ? en : vi, FontSize = 13, TextColor = Color.FromArgb("#374151"), VerticalOptions = LayoutOptions.Center }
+                        new Label { Text = L(vi, en, en), FontSize = 13, TextColor = Color.FromArgb("#374151"), VerticalOptions = LayoutOptions.Center }
                     }
                 });
 

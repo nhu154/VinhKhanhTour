@@ -85,7 +85,12 @@ if(sessionStorage.getItem('cms_logged_in') !== 'true') window.location.href='log
         <span id="active-users-count" style="font-weight:800;color:#059669;font-size:14px">0</span> 
       </div>
       <div id="active-users-tooltip" style="display:none;position:absolute;top:100%;right:0;margin-top:8px;background:var(--card);border:1px solid var(--border);border-radius:16px;padding:16px;box-shadow:0 10px 30px rgba(0,0,0,0.15);font-size:13px;max-width:340px;min-width:300px;z-index:1000;white-space:normal">
-        <div style="font-weight:700;margin-bottom:12px;color:var(--text-main);font-size:14px;border-bottom:1px solid #f1f5f9;padding-bottom:10px">Người dùng trên ứng dụng di động:</div>
+        <div style="font-weight:700;margin-bottom:12px;color:var(--text-main);font-size:14px;border-bottom:1px solid #f1f5f9;padding-bottom:10px;display:flex;justify-content:space-between;align-items:center">
+          <span>Người dùng trên ứng dụng di động:</span>
+          <button onclick="clearGhostSessions()" title="Xóa toàn bộ ghost session (dùng khi thấy số không chính xác)" style="background:none;border:1px solid #e2e8f0;border-radius:8px;padding:3px 8px;font-size:11px;color:#94a3b8;cursor:pointer;display:flex;align-items:center;gap:4px" onmouseover="this.style.color='#ef4444';this.style.borderColor='#ef4444'" onmouseout="this.style.color='#94a3b8';this.style.borderColor='#e2e8f0'">
+            <i data-lucide="rotate-ccw" style="width:11px;height:11px"></i> Reset
+          </button>
+        </div>
         <div id="users-list-detail" style="max-height:220px;overflow-y:auto"></div>
       </div>
     </div>
@@ -324,7 +329,6 @@ if(sessionStorage.getItem('cms_logged_in') !== 'true') window.location.href='log
           <tr>
             <th style="width:60px; text-align:center">Icon</th>
             <th>Hành động</th>
-            <th>Đối tượng tác động</th>
             <th>Thời gian thực hiện</th>
           </tr>
         </thead>
@@ -682,14 +686,7 @@ if(sessionStorage.getItem('cms_logged_in') !== 'true') window.location.href='log
         <option value="admin">👑 Admin — Toàn quyền</option>
       </select>
     </div>
-    <div style="background:#f8fafc;border:1px solid var(--border);border-radius:10px;padding:14px;margin-top:4px">
-      <div style="font-size:12px;font-weight:700;color:var(--text-muted);margin-bottom:8px">Phân quyền</div>
-      <div style="display:flex;flex-direction:column;gap:6px;font-size:12px;color:var(--text-muted)">
-        <div>👑 <strong>Admin:</strong> Tạo/sửa/xóa POI, Tour, xem Analytics, quản lý người dùng</div>
-        <div>👤 <strong>User:</strong> Chỉ xem Dashboard và Lịch sử</div>
-      </div>
     </div>
-  </div>
   <div class="panel-footer">
     <button class="btn btn-danger-outline" id="btn-delete-user" onclick="deleteUser()" style="display:none">
       <i data-lucide="trash-2"></i> Xóa

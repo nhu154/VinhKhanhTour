@@ -230,6 +230,9 @@ namespace VinhKhanhTour.Views
             mainLayout.Add(ctaContainer, 0, 1);
 
             Content = mainLayout;
+            
+            // Apply language after UI is built
+            UpdateLanguage(_currentLang);
         }
 
         private VerticalStackLayout CreateStatNode(string icon, View textEl)

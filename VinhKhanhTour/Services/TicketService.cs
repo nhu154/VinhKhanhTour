@@ -1,3 +1,4 @@
+using System.Linq;
 using VinhKhanhTour.Models;
 
 namespace VinhKhanhTour.Services
@@ -66,13 +67,7 @@ namespace VinhKhanhTour.Services
             Preferences.Set(KEY_TICKET_EXPIRY, expiry.Ticks);
             Preferences.Set(KEY_TICKET_CODE, code);
 
-            // Tặng điểm ban đầu khi mua vé
-            AddPoints(ticketType == "full" ? 500 : 100);
-
-            // Tặng badge "Người ủng hộ"
-            UnlockBadge(BadgeDefinitions.Supporter);
-
-            System.Diagnostics.Debug.WriteLine($"[TicketService] Activated {ticketType} ticket: {code}");
+            // System.Diagnostics.Debug.WriteLine($"[TicketService] Activated {ticketType} ticket: {code}");
             return new TicketInfo { Type = ticketType, Code = code, Expiry = expiry };
         }
 
@@ -108,59 +103,9 @@ namespace VinhKhanhTour.Services
         public void SetOfflineMapDownloaded(bool value) =>
             Preferences.Set(KEY_OFFLINE_MAP, value);
 
-        // ── Điểm thưởng ────────────────────────────────────────────
 
-        public int Points => Preferences.Get(KEY_POINTS, 0);
 
-        public void AddPoints(int amount)
-        {
-            var current = Points;
-            Preferences.Set(KEY_POINTS, current + amount);
-        }
 
-        // ── Huy hiệu ───────────────────────────────────────────────
-
-        public List<BadgeInfo> GetUnlockedBadges()
-        {
-            var json = Preferences.Get(KEY_BADGES_JSON, "[]");
-            try { return System.Text.Json.JsonSerializer.Deserialize<List<BadgeInfo>>(json) ?? new(); }
-            catch { return new(); }
-        }
-
-        public bool HasBadge(string badgeId)
-            => GetUnlockedBadges().Any(b => b.Id == badgeId);
-
-        public BadgeInfo? UnlockBadge(BadgeInfo badge)
-        {
-            if (HasBadge(badge.Id)) return null; // đã có rồi
-            var badges = GetUnlockedBadges();
-            badge.UnlockedAt = DateTime.Now;
-            badges.Add(badge);
-            Preferences.Set(KEY_BADGES_JSON, System.Text.Json.JsonSerializer.Serialize(badges));
-            AddPoints(badge.Points);
-            System.Diagnostics.Debug.WriteLine($"[TicketService] Badge unlocked: {badge.Name}");
-            return badge;
-        }
-
-        /// <summary>Check-in quán → có thể unlock badge mới</summary>
-        public BadgeInfo? CheckInRestaurant(int restaurantId, int totalVisited)
-        {
-            AddPoints(20);
-
-            // Badge theo số quán đã ghé
-            if (totalVisited >= 1 && !HasBadge("first_visit"))
-                return UnlockBadge(BadgeDefinitions.FirstVisit);
-            if (totalVisited >= 3 && !HasBadge("explorer"))
-                return UnlockBadge(BadgeDefinitions.Explorer);
-            if (totalVisited >= 5 && !HasBadge("snail_king"))
-                return UnlockBadge(BadgeDefinitions.SnailKing);
-            if (totalVisited >= 8 && !HasBadge("foodie_pro"))
-                return UnlockBadge(BadgeDefinitions.FoodiePro);
-            if (totalVisited >= 10 && !HasBadge("vinh_khanh_legend"))
-                return UnlockBadge(BadgeDefinitions.VinhKhanhLegend);
-
-            return null;
-        }
 
         // ── Nhật ký ẩm thực ────────────────────────────────────────
 
@@ -187,6 +132,39 @@ namespace VinhKhanhTour.Services
             var prefix = type == "full" ? "VKF" : "VKD";
             return $"{prefix}-{DateTime.Now:yyyyMMdd}-{new Random().Next(10000, 99999)}";
         }
+
+        // ── Points & Badges ────────────────────────────────────────
+
+        public int Points => Preferences.Get(KEY_POINTS, 0);
+
+        public void AddPoints(int pts)
+        {
+            var current = Points;
+            Preferences.Set(KEY_POINTS, current + pts);
+        }
+
+        public List<Badge> GetUnlockedBadges()
+        {
+            var json = Preferences.Get(KEY_BADGES_JSON, "[]");
+            try { return System.Text.Json.JsonSerializer.Deserialize<List<Badge>>(json) ?? new(); }
+            catch { return new(); }
+        }
+
+        public bool HasBadge(string badgeId)
+        {
+            return GetUnlockedBadges().Any(b => b.Id == badgeId);
+        }
+
+        public Badge? UnlockBadge(Badge badge)
+        {
+            if (HasBadge(badge.Id)) return null;
+
+            var badges = GetUnlockedBadges();
+            badges.Add(badge);
+            Preferences.Set(KEY_BADGES_JSON, System.Text.Json.JsonSerializer.Serialize(badges));
+            AddPoints(badge.Points);
+            return badge;
+        }
     }
 
     // ── Data classes ───────────────────────────────────────────────
@@ -212,17 +190,6 @@ namespace VinhKhanhTour.Services
         };
     }
 
-    public class BadgeInfo
-    {
-        public string Id { get; set; } = "";
-        public string Name { get; set; } = "";
-        public string Description { get; set; } = "";
-        public string Emoji { get; set; } = "🏅";
-        public string Color { get; set; } = "#1565C0";
-        public int Points { get; set; } = 50;
-        public DateTime UnlockedAt { get; set; }
-    }
-
     public class JournalEntry
     {
         public int RestaurantId { get; set; }
@@ -231,26 +198,5 @@ namespace VinhKhanhTour.Services
         public int Rating { get; set; } = 5;
         public string Emoji { get; set; } = "🍽️";
         public DateTime VisitedAt { get; set; } = DateTime.Now;
-    }
-
-    // ── Badge Definitions ──────────────────────────────────────────
-
-    public static class BadgeDefinitions
-    {
-        public static BadgeInfo Supporter => new() { Id = "supporter", Name = "Người ủng hộ", Description = "Đã mua vé trải nghiệm", Emoji = "💎", Color = "#9C27B0", Points = 100 };
-        public static BadgeInfo FirstVisit => new() { Id = "first_visit", Name = "Khởi đầu", Description = "Ghé thăm quán đầu tiên", Emoji = "🌟", Color = "#FF9800", Points = 50 };
-        public static BadgeInfo Explorer => new() { Id = "explorer", Name = "Nhà thám hiểm", Description = "Đã ghé 3 quán", Emoji = "🗺️", Color = "#2196F3", Points = 80 };
-        public static BadgeInfo SnailKing => new() { Id = "snail_king", Name = "Vua Ốc", Description = "Đã ghé 5 quán ốc", Emoji = "🐚", Color = "#4CAF50", Points = 120 };
-        public static BadgeInfo FoodiePro => new() { Id = "foodie_pro", Name = "Foodie Pro", Description = "Đã ghé 8 quán khác nhau", Emoji = "👨‍🍳", Color = "#E91E63", Points = 150 };
-        public static BadgeInfo VinhKhanhLegend => new() { Id = "vinh_khanh_legend", Name = "Huyền thoại VK", Description = "Đã ghé tất cả 10 quán", Emoji = "🏆", Color = "#FF5722", Points = 300 };
-        public static BadgeInfo NightOwl => new() { Id = "night_owl", Name = "Cú đêm", Description = "Check-in sau 10 giờ tối", Emoji = "🦉", Color = "#3F51B5", Points = 60 };
-        public static BadgeInfo Photographer => new() { Id = "photographer", Name = "Nhiếp ảnh gia", Description = "Lưu ảnh kỷ niệm", Emoji = "📸", Color = "#00BCD4", Points = 70 };
-        public static BadgeInfo Reviewer => new() { Id = "reviewer", Name = "Nhà phê bình", Description = "Viết 5 nhật ký ẩm thực", Emoji = "✍️", Color = "#607D8B", Points = 90 };
-
-        public static List<BadgeInfo> All => new()
-        {
-            Supporter, FirstVisit, Explorer, SnailKing, FoodiePro,
-            VinhKhanhLegend, NightOwl, Photographer, Reviewer
-        };
     }
 }

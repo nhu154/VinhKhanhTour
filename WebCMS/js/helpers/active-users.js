@@ -1,6 +1,7 @@
 /**
- * ══ ACTIVE USERS TRACKING ══
- * Theo dõi người dùng đang hoạt động trong hệ thống
+ * ══ ACTIVE USERS TRACKING (CMS Admin Sessions) ══
+ * Theo dõi admin/owner đang mở tab WebCMS.
+ * Lưu trong localStorage — ĐỘC LẬP với "App đang online" (app mobile, lấy từ API /tracking/online-users)
  */
 
 const ACTIVE_USERS_KEY = 'cms_active_users';
@@ -133,10 +134,14 @@ function updateActiveUserCount() {
     const displayText = getActiveUsersDisplayText();
     
     // Cập nhật các element có attribute data-active-users-count
+    // (dành cho stat card CMS admin, KHÔNG phải pill “App đang online”)
     const countEls = document.querySelectorAll('[data-active-users-count]');
     countEls.forEach(el => {
-      el.textContent = count || '0';
-      el.setAttribute('data-count', count || '0');
+      // Chỉ cập nhật nếu element này được đánh dấu là “cms admin tracking”
+      if (el.hasAttribute('data-cms-admin-count')) {
+        el.textContent = count || '0';
+        el.setAttribute('data-count', count || '0');
+      }
     });
     
     // Cập nhật các element có attribute data-active-users-text (hiển thị danh sách)
@@ -145,12 +150,9 @@ function updateActiveUserCount() {
       el.textContent = displayText;
     });
     
-    // Cập nhật header pill span
-    const headerSpan = document.getElementById('active-users-count');
-    if (headerSpan) {
-      headerSpan.textContent = count > 0 ? count : '0';
-      headerSpan.title = displayText;
-    }
+    // Lưu ý: #active-users-count (pill header “App đang online”) ĐƯỢC CẬP NHẬT RIÊNG
+    // bởi fetchRealActiveUsers() trong layout.js (lấy từ API /tracking/online-users)
+    // KHÔNG ghi đè ở đây để tránh hiển thị admin CMS làm “App user”
     
     // Phát custom event để update components
     document.dispatchEvent(new CustomEvent('activeUsersUpdated', { detail: { count, displayText } }));

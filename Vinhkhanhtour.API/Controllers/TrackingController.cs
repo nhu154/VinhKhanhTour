@@ -8,6 +8,10 @@ namespace VinhkhanhTour.API.Controllers
         public string SessionId { get; set; } = "";
         public string Username { get; set; } = "";
         public bool IsAnonymous { get; set; }
+
+        // GPS realtime — tùy chọn, app gửi kèm nếu có
+        public double? Lat { get; set; }
+        public double? Lng { get; set; }
     }
 
     [ApiController]
@@ -22,15 +26,14 @@ namespace VinhkhanhTour.API.Controllers
         }
 
         // POST: api/tracking/ping
+        // App gửi ping định kỳ, kèm lat/lng nếu có GPS
         [HttpPost("ping")]
         public IActionResult Ping([FromBody] PingRequest req)
         {
             if (string.IsNullOrEmpty(req.SessionId))
-            {
                 return BadRequest("SessionId is required");
-            }
 
-            _tracker.Ping(req.SessionId, req.Username, req.IsAnonymous);
+            _tracker.Ping(req.SessionId, req.Username, req.IsAnonymous, req.Lat, req.Lng);
             return Ok(new { message = "Pinged successfully" });
         }
 
@@ -39,15 +42,37 @@ namespace VinhkhanhTour.API.Controllers
         public IActionResult GetOnlineUsers()
         {
             var activeUsers = _tracker.GetActiveUsers();
-            
-            // Format to match the frontend expectations closely
             var result = activeUsers.Select(u => new
             {
                 isAnonymous = u.IsAnonymous,
                 username = u.Username,
-                // Time elapsed in milliseconds 
-                // However, since JS uses Date.now(), we'll return loginTime as standard Unix Timestamp format (milliseconds)
                 loginTime = ((DateTimeOffset)u.LastPing).ToUnixTimeMilliseconds()
+            });
+            return Ok(result);
+        }
+
+        // GET: api/tracking/live-locations
+        // Trả về vị trí GPS hiện tại của những user đang online (có GPS)
+        // Dành cho heatmap realtime trên CMS
+        [HttpGet("live-locations")]
+        public IActionResult GetLiveLocations()
+        {
+            var usersWithLocation = _tracker.GetUsersWithLocation();
+
+            var result = usersWithLocation.Select((u, i) => new
+            {
+                id = u.SessionId.Substring(0, Math.Min(8, u.SessionId.Length)),
+                label = u.IsAnonymous
+                                ? $"Khách #{i + 1}"
+                                : (string.IsNullOrEmpty(u.Username) ? $"Người dùng #{i + 1}" : u.Username),
+                isAnonymous = u.IsAnonymous,
+                lat = u.Lat,
+                lng = u.Lng,
+                // Số giây kể từ lần cập nhật vị trí cuối
+                secondsAgo = u.LastLocationTime.HasValue
+                                ? (int)(DateTime.UtcNow - u.LastLocationTime.Value).TotalSeconds
+                                : 999,
+                lastPing = ((DateTimeOffset)u.LastPing).ToUnixTimeMilliseconds()
             });
 
             return Ok(result);
@@ -59,6 +84,15 @@ namespace VinhkhanhTour.API.Controllers
         {
             _tracker.Remove(sessionId);
             return Ok();
+        }
+
+        // DELETE: api/tracking/clear
+        // Xóa toàn bộ session — dùng để reset ghost sessions khi test/debug
+        [HttpDelete("clear")]
+        public IActionResult ClearAllSessions()
+        {
+            _tracker.ClearAll();
+            return Ok(new { message = "All sessions cleared" });
         }
     }
 }

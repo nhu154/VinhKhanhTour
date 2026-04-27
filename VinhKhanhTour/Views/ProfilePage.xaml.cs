@@ -1,3 +1,4 @@
+using System.Linq;
 using Microsoft.Maui.Controls.Shapes;
 using VinhKhanhTour.Models;
 
@@ -15,7 +16,6 @@ public partial class ProfilePage : ContentPage
     private Label _lblPageTitle = null!;
     private Label _lblStatVisit = null!;
     private Label _lblStatBadge = null!;
-    private Label _lblStatPoints = null!;
     private Label _lblMenuSection = null!;
     private Label _lblLangSub = null!;
     private Label _lblHistorySection = null!;
@@ -32,6 +32,10 @@ public partial class ProfilePage : ContentPage
     private Label _lblTicket = null!;
     private Label _lblJournal = null!;
     private Label _lblBookings = null!;
+
+    private Label _lblGuestNotice1 = null!;
+    private Label _lblGuestNotice2 = null!;
+    private Label _lblGuestLoginBtn = null!;
 
     public ProfilePage()
     {
@@ -52,7 +56,6 @@ public partial class ProfilePage : ContentPage
         if (_lblPageTitle != null) _lblPageTitle.Text = lang switch { "en" => "My Profile", "zh" => "我的主页", "ja" => "マイプロフィール", "ko" => "내 프로필", _ => "Hồ sơ của tôi" };
         if (_lblStatVisit != null) _lblStatVisit.Text = lang switch { "en" => "Visited", "zh" => "去过", "ja" => "訪問済み", "ko" => "방문함", _ => "Quán đã ghé" };
         if (_lblStatBadge != null) _lblStatBadge.Text = lang switch { "en" => "Badges", "zh" => "徽章", "ja" => "バッジ", "ko" => "배지", _ => "Huy hiệu" };
-        if (_lblStatPoints != null) _lblStatPoints.Text = lang switch { "en" => "Points", "zh" => "积分", "ja" => "ポイント", "ko" => "포인트", _ => "Điểm thưởng" };
         if (_lblMenuSection != null) _lblMenuSection.Text = lang switch { "en" => "Account", "zh" => "账户", "ja" => "アカウント", "ko" => "계정", _ => "Tài khoản" };
 
         if (_lblHistorySection != null) _lblHistorySection.Text = lang switch { "en" => "Recent Activity", "zh" => "最近活动", "ja" => "最近の活動", "ko" => "최근 활동", _ => "Hoạt động gần đây" };
@@ -77,6 +80,10 @@ public partial class ProfilePage : ContentPage
         if (_lblEditBtn != null) _lblEditBtn.Text = lang switch { "en" => "✏️ Edit", "ja" => "✏️ 編集", "ko" => "✏️ 편집", _ => "Sửa" };
         if (_lblLoading != null && _lblLoading.Text != null && _lblLoading.Text.EndsWith("..."))
             _lblLoading.Text = lang switch { "en" => "Loading data...", "zh" => "加载数据...", "ja" => "読み込み中...", "ko" => "데이터 로딩 중...", _ => "Đang tải dữ liệu..." };
+
+        if (_lblGuestNotice1 != null) _lblGuestNotice1.Text = lang switch { "en" => "You are visiting as a Guest", "zh" => "您正以访客身份浏览", "ja" => "ゲストとして訪問しています", "ko" => "게스트로 방문 중입니다", _ => "Bạn đang tham quan với tư cách Khách" };
+        if (_lblGuestNotice2 != null) _lblGuestNotice2.Text = lang switch { "en" => "Login to save history & badges", "zh" => "登录以保存历史记录和徽章", "ja" => "履歴とバッジを保存するにはログイン", "ko" => "로그인하여 기록 및 배지 저장", _ => "Đăng nhập để lưu lịch sử & huy hiệu" };
+        if (_lblGuestLoginBtn != null) _lblGuestLoginBtn.Text = lang switch { "en" => "Login", "zh" => "登录", "ja" => "ログイン", "ko" => "로그인", _ => "Đăng nhập" };
     }
 
     protected override async void OnAppearing()
@@ -187,11 +194,14 @@ public partial class ProfilePage : ContentPage
             };
             var bannerGrid = new Grid { ColumnDefinitions = { new ColumnDefinition(GridLength.Star), new ColumnDefinition(GridLength.Auto) } };
             var bannerText = new VerticalStackLayout { Spacing = 4 };
-            bannerText.Add(new Label { Text = "Bạn đang tham quan với tư cách Khách", FontSize = 13, FontAttributes = FontAttributes.Bold, TextColor = Colors.White });
-            bannerText.Add(new Label { Text = "Đăng nhập để lưu lịch sử & điểm thưởng", FontSize = 12, TextColor = Color.FromArgb("#8ba0b2") });
+            _lblGuestNotice1 = new Label { Text = "Bạn đang tham quan với tư cách Khách", FontSize = 13, FontAttributes = FontAttributes.Bold, TextColor = Colors.White };
+            _lblGuestNotice2 = new Label { Text = "Đăng nhập để lưu lịch sử & huy hiệu", FontSize = 12, TextColor = Color.FromArgb("#8ba0b2") };
+            bannerText.Add(_lblGuestNotice1);
+            bannerText.Add(_lblGuestNotice2);
             bannerGrid.Add(bannerText, 0, 0);
             var loginBtn = new Border { BackgroundColor = Color.FromArgb("#1565C0"), StrokeShape = new Microsoft.Maui.Controls.Shapes.RoundRectangle { CornerRadius = 10 }, StrokeThickness = 0, Padding = new Thickness(12, 8), VerticalOptions = LayoutOptions.Center };
-            loginBtn.Content = new Label { Text = "Đăng nhập", FontSize = 12, FontAttributes = FontAttributes.Bold, TextColor = Colors.White };
+            _lblGuestLoginBtn = new Label { Text = "Đăng nhập", FontSize = 12, FontAttributes = FontAttributes.Bold, TextColor = Colors.White };
+            loginBtn.Content = _lblGuestLoginBtn;
             loginBtn.GestureRecognizers.Add(new TapGestureRecognizer { Command = new Command(() => { Application.Current!.MainPage = new NavigationPage(new LoginPage()); }) });
             bannerGrid.Add(loginBtn, 1, 0);
             guestBanner.Content = bannerGrid;
@@ -201,7 +211,6 @@ public partial class ProfilePage : ContentPage
         // ── 2. Glassmorphism Stats Row ───────────────────────────────────────
         _visitCountLabel = MakeStatLabel();
         _tourCountLabel = MakeStatLabel();
-        _pointsLabel = MakeStatLabel();
 
         var statsGlass = new Border
         {
@@ -213,19 +222,17 @@ public partial class ProfilePage : ContentPage
             Margin = new Thickness(24, 0),
             Shadow = new Shadow { Brush = Color.FromArgb("#1565C0"), Opacity = 0.2f, Radius = 15, Offset = new Point(0, 8) }
         };
-        var statsGrid = new Grid { ColumnDefinitions = { new ColumnDefinition(), new ColumnDefinition { Width = 1 }, new ColumnDefinition(), new ColumnDefinition { Width = 1 }, new ColumnDefinition() } };
+        var statsGrid = new Grid { ColumnDefinitions = { new ColumnDefinition(), new ColumnDefinition { Width = 1 }, new ColumnDefinition() } };
 
         _lblStatVisit = new Label { Text = "Quán đã ghé", FontSize = 12, FontAttributes = FontAttributes.Bold, TextColor = Color.FromArgb("#5A7A9A"), HorizontalOptions = LayoutOptions.Center };
         _lblStatBadge = new Label { Text = "Huy hiệu", FontSize = 12, FontAttributes = FontAttributes.Bold, TextColor = Color.FromArgb("#5A7A9A"), HorizontalOptions = LayoutOptions.Center };
-        _lblStatPoints = new Label { Text = "Điểm thưởng", FontSize = 12, FontAttributes = FontAttributes.Bold, TextColor = Color.FromArgb("#5A7A9A"), HorizontalOptions = LayoutOptions.Center };
         statsGrid.Add(MakeStatNode(_visitCountLabel, _lblStatVisit, "\U0001F37D"), 0, 0);
         statsGrid.Add(new BoxView { BackgroundColor = Color.FromArgb("#1AFFFFFF"), WidthRequest = 1, VerticalOptions = LayoutOptions.Fill, Margin = new Thickness(0, 8) }, 1, 0);
         statsGrid.Add(MakeStatNode(_tourCountLabel, _lblStatBadge, "\U0001F6E1"), 2, 0);
-        statsGrid.Add(new BoxView { BackgroundColor = Color.FromArgb("#1AFFFFFF"), WidthRequest = 1, VerticalOptions = LayoutOptions.Fill, Margin = new Thickness(0, 8) }, 3, 0);
-        statsGrid.Add(MakeStatNode(_pointsLabel, _lblStatPoints, "\U0001F48E"), 4, 0);
 
         statsGlass.Content = statsGrid;
-        root.Add(statsGlass);
+        // statsGlass removed as per user request
+        // root.Add(statsGlass);
 
         // ── 3. Menu Options ────────────────────────────────────────────────
         var menuSection = new VerticalStackLayout { Padding = new Thickness(20, 10), Spacing = 16 };
@@ -303,7 +310,8 @@ public partial class ProfilePage : ContentPage
         _visitHistoryLayout.Add(_lblLoading);
 
         historySection.Add(MakeCard(_visitHistoryLayout));
-        root.Add(historySection);
+        // historySection removed as per user request
+        // root.Add(historySection);
 
         // ── 5. Footer ────────────────────────────────────────────────
         root.Add(new Label
@@ -445,9 +453,8 @@ public partial class ProfilePage : ContentPage
             var uniqueIds = visits.Select(v => v.RestaurantId).Distinct().ToList();
             _visitCountLabel.Text = uniqueIds.Count.ToString();
 
-            // Lấy điểm thưởng và huy hiệu thật từ TicketService
+            // Lấy huy hiệu thật từ TicketService
             var ts = VinhKhanhTour.Services.TicketService.Instance;
-            _pointsLabel.Text = ts.Points.ToString();
             _tourCountLabel.Text = ts.GetUnlockedBadges().Count.ToString();
 
             var recentDistinct = visits.GroupBy(v => v.RestaurantId)

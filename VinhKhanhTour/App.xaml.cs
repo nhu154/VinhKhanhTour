@@ -22,32 +22,56 @@ namespace VinhKhanhTour
             StartAppTracking();
         }
 
+        // Timer ping giữ tham chiếu để có thể dừng/khởi động lại theo vòng đời app
+        private IDispatcherTimer? _heartbeatTimer;
+
         private void StartAppTracking()
         {
-            var timer = Dispatcher.CreateTimer();
-            timer.Interval = TimeSpan.FromSeconds(30);
-            timer.Tick += async (s, e) =>
+            // ── Đảm bảo sessionId tồn tại ngay khi khởi động ──
+            var sessionId = Preferences.Get("device_session_id", "");
+            if (string.IsNullOrEmpty(sessionId))
             {
-                var sessionId = Preferences.Get("device_session_id", "");
-                if (string.IsNullOrEmpty(sessionId))
+                sessionId = Guid.NewGuid().ToString();
+                Preferences.Set("device_session_id", sessionId);
+            }
+
+            // ── Tạo timer ping định kỳ (chưa start ngay — OnResume sẽ start) ──
+            _heartbeatTimer = Dispatcher.CreateTimer();
+            _heartbeatTimer.Interval = TimeSpan.FromSeconds(30);
+            _heartbeatTimer.Tick += async (s, e) => await SendHeartbeatAsync();
+
+            // ── Ping ngay lập tức khi mở app lần đầu ──
+            Task.Run(async () => await SendHeartbeatAsync());
+            _heartbeatTimer.Start();
+
+            // ── Khi mạng được kết nối lại, ping ngay để giữ online ──
+            Connectivity.ConnectivityChanged += async (s, e) =>
+            {
+                if (e.NetworkAccess == NetworkAccess.Internet ||
+                    e.NetworkAccess == NetworkAccess.ConstrainedInternet)
                 {
-                    sessionId = Guid.NewGuid().ToString();
-                    Preferences.Set("device_session_id", sessionId);
+                    System.Diagnostics.Debug.WriteLine("[Tracking] Mạng khôi phục — ping lại ngay");
+                    await Task.Delay(500); // Chờ socket ổn định
+                    await SendHeartbeatAsync();
                 }
-
-                if (!UserSession.Instance.IsLoggedIn) return;
-
-                string username = UserSession.Instance.Username;
-                bool isAnonymous = UserSession.Instance.IsGuest;
-
-                await ApiService.Instance.PingActiveStatusAsync(sessionId, username, isAnonymous);
             };
-            timer.Start();
+        }
 
-            // Lần gửi ping đầu
-            Task.Run(async () =>
+        /// <summary>
+        /// Lưu trữ tọa độ mới nhất do WebView hoặc native cập nhật
+        /// </summary>
+        public static Location? CurrentLocation { get; set; }
+
+        /// <summary>
+        /// Gửi heartbeat ping lên server. Gọi định kỳ và khi mạng khôi phục.
+        /// Chỉ ping khi user đã đăng nhập — session không tự mất khi mạng mất.
+        /// </summary>
+        public static async Task SendHeartbeatAsync()
+        {
+            try
             {
-                await Task.Delay(2000);
+                if (!UserSession.Instance.IsLoggedIn) return;
+
                 var sessionId = Preferences.Get("device_session_id", "");
                 if (string.IsNullOrEmpty(sessionId))
                 {
@@ -55,10 +79,33 @@ namespace VinhKhanhTour
                     Preferences.Set("device_session_id", sessionId);
                 }
 
-                if (!UserSession.Instance.IsLoggedIn) return;
+                var username = UserSession.Instance.Username;
+                var isAnonymous = UserSession.Instance.IsGuest;
 
-                await ApiService.Instance.PingActiveStatusAsync(sessionId, UserSession.Instance.Username, UserSession.Instance.IsGuest);
-            });
+                double? lat = CurrentLocation?.Latitude;
+                double? lng = CurrentLocation?.Longitude;
+
+                if (lat == null || lng == null)
+                {
+                    try
+                    {
+                        var loc = await Geolocation.GetLastKnownLocationAsync();
+                        if (loc != null)
+                        {
+                            lat = loc.Latitude;
+                            lng = loc.Longitude;
+                        }
+                    }
+                    catch { }
+                }
+
+                await ApiService.Instance.PingActiveStatusAsync(sessionId, username, isAnonymous, lat, lng);
+                System.Diagnostics.Debug.WriteLine($"[Tracking] ✅ Ping OK — {username} ({sessionId[..8]}) GPS: {lat},{lng}");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[Tracking] ⚠️ Ping failed: {ex.Message}");
+            }
         }
 
         // ── Deep Link Integration ─────────────────────────────────────────────
@@ -72,6 +119,48 @@ namespace VinhKhanhTour
         protected override void OnStart()
         {
             base.OnStart();
+            // Xử lý deep link nếu app được mở bởi QR khi đang tắt
+            DeepLinkService.Instance.ProcessPendingIfAny();
+        }
+
+        /// <summary>
+        /// App vào nền (người dùng nhấn Home hoặc chuyển app)
+        /// → Dừng timer + xóa session khỏi server để không đếm nhầm.
+        /// Khi mở lại (OnResume) sẽ ping ngay và restart timer.
+        /// </summary>
+        protected override void OnSleep()
+        {
+            base.OnSleep();
+            // Dừng timer, không gửi ping khi app ở nền
+            _heartbeatTimer?.Stop();
+
+            // Xóa session khỏi server ngay lập tức
+            var sessionId = Preferences.Get("device_session_id", "");
+            if (!string.IsNullOrEmpty(sessionId) && UserSession.Instance.IsLoggedIn)
+            {
+                _ = Task.Run(async () =>
+                {
+                    await ApiService.Instance.EndActiveStatusAsync(sessionId);
+                    System.Diagnostics.Debug.WriteLine("[Tracking] App vào nền — đã xóa session");
+                });
+            }
+        }
+
+        /// <summary>
+        /// App quay lại foreground (người dùng mở lại)
+        /// → Ping ngay để hiện online + khởi động lại timer.
+        /// </summary>
+        protected override void OnResume()
+        {
+            base.OnResume();
+            // Ping ngay khi mở lại app
+            Task.Run(async () =>
+            {
+                await SendHeartbeatAsync();
+                System.Diagnostics.Debug.WriteLine("[Tracking] App mở lại — đã ping");
+            });
+            // Restart timer
+            _heartbeatTimer?.Start();
         }
 
         private async Task InitializeSampleData()

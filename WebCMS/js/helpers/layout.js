@@ -115,6 +115,26 @@ async function fetchRealActiveUsers() {
   }
 }
 
+// Xóa toàn bộ ghost session (debug/test) — chỉ Admin mới dùng
+async function clearGhostSessions() {
+  try {
+    const res = await fetch(`${API}/tracking/clear`, { method: 'DELETE' });
+    if (!res.ok) throw new Error('Lỗi xóa session');
+    appUsersListCache = [];
+    // Cập nhật UI ngay lập tức
+    const countEl = document.getElementById('active-users-count');
+    if (countEl) countEl.textContent = '0';
+    const statEl = document.querySelector('[data-active-users-count]');
+    if (statEl) statEl.textContent = '0';
+    const detailEl = document.getElementById('users-list-detail');
+    if (detailEl) detailEl.innerHTML = '<p style="color:var(--text-muted);padding:8px">Không có người dùng hoạt động trên App</p>';
+    // if (typeof showToast === 'function') showToast('Đã xóa toàn bộ session ghost', 'success');
+  } catch(e) {
+    console.error('clearGhostSessions error:', e);
+    if (typeof showToast === 'function') showToast('Lỗi khi xóa session', 'danger');
+  }
+}
+
 async function updateActiveUsersDetail() {
   try {
     await fetchRealActiveUsers();
@@ -137,20 +157,21 @@ async function updateActiveUsersDetail() {
     
     detailEl.innerHTML = usersList.map((user, idx) => {
       const isAnon = user.isAnonymous;
-      const displayName = isAnon ? "Người dùng ẩn danh" : (user.username || "Unknown");
+      // Guest → hiện "Khách", tài khoản → hiện username thực tế
+      const displayName = isAnon ? "Khách" : (user.username || "Unknown");
       
       const badgeStyle = isAnon 
-        ? 'background:#f1f5f9;color:#64748b;padding:4px 8px;border-radius:6px;font-size:10px;font-weight:700'
-        : 'background:#dcfce7;color:#166534;padding:4px 8px;border-radius:6px;font-size:10px;font-weight:700';
-      const badgeText = isAnon ? 'ẨN DANH' : 'CÓ TÀI KHOẢN';
+        ? 'background:#fef3c7;color:#92400e;padding:4px 8px;border-radius:6px;font-size:10px;font-weight:700;border:1px solid #fde68a'
+        : 'background:#dcfce7;color:#166534;padding:4px 8px;border-radius:6px;font-size:10px;font-weight:700;border:1px solid #bbf7d0';
+      const badgeText = isAnon ? '👤 KHÁCH' : '✅ TÀI KHOẢN';
       
       const onlineTime = new Date().getTime() - user.loginTime;
       const minutes = Math.floor(onlineTime / 60000);
-      const timeStr = minutes < 1 ? 'Vừa mới online' : `${minutes} phút trước`;
+      const timeStr = minutes < 1 ? 'Vừa mới vào app' : `${minutes} phút trước`;
       
       const avatarContent = isAnon ? '👤' : displayName.charAt(0).toUpperCase();
-      const avatarBg = isAnon ? '#f1f5f9' : '#e0e7ff';
-      const avatarColor = isAnon ? '#94a3b8' : '#4338ca';
+      const avatarBg = isAnon ? '#fef3c7' : '#e0e7ff';
+      const avatarColor = isAnon ? '#d97706' : '#4338ca';
       
       return `<div style="padding:12px;border-bottom:1px solid #f8fafc;display:flex;justify-content:space-between;align-items:center;gap:12px">
         <div style="flex:1;min-width:0;display:flex;align-items:center;gap:10px">

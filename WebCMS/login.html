@@ -78,6 +78,42 @@
   
   .footer-text { margin-top: 60px; font-size: 11px; color: #94a3b8; font-weight: 500; }
 
+  /* QR Section */
+  .qr-section {
+    margin-top: 32px;
+    padding: 24px 20px;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+    text-align: center;
+  }
+  .qr-section-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    color: #94a3b8;
+    text-transform: uppercase;
+    margin-bottom: 14px;
+  }
+  .qr-section img {
+    width: 130px;
+    height: 130px;
+    border-radius: 8px;
+    display: block;
+    margin: 0 auto 12px;
+  }
+  .qr-section-hint {
+    font-size: 12px;
+    color: #94a3b8;
+    line-height: 1.6;
+  }
+  .qr-section-hint span {
+    display: block;
+    color: #64748b;
+    font-weight: 600;
+    margin-bottom: 2px;
+  }
+
   @media (max-width: 900px) {
     .login-image { display: none; }
     .login-panel { flex: 1; }
@@ -121,6 +157,20 @@
       </form>
       
       <div class="footer-text">© GPS ADMIN 2025</div>
+
+      <!-- QR vào app -->
+      <div class="qr-section">
+        <p class="qr-section-label">Quét QR để vào app</p>
+        <img
+          src="https://api.qrserver.com/v1/create-qr-code/?size=260x260&margin=6&data=https%3A%2F%2Fnhu154.github.io%2Fgps-tour%2Fpoi.html"
+          alt="QR vào VinhKhanh Tour"
+        />
+        <p class="qr-section-hint">
+          <span>VinhKhanh Tour App</span>
+          Quét bằng điện thoại để vào thẳng app<br>
+          hoặc tải APK nếu chưa cài
+        </p>
+      </div>
     </div>
   </div>
 
